@@ -65,9 +65,8 @@ This isn't a theoretical product. The triggers above were designed around real i
 
 **Persona:** The Food Delivery Partner (Swiggy / Zomato Fleet)
 
-Our core personas are grounded in **primary field research** — structured interviews conducted with **3 active Swiggy delivery partners** — revealing massive income volatility and outsized exposure to structural platform penalties. Raw interview recordings are available for review: **[🎙️ User Interview Recordings (Google Drive)](https://drive.google.com/drive/folders/1pVeuibqcbkzK8ll4A9IWnUjMeMUlhQXv)**.
+Our core personas are grounded in **primary field research** — structured interviews conducted with **3 active Swiggy delivery partners** — revealing massive income volatility and outsized exposure to structural platform penalties. Raw interview recordings are available for review: <div align="center">**[🎙️ User Interview Recordings (Google Drive)](https://drive.google.com/drive/folders/1pVeuibqcbkzK8ll4A9IWnUjMeMUlhQXv)**.
 
-<div align="center">
   <img src="assets/drivers_image.png" alt="Continuum auto-protection pitch visual for delivery partners" style="max-width: 100%;" />
 </div>
 
