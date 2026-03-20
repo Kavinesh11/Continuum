@@ -6,7 +6,16 @@
   <br />
 
   [![Flutter](https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)](#)
+  [![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](#)
+  [![Express.js](https://img.shields.io/badge/Express.js-000000?style=for-the-badge&logo=express&logoColor=white)](#)
   [![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)](#)
+  [![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)](#)
+  [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-336791?style=for-the-badge&logo=postgresql&logoColor=white)](#)
+  [![CockroachDB](https://img.shields.io/badge/CockroachDB-6933FF?style=for-the-badge&logo=cockroachdb&logoColor=white)](#)
+  [![MongoDB](https://img.shields.io/badge/MongoDB-13AA52?style=for-the-badge&logo=mongodb&logoColor=white)](#)
+  [![Apache Kafka](https://img.shields.io/badge/Apache%20Kafka-000000?style=for-the-badge&logo=apachekafka&logoColor=white)](#)
+  [![Firebase](https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)](#)
+  [![Gemini](https://img.shields.io/badge/Gemini%20AI-8F7EFF?style=for-the-badge&logo=google&logoColor=white)](#)
   [![AI & ML](https://img.shields.io/badge/AI_%26_ML-FF6F00?style=for-the-badge&logo=scikit-learn&logoColor=white)](#)
 
   <br />
@@ -89,6 +98,8 @@ Three tiers map directly to a partner's weekly order volume:
 
 <div align="center">
   <img src="assets/pricing_tier.png" alt="Continuum Pricing Tiers — Silver ₹49/week, Gold ₹99/week, Platinum ₹199/week" style="max-width: 100%;" />
+
+  **Disclaimer:** The Prices shown are only base prices. Actual prices will be updated in realtime according to the pricing model.
 </div>
 
 ## The App Experience
