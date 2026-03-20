@@ -3,7 +3,7 @@
   <h1>Continuum</h1>
   <p><em>A continuous sequence in which adjacent elements are not perceptibly different. Ensuring uninterrupted income flow, regardless of external disruptions.</em></p>
   
-  [![React Native](https://img.shields.io/badge/React_Native-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](#)
+  [![Flutter](https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)](#)
   [![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)](#)
   [![AI & ML](https://img.shields.io/badge/AI_%26_ML-FF6F00?style=for-the-badge&logo=scikit-learn&logoColor=white)](#)
 
@@ -103,11 +103,26 @@ To ensure optimal product-market fit across our diverse user profiles, Continuum
 
 ## Platform Choice Justification
 
-The user-facing application is fundamentally mobile-first, built using **React Native** and **Expo Go**.
+The user-facing application is fundamentally mobile-first, built using **Flutter**.
 
 * **Mobile-First Audience:** Food delivery partners exist entirely on mobile devices while operating. A web application is fundamentally inappropriate for this demographic and use case.
-* **Critical Push Notifications:** Real-time push notifications are mandatory. When a disruption triggers a payout, the partner must be notified immediately over the lock screen to prevent them from taking unnecessary physical risks. React Native handles OS-level notifications efficiently.
-* **Rapid Cross-Platform Prototyping:** Given the strict 6-week Devtrails Hackathon timeline, React Native combined with Expo Go allows simultaneous deployment to both Android (primary target) and iOS (secondary) from a single codebase, drastically reducing engineering overhead and time-to-market.
+* **Critical Push Notifications:** Real-time push notifications are mandatory. When a disruption triggers a payout, the partner must be notified immediately over the lock screen to prevent them from taking unnecessary physical risks. Flutter's Firebase Cloud Messaging integration handles OS-level notifications efficiently across platforms.
+* **Rapid Cross-Platform Prototyping:** Given the strict 6-week Devtrails Hackathon timeline, Flutter allows simultaneous deployment to both Android (primary target) and iOS (secondary) from a single codebase, drastically reducing engineering overhead and time-to-market. Flutter's hot reload feature accelerates development velocity significantly.
+* **Offline Resilience & Connectivity Gaps:** Delivery partners often operate in areas with intermittent network connectivity. Flutter's Hive and SQFlite libraries provide robust offline-first data persistence, ensuring that critical features—like claim submissions and premium deductions—seamlessly sync once connectivity is restored, without requiring constant internet presence.
+* **Low-End Device Compatibility:** Our target demographic operates budget smartphones (₹8,000-₹15,000 price range) with modest RAM and storage. Flutter's Dart runtime and compiled native performance substantially outperform interpreted alternatives, ensuring our app remains responsive across the full breadth of population demographics.
+* **Cost-Effective Development:** Leveraging a single codebase eliminates expensive dual-platform engineering cycles, aligning with the scrappy resource constraints of a 6-week hackathon while maintaining production-grade quality standards across both Android and iOS channels.
+
+## User Interface & Experience Flow
+
+<div align="center">
+
+| | | |
+|:---:|:---:|:---:|
+| ![Dashboard](assets/Dashboard.gif) | ![Claims Management](assets/Claims.gif) | ![Assist Bot](assets/Assist.gif) |
+| | | |
+| ![Claim Form](assets/Claims_apply.gif) | ![Claim Status](assets/Claims_status.gif) | ![User Profile](assets/Profile.gif) |
+
+</div>
 
 ## AI & ML Integration
 
@@ -120,7 +135,7 @@ Continuum moves beyond static actuarial tables, deploying ML models for active r
 
 This implementation prioritizes speed to production, analytical capability, and reliability for the 6-week build phase.
 
-* **Frontend:** React Native, Expo Go, Tailwind CSS (via Nativewind)
+* **Frontend:** Flutter, Firebase Cloud Messaging, custom Material Design UI
 * **Backend Application:** Node.js / Express.js (REST architecture for low latency)
 * **Database:** PostgreSQL (Relational integrity for financial ledgers) mapped with Prisma ORM
 * **Oracles/Data Ingestion:** Python-based serverless functions (AWS Lambda/GCP Cloud Functions) for cron-based scraping (Downdetector / IMD APIs)
@@ -231,9 +246,9 @@ A parametric system is only as trustworthy as its edge-case handling. The follow
 * **Week 3: ML Modeling & Pricing Engine**
   * Train base XGBoost pricing models on synthetic/open weather and downtime data.
   * Develop the fraud detection heuristic baseline.
-* **Week 4: Mobile Application (React Native)**
-  * Build out core unauthenticated and authenticated React Native flows using Expo.
-  * Integrate the weekly premium subscription UI/UX.
+* **Week 4: Mobile Application (Flutter)**
+  * Build out core unauthenticated and authenticated Flutter flows with Material Design.
+  * Integrate the weekly premium subscription UI/UX and Firebase authentication.
 * **Week 5: Workflow Integration & Notifications**
   * Connect the mobile frontend to the backend REST APIs.
   * Implement the automated payout triggers and push notification service.
