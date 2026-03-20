@@ -1,0 +1,8 @@
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <solid android:color="#AA4285F4"/> <!-- Semi-transparent Gemini blue -->
+    <size android:width="56dp" android:height="56dp"/>
+    <corners android:radius="28dp"/>
+    <padding android:left="4dp" android:top="4dp" android:right="4dp" android:bottom="4dp"/>
+    <stroke android:width="2dp" android:color="#FF2962FF"/> <!-- Slight border for visibility -->
+</shape>
