@@ -12,6 +12,8 @@
   <br />
 
   **[Demo Video](#)** &nbsp;(Coming Soon)&nbsp; | &nbsp;**[Pitch Deck](#)** &nbsp;(Coming Soon)
+
+  ![Continuum Homepage](assets/landing-page.jpeg)
 </div>
 
 ---
