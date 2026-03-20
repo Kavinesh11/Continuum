@@ -1,0 +1,13 @@
+name: ui
+
+environment:
+  sdk: ">=3.8.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  permission_handler: ^11.0.1
+  image_picker: ^1.0.7
+  # No extra overlay package needed, will use OverlayEntry/Stack
+
+# Add any other required fields as needed 

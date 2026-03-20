@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <TextView
+        android:id="@+id/tv_screenshot_choice_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Which screen do you want to capture?"
+        android:textSize="18sp"
+        android:layout_marginBottom="16dp"/>
+
+    <Button
+        android:id="@+id/btn_current_app"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Current App"
+        android:layout_marginBottom="8dp"/>
+
+    <Button
+        android:id="@+id/btn_another_app"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Another App"
+        android:layout_marginBottom="8dp"/>
+
+    <Button
+        android:id="@+id/btn_home_screen"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Home Screen"/>
+
+</LinearLayout> 
