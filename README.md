@@ -20,7 +20,7 @@
 
   <br />
 
-  **[Demo Video](#)** &nbsp;(Coming Soon)&nbsp; | &nbsp;**[Pitch Deck](#)** &nbsp;(Coming Soon)
+  **[Demo Video](https://www.youtube.com/watch?v=IHMCi3f6iaw)** &nbsp;| &nbsp;**[Pitch Deck](https://gamma.app/docs/Continuum-tj9d086rbvfjy58)**
 
   ![Continuum Homepage](assets/landing-page.jpeg)
 </div>
