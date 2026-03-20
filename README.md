@@ -127,7 +127,7 @@ Continuum moves beyond static actuarial tables, deploying ML models for active r
 **Risk Profile Engine** — Gradient Boosting model consuming TimescaleDB historical weather, live Weather API data, and worker activity to dynamically price each partner's weekly premium:
 
 <div align="center">
-  <img src="assets/risk_profile_engine.png" alt="Risk Profile Engine — FastAPI → Feature Builder → Gradient Boosting → Risk Score" style="max-width: 100%;" />
+  <img src="assets/Risk_profiler.jpeg" alt="Risk Profile Engine — FastAPI → Feature Builder → Gradient Boosting → Risk Score" style="max-width: 100%;" />
 </div>
 
 <br />
@@ -135,7 +135,7 @@ Continuum moves beyond static actuarial tables, deploying ML models for active r
 **Claims Scoring Pipeline** — Isolation Forest anomaly detection that auto-approves clean claims (score ≥ 0.7) and routes suspicious ones to the fraud queue:
 
 <div align="center">
-  <img src="assets/claims_scoring.png" alt="Claims Scoring — FastAPI Gateway → PostGIS + PostgreSQL → Isolation Forest → Auto Approve or Fraud Queue" style="max-width: 100%;" />
+  <img src="assets/Claims_scorer.jpeg" alt="Claims Scoring — FastAPI Gateway → PostGIS + PostgreSQL → Isolation Forest → Auto Approve or Fraud Queue" style="max-width: 100%;" />
 </div>
 
 ## System Architecture
