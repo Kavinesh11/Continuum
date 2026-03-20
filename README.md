@@ -1,30 +1,38 @@
 <div align="center">
   <img src="https://img.shields.io/badge/Devtrails_Guidewire_Hackathon-FFD700?style=for-the-badge" alt="Hackathon Badge" />
   <h1>Continuum</h1>
-  <p><em>A continuous sequence in which adjacent elements are not perceptibly different. Ensuring uninterrupted income flow, regardless of external disruptions.</em></p>
-  
+  <p><em>Your safety net. Automatic. Instant. Zero paperwork.</em></p>
+  <img src="assets/logo.png" alt="Continuum Logo" width="180" />
+  <br />
+
   [![Flutter](https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)](#)
   [![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)](#)
   [![AI & ML](https://img.shields.io/badge/AI_%26_ML-FF6F00?style=for-the-badge&logo=scikit-learn&logoColor=white)](#)
 
   <br />
 
-  **[Demo Video (Placeholder)](#)** &nbsp;|&nbsp; **[Pitch Deck (Placeholder)](#)**
+  **[Demo Video](#)** &nbsp;(Coming Soon)&nbsp; | &nbsp;**[Pitch Deck](#)** &nbsp;(Coming Soon)
 </div>
 
 ---
 
-## Executive Summary
+## The Problem
 
-**Continuum** is an AI-powered, parametric insurance platform engineered specifically for platform-based food delivery partners operating within the **Zomato** and **Swiggy** ecosystems. This platform provides a deterministic financial safety net against uncontrollable external disruptions—such as severe meteorological events, hyper-local application outages, and municipal curfews—that result in an immediate and unavoidable loss of daily wages. It is strictly scoped to **loss of income protection**, expressly excluding traditional indemnification models like vehicle repair, medical, or life insurance.
+> One storm. One app outage. One week of lost income.
 
-By leveraging real-time data oracles and edge-computed risk models, Continuum replaces subjective claims processing with automated, rules-based payouts. The platform utilizes a weekly micro-premium cadence, perfectly aligned with the gig economy's weekly payout cycles, ensuring high conversion and retention. Upon the validation of a predefined parametric trigger, payouts are executed autonomously, providing near-instant liquidity to delivery partners exactly when their earning capacity is disrupted.
+For gig delivery partners on Zomato and Swiggy, income is fragile. There are no sick days, no employer safety nets, and no recourse when the platform goes down at peak hours or rain makes roads unnavigable. A single disruption can wipe out a week's earnings — and filing a traditional insurance claim takes days, not minutes.
+
+## The Solution
+
+**Continuum** protects gig delivery partners from losing income during events they can't control — app outages, severe weather, municipal lockdowns. It detects the disruption automatically, validates it in real time, and pays out directly to the partner's UPI wallet — before they even file a complaint.
+
+Continuum is strictly scoped to **loss of income protection** only. It is not vehicle insurance, medical cover, or life insurance. By replacing subjective claims processing with rule-based, parametric triggers, payouts are executed autonomously the moment a verified disruption occurs — with a weekly micro-premium aligned to the partner's own weekly payout cycle.
 
 ## Target Persona & Scenarios
 
 **Persona:** The Food Delivery Partner (Swiggy / Zomato Fleet)
 
-Our core personas are grounded in primary user research conducted with active delivery partners, revealing massive income volatility and exposure to structural platform penalties:
+Our core personas are grounded in **primary field research** — structured interviews conducted with **3 active Swiggy delivery partners** — revealing massive income volatility and outsized exposure to structural platform penalties. Raw interview recordings are available for review: **[🎙️ User Interview Recordings (Google Drive)](https://drive.google.com/drive/folders/1pVeuibqcbkzK8ll4A9IWnUjMeMUlhQXv)**.
 
 * **The Power User (Sudarshan):** Works exhaustive 17-hour shifts (e.g., 45-50 orders/day) generating ~₹3,000 gross (₹2,100 net after fuel and food). Highly exposed to the platform's strict **₹250 penalty** for failed deliveries, disproportionately punitive given their operational volume.
 * **The Full-Time Earner (Dakshina Moorthy):** Operates on grueling 15-hour schedules (8 AM - 11 PM), moving ~30 orders/day. They noted that platform penalties frequently equal or exceed the total earnings of a single order, highlighting a fragile risk-to-reward ratio.
@@ -95,11 +103,9 @@ Traditional insurance utilizes annual or monthly premiums, fundamentally misalig
 
 ## Pricing & Tiers
 
-To ensure optimal product-market fit across our diverse user profiles, Continuum offers a deterministic 3-tier weekly premium structure:
-
-* **Silver (Starter):** ₹49/week for ₹500/day coverage. Built for the part-time operator (e.g., Sudha), mitigating risk for 8-hour shifts without over-insuring against baseline earnings.
-* **Gold (Standard):** ₹99/week for ₹1,200/day coverage. The "Sweet Spot" optimized for standard full-time partners moving 20-30 orders daily.
-* **Platinum (Pro):** ₹199/week for ₹2,500/day coverage. Engineered for high-volume power-users (e.g., Sudarshan) working 15+ hour days, ensuring robust income replacement during catastrophic localized outages.
+<div align="center">
+  <img src="assets/pricing_tier.png" alt="Continuum Pricing Tiers — Silver ₹49/week, Gold ₹99/week, Platinum ₹199/week" style="max-width: 100%;" />
+</div>
 
 ## Platform Choice Justification
 
@@ -115,6 +121,12 @@ The user-facing application is fundamentally mobile-first, built using **Flutter
 ## User Interface & Experience Flow
 
 <div align="center">
+  <img src="assets/user_flow.png" alt="User Flow Diagram" style="max-width: 100%;" />
+</div>
+
+<br />
+
+<div align="center">
 
 | | | |
 |:---:|:---:|:---:|
@@ -126,25 +138,61 @@ The user-facing application is fundamentally mobile-first, built using **Flutter
 
 ## AI & ML Integration
 
-Continuum moves beyond static actuarial tables, deploying ML models for active risk assessment and platform security.
+Continuum moves beyond static actuarial tables, deploying ML models for active risk assessment and fraud prevention.
 
-* **Dynamic Premium Calculation (XGBoost/LightGBM):** Hyper-local risk models consume historical delivery app downtime frequency, seasonal weather variance, and local traffic density to generate bespoke weekly premiums for specific delivery zones. A partner in a dense, flood-prone sector during monsoons will see a dynamically adjusted premium compared to a partner operating in a stable weather window.
-* **Anomaly Detection & Fraud Prevention (Isolation Forests / Autoencoders):** To prevent exploitation (e.g., GPS spoofing into a payout zone during a known disruption event), the AI engine cross-references the partner's historical geographic ping data against their location during the disruption. If the trigger event genuinely impacted the user's habitual, verified operating zone, the payout is cleared; geographical anomalies are flagged and rejected.
+**Risk Profile Engine** — Gradient Boosting model consuming TimescaleDB historical weather, live Weather API data, and worker activity to dynamically price each partner's weekly premium:
+
+<div align="center">
+  <img src="assets/risk_profile_engine.png" alt="Risk Profile Engine — FastAPI → Feature Builder → Gradient Boosting → Risk Score" style="max-width: 100%;" />
+</div>
+
+<br />
+
+**Claims Scoring Pipeline** — Isolation Forest anomaly detection that auto-approves clean claims (score ≥ 0.7) and routes suspicious ones to the fraud queue:
+
+<div align="center">
+  <img src="assets/claims_scoring.png" alt="Claims Scoring — FastAPI Gateway → PostGIS + PostgreSQL → Isolation Forest → Auto Approve or Fraud Queue" style="max-width: 100%;" />
+</div>
 
 ## Tech Stack & Architecture
 
-This implementation prioritizes speed to production, analytical capability, and reliability for the 6-week build phase.
+<div align="center">
+  <img src="assets/architecture_diagram.png" alt="Continuum System Architecture Diagram" style="max-width: 100%;" />
+</div>
 
-* **Frontend:** Flutter, Firebase Cloud Messaging, custom Material Design UI
-* **Backend Application:** Node.js / Express.js (REST architecture for low latency)
-* **Database:** PostgreSQL (Relational integrity for financial ledgers) mapped with Prisma ORM
-* **Oracles/Data Ingestion:** Python-based serverless functions (AWS Lambda/GCP Cloud Functions) for cron-based scraping (Downdetector / IMD APIs)
-* **AI/ML Pipeline:** Python (Scikit-Learn, Pandas) deployed via generic FastAPI microservices for premium pricing inferences and fraud scoring
-* **Payments Simulation:** Stripe / Razorpay Sandbox (for weekly premium auths and simulated UPI payouts)
+<br />
+
+| Layer | Technology | Role |
+|---|---|---|
+| **Frontend** | Flutter, Dart | Cross-platform mobile app (Android primary, iOS secondary) |
+| **Auth & Identity** | RBAC, JWT, Firebase (Phone OTP), Aadhaar/PAN KYC | Role-based access for partner / admin / insurer; biometric & KYC verification |
+| **Core Backend** | Express.js (Node.js) | REST API server — primary business logic, policy and user services |
+| **Claims API** | FastAPI (Python) | Handles proof data upload and claim processing pipeline |
+| **Message Queue** | Apache Kafka | Real-time data streaming for webhook triggers and oracle events |
+| **Task Queue** | Bull MQ | Prioritized background job processing (payout retries, notification dispatch) |
+| **Database** | CockroachDB | Distributed SQL — horizontally scalable, ACID-compliant financial ledger |
+| **Vector Store** | MongoDB Atlas (Vector Index) | Advanced RAG with Pre-Filtering, Fast-Filtering, and Re-Ranking |
+| **Embeddings** | BGE-Large (HuggingFace) | Text vectorization for RAG knowledge base |
+| **RAG Orchestration** | LangChain + LlamaIndex | Data preprocessing, chunking, and vector upsert pipeline |
+| **Web Intelligence** | ScrapeGraph.AI | LLM-powered structured scraping of news and municipal advisory sources |
+| **Knowledge Graph** | Go (caching layer) | Location-aware knowledge graph built from scraped disruption data |
+| **AI / LLM Engine** | Gemini (gemini-1.5-pro), Groq, GPT-4o | Inference engine for fraud scoring, risk analysis, claim validation |
+| **Agent Orchestration** | Crew AI | Multi-agent task delegation for autonomous claim pipeline steps |
+| **Conversational AI** | RASA + Fi | In-app assistant — context-aware partner support bot |
+| **Multilingual NLP** | IndicConformer (AI4Bharat) | Machine translation for regional Indian languages |
+| **Payments** | PayU Sandbox (via minIO) | Simulated UPI payout disbursement with smoother workload distribution |
+| **Push Notifications** | Firebase Cloud Messaging | Real-time lock-screen alerts on payout and disruption events |
+| **Monitoring** | Prometheus | Continuous log monitoring and alerting across all services |
+| **Admin Dashboard** | Power BI | Business intelligence dashboards for admins and insurers |
+| **Environment** | Sandbox (Flutter/Dart) | Isolated development environment for safe end-to-end simulation |
 
 ## Adversarial Defense & Anti-Spoofing Strategy
 
 > **Threat Model:** A coordinated fraud ring of 500 delivery partners uses consumer-grade GPS spoofing applications to simultaneously position themselves inside a flood-triggered payout zone. Simple GPS verification is insufficient. This section documents a layered, deterministic defense architecture hardened against this specific attack vector and 99 analogous failure modes.
+
+<div align="center">
+  <img src="assets/gps_spoofing_prevention.png" alt="GPS Spoofing Prevention Methodology — 5-layer iceberg diagram" style="max-width: 100%;" />
+</div>
 
 ### The Core Insight: GPS is Necessary, Not Sufficient
 
@@ -212,7 +260,13 @@ Structural policy design that makes fraud economically irrational.
 
 ## Payout Edge Cases & Fallback Logic
 
-A parametric system is only as trustworthy as its edge-case handling. The following scenarios codify deterministic behavior for boundary conditions arising from the 100-scenario adversarial simulation.
+A parametric system is only as trustworthy as its edge-case handling. Three categories of boundary conditions are handled deterministically:
+
+<div align="center">
+  <img src="assets/payout_edgecase.png" alt="Payout Edge Cases: Timing & Boundary Conditions → Oracle & Infrastructure Failures → Actuarial Safeguards" style="max-width: 100%;" />
+</div>
+
+<br />
 
 ### Timing & Boundary Conditions
 
@@ -232,6 +286,52 @@ A parametric system is only as trustworthy as its edge-case handling. The follow
 * **Correlated catastrophic event (cyclone, earthquake) affects >1,000 simultaneous policies:** A mandatory reinsurance treaty is activated for any single event breaching the 1,000-simultaneous-policyholder threshold. This is the capital backstop that prevents catastrophic liquidity events from invalidating all outstanding policies.
 * **Zone-specific loss ratio exceeds 80% for 4 consecutive weeks:** The dynamic pricing engine triggers an automatic premium escalation for that specific zone. Partners in the zone are notified 7 days in advance of premium changes. This is the real-time actuarial feedback loop.
 * **Minimum 90-day reserve requirement:** IRDAI-mandated solvency margins require Continuum to hold a minimum 90-day payout reserve in escrow at all times, held exclusively in RBI-approved low-risk liquid instruments (e.g., Treasury bills, money market funds). Zero equity exposure is permitted on reserve capital.
+
+---
+
+## Getting Started
+
+> These instructions set up the full Continuum stack locally for development and demo purposes.
+
+### Prerequisites
+
+* [Flutter SDK](https://docs.flutter.dev/get-started/install) >= 3.19
+* Node.js >= 20.x
+* Python >= 3.11
+* PostgreSQL >= 15
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/your-org/continuum.git
+cd continuum
+```
+
+### 2. Backend Setup
+
+```bash
+cd backend
+npm install
+cp .env.example .env   # configure DB and API keys
+npx prisma migrate dev
+npm run dev            # starts REST API on :3000
+```
+
+### 3. Python ML & Oracle Services
+
+```bash
+cd ml
+pip install -r requirements.txt
+uvicorn main:app --reload  # FastAPI pricing/fraud service on :8000
+```
+
+### 4. Flutter App
+
+```bash
+cd mobile
+flutter pub get
+flutter run             # targets connected device or emulator
+```
 
 ---
 
