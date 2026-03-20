@@ -28,7 +28,27 @@ For gig delivery partners on Zomato and Swiggy, income is fragile. There are no 
 
 Continuum is strictly scoped to **loss of income protection** only. It is not vehicle insurance, medical cover, or life insurance. By replacing subjective claims processing with rule-based, parametric triggers, payouts are executed autonomously the moment a verified disruption occurs — with a weekly micro-premium aligned to the partner's own weekly payout cycle.
 
-## Target Persona & Scenarios
+<div align="center">
+  <img src="assets/dashboard.jpeg" alt="Continuum App Dashboard" style="max-width: 100%; border-radius: 12px;" />
+</div>
+
+## How Continuum Works
+
+The engine behind this promise is fully deterministic — no adjuster, no form, no phone call.
+
+Continuum relies on highly deterministic data oracles to eradicate the claims investigation phase entirely.
+
+### Primary Data Oracles
+
+* **Meteorological:** API integrations with the India Meteorological Department (IMD) and hyper-local weather nodes to track rainfall volume, wind speed, and extreme temperature anomalies.
+* **Technological:** Programmatic scraping of Downdetector and synthetic ping monitoring of Zomato/Swiggy delivery/order-routing APIs to detect systematic outages.
+* **Regulatory:** Automated parsing of municipal advisory RSS feeds governing lockdown measures or localized curfews.
+
+When all three signals converge above threshold, the payout is queued — autonomously.
+
+## Who We Built This For
+
+This isn't a theoretical product. The triggers above were designed around real income patterns from real partners.
 
 **Persona:** The Food Delivery Partner (Swiggy / Zomato Fleet)
 
@@ -52,47 +72,7 @@ Our core personas are grounded in **primary field research** — structured inte
 * **Disruption:** A sudden, unforecasted torrential downpour and localized waterlogging in the partner's active delivery zone trigger a municipal "Red Alert," making physical delivery impossible.
 * **Continuum Response:** The IMD Weather API oracle registers rainfall exceeding 50mm within a 2-hour window in the specific geographical polygon. The contract executes automatically, compensating the partner for the anticipated lost hours, allowing them to seek shelter safely without financial penalty.
 
-## Parametric Triggers & Workflow
-
-Continuum relies on highly deterministic data oracles to eradicate the claims investigation phase entirely.
-
-### Primary Data Oracles
-
-* **Meteorological:** API integrations with the India Meteorological Department (IMD) and hyper-local weather nodes to track rainfall volume, wind speed, and extreme temperature anomalies.
-* **Technological:** Programmatic scraping of Downdetector and synthetic ping monitoring of Zomato/Swiggy delivery/order-routing APIs to detect systematic outages.
-* **Regulatory:** Automated parsing of municipal advisory RSS feeds governing lockdown measures or localized curfews.
-
-### System Workflow
-
-```mermaid
-graph TD
-    %% Custom Styling for Vibrant Colors
-    classDef primary fill:#4F46E5,stroke:#312E81,stroke-width:3px,color:#FFFFFF,font-weight:bold;
-    classDef secondary fill:#10B981,stroke:#047857,stroke-width:3px,color:#FFFFFF,font-weight:bold;
-    classDef warning fill:#F59E0B,stroke:#B45309,stroke-width:3px,color:#000000,font-weight:bold;
-    classDef danger fill:#EF4444,stroke:#B91C1C,stroke-width:3px,color:#FFFFFF,font-weight:bold;
-    classDef oracle fill:#8B5CF6,stroke:#5B21B6,stroke-width:3px,color:#FFFFFF,font-weight:bold;
-    classDef ai fill:#EC4899,stroke:#BE185D,stroke-width:3px,color:#FFFFFF,font-weight:bold;
-
-    A[Partner Opts-in via React Native App]:::primary --> B[Weekly Risk Model Evaluates Premium]:::ai
-    B --> C{Payment Processed via UPI/Wallet}:::secondary
-    C -->|Active Policy Phase| D[Continuous Oracle Monitoring]:::warning
-    D --> E(IMD Weather APIs):::oracle
-    D --> F(App Downtime Scraping):::oracle
-    D --> G(Municipal Advisories):::oracle
-    E --> H{Anomaly Detected?}:::danger
-    F --> H
-    G --> H
-    H -->|Yes| I[AI Fraud & Location Validation]:::ai
-    H -->|No| D
-    I -->|Valid| J[Smart Contract/Logic Execution]:::primary
-    I -->|Invalid| D
-    J --> K[Automated Payout Initialization]:::secondary
-    K --> L[Funds Disbursed to Partner UPI]:::secondary
-    L --> M[Push Notification Sent to Device]:::primary
-```
-
-## The Weekly Premium Model & Economic Logic
+## The Economics
 
 Traditional insurance utilizes annual or monthly premiums, fundamentally misaligning with gig worker cash flows. Continuum enforces a strictly **Weekly Premium Cycle** governed by a precise economic heuristic.
 
@@ -101,24 +81,15 @@ Traditional insurance utilizes annual or monthly premiums, fundamentally misalig
 * **Dynamic Risk Rating:** The premium is recalculated every week using predictive modeling. For example, premiums marginally adjust based on the 7-day meteorological forecast for the partner's specific operating zone.
 * **Micro-Transactions:** Payments are structured as high-frequency, low-denomination micro-premiums, reducing the barrier to entry to near zero.
 
-## Pricing & Tiers
+Three tiers map directly to a partner's weekly order volume:
 
 <div align="center">
   <img src="assets/pricing_tier.png" alt="Continuum Pricing Tiers — Silver ₹49/week, Gold ₹99/week, Platinum ₹199/week" style="max-width: 100%;" />
 </div>
 
-## Platform Choice Justification
+## The App Experience
 
-The user-facing application is fundamentally mobile-first, built using **Flutter**.
-
-* **Mobile-First Audience:** Food delivery partners exist entirely on mobile devices while operating. A web application is fundamentally inappropriate for this demographic and use case.
-* **Critical Push Notifications:** Real-time push notifications are mandatory. When a disruption triggers a payout, the partner must be notified immediately over the lock screen to prevent them from taking unnecessary physical risks. Flutter's Firebase Cloud Messaging integration handles OS-level notifications efficiently across platforms.
-* **Rapid Cross-Platform Prototyping:** Given the strict 6-week Devtrails Hackathon timeline, Flutter allows simultaneous deployment to both Android (primary target) and iOS (secondary) from a single codebase, drastically reducing engineering overhead and time-to-market. Flutter's hot reload feature accelerates development velocity significantly.
-* **Offline Resilience & Connectivity Gaps:** Delivery partners often operate in areas with intermittent network connectivity. Flutter's Hive and SQFlite libraries provide robust offline-first data persistence, ensuring that critical features—like claim submissions and premium deductions—seamlessly sync once connectivity is restored, without requiring constant internet presence.
-* **Low-End Device Compatibility:** Our target demographic operates budget smartphones (₹8,000-₹15,000 price range) with modest RAM and storage. Flutter's Dart runtime and compiled native performance substantially outperform interpreted alternatives, ensuring our app remains responsive across the full breadth of population demographics.
-* **Cost-Effective Development:** Leveraging a single codebase eliminates expensive dual-platform engineering cycles, aligning with the scrappy resource constraints of a 6-week hackathon while maintaining production-grade quality standards across both Android and iOS channels.
-
-## User Interface & Experience Flow
+The partner never sees any of the oracle complexity. They see this.
 
 <div align="center">
   <img src="assets/user_flow.png" alt="User Flow Diagram" style="max-width: 100%;" />
@@ -136,7 +107,16 @@ The user-facing application is fundamentally mobile-first, built using **Flutter
 
 </div>
 
-## AI & ML Integration
+### Built for the Field
+
+* **Mobile-first for real field constraints:** Food delivery partners run the job from their phones. Flutter keeps the UI responsive on budget devices (₹8k–₹15k).
+* **Safety-critical notifications in real time:** When a verified disruption triggers a payout, partners get instant lock-screen alerts via Firebase Cloud Messaging.
+* **Shipped fast across Android and iOS:** A single Flutter codebase and hot reload let us prototype and deploy within the hackathon timeline—without doubling engineering cycles.
+* **Offline resilience for unreliable connectivity:** Offline-first persistence (Hive/SQFlite) keeps premium deductions and submissions reliable, syncing safely when the network returns.
+
+## Intelligence Layer
+
+Behind the interface, two ML pipelines run autonomously on every premium cycle and every claim.
 
 Continuum moves beyond static actuarial tables, deploying ML models for active risk assessment and fraud prevention.
 
@@ -154,13 +134,17 @@ Continuum moves beyond static actuarial tables, deploying ML models for active r
   <img src="assets/claims_scoring.png" alt="Claims Scoring — FastAPI Gateway → PostGIS + PostgreSQL → Isolation Forest → Auto Approve or Fraud Queue" style="max-width: 100%;" />
 </div>
 
-## Tech Stack & Architecture
+## System Architecture
+
+The full stack is purpose-built for financial-grade reliability at gig-worker scale.
 
 <div align="center">
   <img src="assets/architecture_diagram.png" alt="Continuum System Architecture Diagram" style="max-width: 100%;" />
 </div>
 
 <br />
+
+Every layer was chosen to serve a specific reliability, performance, or compliance constraint:
 
 | Layer | Technology | Role |
 |---|---|---|
@@ -186,7 +170,9 @@ Continuum moves beyond static actuarial tables, deploying ML models for active r
 | **Admin Dashboard** | Power BI | Business intelligence dashboards for admins and insurers |
 | **Environment** | Sandbox (Flutter/Dart) | Isolated development environment for safe end-to-end simulation |
 
-## Adversarial Defense & Anti-Spoofing Strategy
+## Trust Architecture
+
+A system that pays automatically without human review is a system that adversaries will probe. Here is how Continuum is hardened.
 
 > **Threat Model:** A coordinated fraud ring of 500 delivery partners uses consumer-grade GPS spoofing applications to simultaneously position themselves inside a flood-triggered payout zone. Simple GPS verification is insufficient. This section documents a layered, deterministic defense architecture hardened against this specific attack vector and 99 analogous failure modes.
 
@@ -258,7 +244,9 @@ Structural policy design that makes fraud economically irrational.
 
 ---
 
-## Payout Edge Cases & Fallback Logic
+Anti-fraud is one half of system trust. The other half is deterministic behavior at the boundary conditions where parametric systems typically fail.
+
+### Payout Edge Cases & Fallback Logic
 
 A parametric system is only as trustworthy as its edge-case handling. Three categories of boundary conditions are handled deterministically:
 
@@ -291,7 +279,7 @@ A parametric system is only as trustworthy as its edge-case handling. Three cate
 
 ## Getting Started
 
-> These instructions set up the full Continuum stack locally for development and demo purposes.
+The following sets up the full Continuum stack locally.
 
 ### Prerequisites
 
@@ -335,7 +323,7 @@ flutter run             # targets connected device or emulator
 
 ---
 
-## Development Plan (6-Week Execution)
+## 6-Week Roadmap
 
 * **Week 1: Architecture & Data Engineering**
   * Finalize database schema and core data structures.
@@ -359,5 +347,5 @@ flutter run             # targets connected device or emulator
 ---
 
 <div align="center">
-  <em>Proudly crafted for the Devtrails Guidewire Hackathon.</em>
+  <em>Continuum turns income protection from a privilege into a default — available to every delivery partner, activated before they even know they need it. Built for the Devtrails Guidewire Hackathon.</em>
 </div>
