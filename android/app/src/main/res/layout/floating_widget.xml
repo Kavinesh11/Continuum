@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/floater_root"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:background="@drawable/gemini_floater_bg"
+    android:elevation="8dp"
+    android:padding="0dp">
+
+    <!-- Collapsed state: just the Gemini floater -->
+    <ImageButton
+        android:id="@+id/btn_gemini"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:background="@android:color/transparent"
+        android:src="@drawable/ic_gemini"
+        android:contentDescription="Gemini Floater"
+        android:layout_gravity="center"
+        android:visibility="visible"/>
+
+    <!-- Expanded state: OCR, Camera, Close -->
+    <LinearLayout
+        android:id="@+id/expanded_buttons"
+        android:orientation="horizontal"
+        android:layout_width="wrap_content"
+        android:layout_height="56dp"
+        android:gravity="center"
+        android:visibility="gone"
+        android:layout_gravity="center">
+
+        <ImageButton
+            android:id="@+id/btn_ocr"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@android:color/transparent"
+            android:src="@drawable/ic_ocr"
+            android:contentDescription="OCR" />
+
+        <ImageButton
+            android:id="@+id/btn_camera"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@android:color/transparent"
+            android:src="@drawable/ic_camera"
+            android:contentDescription="Camera" />
+
+        <ImageButton
+            android:id="@+id/btn_upload"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@android:color/transparent"
+            android:src="@android:drawable/ic_menu_upload"
+            android:contentDescription="Upload Image" />
+
+        <ImageButton
+            android:id="@+id/btn_close"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@android:color/transparent"
+            android:src="@android:drawable/ic_menu_close_clear_cancel"
+            android:contentDescription="Close" />
+    </LinearLayout>
+</FrameLayout>
