@@ -321,29 +321,6 @@ flutter run             # targets connected device or emulator
 
 ---
 
-## 6-Week Roadmap
-
-* **Week 1: Architecture & Data Engineering**
-  * Finalize database schema and core data structures.
-  * Build Python ingestion pipelines for IMD and Downdetector data.
-* **Week 2: Backend Core & Oracles**
-  * Develop Node.js core services (User Service, Policy Service).
-  * Implement the Oracle rule engine to parse incoming anomalies.
-* **Week 3: ML Modeling & Pricing Engine**
-  * Train base XGBoost pricing models on synthetic/open weather and downtime data.
-  * Develop the fraud detection heuristic baseline.
-* **Week 4: Mobile Application (Flutter)**
-  * Build out core unauthenticated and authenticated Flutter flows with Material Design.
-  * Integrate the weekly premium subscription UI/UX and Firebase authentication.
-* **Week 5: Workflow Integration & Notifications**
-  * Connect the mobile frontend to the backend REST APIs.
-  * Implement the automated payout triggers and push notification service.
-* **Week 6: Quality Assurance, Polish & Pitch Prep**
-  * End-to-end simulation of a localized disruption and payout.
-  * Finalize UI polish, documentation, and prepare the hackathon submission video.
-
----
-
 <div align="center">
   <em>Continuum turns income protection from a privilege into a default — available to every delivery partner, activated before they even know they need it. Built for the Devtrails Guidewire Hackathon.</em>
 </div>
