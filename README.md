@@ -30,10 +30,6 @@ For gig delivery partners on Zomato and Swiggy, income is fragile. There are no 
 
 Continuum is strictly scoped to **loss of income protection** only. It is not vehicle insurance, medical cover, or life insurance. By replacing subjective claims processing with rule-based, parametric triggers, payouts are executed autonomously the moment a verified disruption occurs — with a weekly micro-premium aligned to the partner's own weekly payout cycle.
 
-<div align="center">
-  <img src="assets/dashboard.jpeg" alt="Continuum App Dashboard" style="max-width: 100%; border-radius: 12px;" />
-</div>
-
 ## How Continuum Works
 
 The engine behind this promise is fully deterministic — no adjuster, no form, no phone call.
@@ -47,6 +43,12 @@ Continuum relies on highly deterministic data oracles to eradicate the claims in
 * **Regulatory:** Automated parsing of municipal advisory RSS feeds governing lockdown measures or localized curfews.
 
 When all three signals converge above threshold, the payout is queued — autonomously.
+
+At a glance, here is how the stack connects end to end:
+
+<div align="center">
+  <img src="assets/architecture_diagram.png" alt="Continuum System Architecture Diagram" style="max-width: 100%;" />
+</div>
 
 ## Who We Built This For
 
@@ -138,13 +140,7 @@ Continuum moves beyond static actuarial tables, deploying ML models for active r
 
 ## System Architecture
 
-The full stack is purpose-built for financial-grade reliability at gig-worker scale.
-
-<div align="center">
-  <img src="assets/architecture_diagram.png" alt="Continuum System Architecture Diagram" style="max-width: 100%;" />
-</div>
-
-<br />
+The full stack is purpose-built for financial-grade reliability at gig-worker scale. The diagram above shows the end-to-end topology; the table below breaks it down layer by layer.
 
 Every layer was chosen to serve a specific reliability, performance, or compliance constraint:
 
