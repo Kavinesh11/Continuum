@@ -223,12 +223,3 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 }
-// Layout optimization pass 1
-// Layout optimization pass 2
-// Layout optimization pass 3
-// Layout optimization pass 4
-// Layout optimization pass 5
-// Layout optimization pass 6
-// Layout optimization pass 7
-// Layout optimization pass 8
-// Layout optimization pass 9
