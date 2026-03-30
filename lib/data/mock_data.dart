@@ -1,0 +1,138 @@
+import 'package:flutter/material.dart';
+
+class MockData {
+  static const user = {
+    'partnerId': 'SWG-9284-912',
+    'fullName': 'Partha Sen',
+    'role': 'Delivery Partner',
+    'city': 'Kolkata',
+    'platform': 'Swiggy + Zomato',
+    'phone': '+91 98XXXXXX10',
+    'emergencyContact': 'Anita Sen',
+    'memberSince': 'Apr 2024',
+  };
+
+  static const coverage = {
+    'status': 'Active',
+    'plan': 'Comprehensive',
+    'nextRenewal': 'Oct 12',
+    'renewalDate': 'Oct 12, 2026',
+    'zone': 'Kolkata',
+    'premium': 20,
+    'coverageType': 'SECURE',
+  };
+
+  static const currentClaim = {
+    'status': 'In Review',
+    'statusColor': Color(0xFFFF8C00),
+    'daysAgo': 2,
+  };
+
+  static const claims = [
+    {
+      'id': '#00-88291',
+      'title': 'Heavy Rain Disruption',
+      'date': 'Sep 10, 2024',
+      'amount': 2850,
+      'status': 'In Review',
+      'statusColor': Color(0xFFFF8C00),
+      'progressPct': 0.6,
+    },
+    {
+      'id': '#00-47156',
+      'title': 'Fog Visibility Drop',
+      'date': 'Aug 28, 2024',
+      'amount': 2150,
+      'status': 'Approved',
+      'statusColor': Color(0xFF4CAF50),
+      'progressPct': 1.0,
+    },
+  ];
+
+  static const claimStatusDetail = {
+    'claimId': '#00-88291',
+    'status': 'Under Review',
+    'stages': [
+      {'name': 'SUBMITTED', 'time': '10:00 AM, Sep 10', 'complete': true},
+      {'name': 'REVIEW', 'time': 'In Progress', 'complete': true},
+      {'name': 'APPROVED', 'time': 'Pending', 'complete': false},
+      {'name': 'PAYOUT', 'time': 'Pending', 'complete': false},
+    ],
+    'expectedPayout': 2850,
+    'timelineText': '2-3 business days',
+    'verificationMessage': 'We are verifying your details',
+  };
+
+  static const assistHero = {
+    'title': 'CONTINUUM Assist Bot',
+    'subtitle': 'Instant help for claims, status, payout and policy questions',
+    'ctaLabel': 'Start New Chat',
+  };
+
+  static const previousChats = [
+    {
+      'title': 'Claim stuck at review stage',
+      'subtitle': 'Asked about expected timeline and next checks.',
+      'date': 'Today',
+    },
+    {
+      'title': 'How to capture live evidence',
+      'subtitle': 'Guidance on camera-only photo proof for claim filing.',
+      'date': 'Yesterday',
+    },
+    {
+      'title': 'Payout amount clarification',
+      'subtitle': 'Asked why disruption compensation changed this month.',
+      'date': '5 Mar',
+    },
+  ];
+
+  static const applyDefaults = {
+    'reasons': [
+      'Select a reason',
+      'Heavy Rain / Waterlogging',
+      'App Outage (Swiggy / Zomato)',
+      'Network Failure',
+      'Vehicle Breakdown',
+    ],
+    'dateFormat': 'dd/MM/yyyy',
+    'dateHint': 'dd/MM/yyyy',
+    'descriptionHint': 'What happened? Keep it simple.',
+    'audioLabel': 'Audio statement (optional)',
+  };
+
+  static const profileHistory = [
+    {
+      'incident': 'Flood Alert Disruption Claim',
+      'status': 'Approved',
+      'date': 'Submitted on 14 Jan 2025',
+      'detail': 'Compensated for 3 days of suspended deliveries during city flood warnings.',
+    },
+  ];
+
+  static const profileStats = {
+    'totalProtected': 'INR 18,400',
+    'claimsApproved': 6,
+  };
+
+  static const earningsTabs = ['Yearly', 'Monthly', 'Weekly'];
+
+  static const earningsTrend = {
+    'Yearly': [8, 12, 10, 14, 9],
+    'Monthly': [6, 8, 7, 9, 8],
+    'Weekly': [3, 5, 4, 6, 5],
+  };
+
+  static const recentActivity = [
+    {
+      'title': 'Claim moved to review',
+      'subtitle': 'Heavy Rain Disruption',
+      'time': '2h ago',
+    },
+    {
+      'title': 'Premium auto-debited',
+      'subtitle': 'Monthly premium paid successfully',
+      'time': '1d ago',
+    },
+  ];
+}
