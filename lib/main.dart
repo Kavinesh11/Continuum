@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
+import 'routes/app_routes.dart';
 import 'screens/login.dart';
-import 'screens/dashboard.dart';
-import 'screens/claims.dart';
-import 'screens/assists.dart';
+import 'screens/home_shell.dart';
 import 'screens/profile.dart';
 import 'screens/apply_form.dart';
+import 'screens/policy.dart';
 import 'screens/status_tracker.dart';
 
 void main() {
+  usePathUrlStrategy();
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(statusBarColor: Colors.transparent),
@@ -29,18 +31,14 @@ class ContinuumApp extends StatelessWidget {
         useMaterial3: true,
         fontFamily: 'Roboto',
       ),
-      initialRoute: '/login',
+      initialRoute: AppRoutes.login,
       routes: {
-        '/login': (context) => const LoginScreen(),
-        '/dashboard': (context) => const DashboardScreen(),
-        '/claims': (context) => const ClaimsScreen(),
-        '/assists': (context) => const AssistsScreen(),
-        '/profile': (context) => const ProfileScreen(),
-        '/apply': (context) => const ApplyFormScreen(),
-        '/tracker': (context) => const StatusTrackerScreen(),
-      },
-      onInitialRoute: (String initialRoute) {
-         // Placeholder
+        AppRoutes.login: (context) => const LoginScreen(),
+        AppRoutes.home: (context) => const HomeShell(),
+        AppRoutes.apply: (context) => const ApplyFormScreen(),
+        AppRoutes.claimStatus: (context) => const StatusTrackerScreen(),
+        AppRoutes.profile: (context) => const ProfileScreen(),
+        AppRoutes.policy: (context) => const PolicyScreen(),
       },
     );
   }
