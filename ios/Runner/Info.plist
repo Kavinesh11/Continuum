@@ -45,5 +45,9 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Camera access is needed to capture claim evidence photos.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Microphone access is needed to record audio statement for claims.</string>
 </dict>
 </plist>

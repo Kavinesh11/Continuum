@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../data/mock_data.dart';
 
 class AssistsScreen extends StatelessWidget {
   const AssistsScreen({Key? key}) : super(key: key);
@@ -8,93 +9,222 @@ class AssistsScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text('Emergency Assists', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
+        title: const Text('Assist', style: TextStyle(color: Color(0xFF008A8A), fontWeight: FontWeight.bold)),
+        centerTitle: true,
         backgroundColor: Colors.white,
-        iconTheme: const IconThemeData(color: Colors.black87),
         elevation: 0,
+        actions: [
+          IconButton(
+            onPressed: () {},
+            icon: const Icon(Icons.more_vert, color: Colors.black54),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.redAccent.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: const BoxDecoration(
-                      color: Colors.redAccent,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.sos, color: Colors.white, size: 32),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text('Immediate SOS', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 18)),
-                        SizedBox(height: 4),
-                        Text('Tap here for immediate medical or police assistance.', style: TextStyle(color: Colors.black87, fontSize: 12)),
-                      ],
-                    ),
-                  )
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            const Text('Roadside Assistance', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
-            const SizedBox(height: 16),
-            _buildAssistCard('Tow Truck Service', 'Flat tire, engine failure, etc.', Icons.car_repair, Colors.orange),
-            const SizedBox(height: 12),
-            _buildAssistCard('Battery Jumpstart', 'Dead battery? We will send help.', Icons.battery_charging_full, Colors.green),
-            const SizedBox(height: 12),
-            _buildAssistCard('Fuel Delivery', 'Out of fuel during a delivery?', Icons.local_gas_station, Colors.blue),
-            const SizedBox(height: 24),
-            const Text('Legal & Regulatory', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
-            const SizedBox(height: 16),
-            _buildAssistCard('Traffic Checkpost Support', 'Issues with local municipal police', Icons.local_police, Colors.indigo),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildBotHeroCard(),
+              const SizedBox(height: 24),
+              _buildPreviousChatsSection(),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildAssistCard(String title, String subtitle, IconData icon, Color color) {
+  Widget _buildBotHeroCard() {
     return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        gradient: LinearGradient(
+          colors: [const Color(0xFF008A8A), const Color(0xFF006666)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 12),
+          const Text(
+            'Continuum Assist Bot',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Quick support for your claims and coverage questions',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.white70,
+            ),
+          ),
+          const SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: () {},
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.chat_bubble_outline, color: Color(0xFF008A8A), size: 18),
+                SizedBox(width: 8),
+                Text(
+                  'Start New Chat',
+                  style: TextStyle(
+                    color: Color(0xFF008A8A),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        leading: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(icon, color: color, size: 28),
+    );
+  }
+
+  Widget _buildPreviousChatsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Previous Chats',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            GestureDetector(
+              onTap: () {},
+              child: const Text(
+                'See all',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF008A8A),
+                ),
+              ),
+            ),
+          ],
         ),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-        subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.black38),
-        onTap: () {},
-      ),
+        const SizedBox(height: 16),
+        Column(
+          children: (MockData.previousChats as List<Map<String, dynamic>>)
+              .asMap()
+              .entries
+              .map((entry) {
+                int idx = entry.key;
+                var chat = entry.value;
+                return Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.black.withOpacity(0.05)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      chat['title'] as String,
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      chat['subtitle'] as String,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.black54,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Text(
+                                chat['date'] as String,
+                                style: const TextStyle(fontSize: 11, color: Colors.black45),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              OutlinedButton(
+                                onPressed: () {},
+                                style: OutlinedButton.styleFrom(
+                                  side: const BorderSide(color: Color(0xFF008A8A)),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                ),
+                                child: const Text(
+                                  'Resume',
+                                  style: TextStyle(
+                                    color: Color(0xFF008A8A),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              OutlinedButton(
+                                onPressed: () {},
+                                style: OutlinedButton.styleFrom(
+                                  side: const BorderSide(color: Colors.black26),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                ),
+                                child: const Text(
+                                  'Details',
+                                  style: TextStyle(
+                                    color: Colors.black87,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (idx < (MockData.previousChats.length - 1)) const SizedBox(height: 12),
+                  ],
+                );
+              })
+              .toList(),
+        ),
+      ],
     );
   }
 }
