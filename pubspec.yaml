@@ -8,6 +8,12 @@ dependencies:
     sdk: flutter
   permission_handler: ^11.0.1
   image_picker: ^1.0.7
+  record: ^5.2.1
   # No extra overlay package needed, will use OverlayEntry/Stack
 
-# Add any other required fields as needed 
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/
+
+# Add any other required fields as needed

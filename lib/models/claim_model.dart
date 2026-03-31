@@ -7,6 +7,8 @@ class ClaimModel {
   final String status;
   final double amount;
   final Color statusColor;
+  final double? progressPct;
+  final String? verificationMsg;
 
   ClaimModel({
     required this.claimId,
@@ -15,5 +17,7 @@ class ClaimModel {
     required this.status,
     required this.amount,
     required this.statusColor,
+    this.progressPct,
+    this.verificationMsg,
   });
 }
