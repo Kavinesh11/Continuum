@@ -39,6 +39,40 @@ For gig delivery partners on Zomato and Swiggy, income is fragile. There are no 
 
 Continuum is strictly scoped to **loss of income protection** only. It is not vehicle insurance, medical cover, or life insurance. By replacing subjective claims processing with rule-based, parametric triggers, payouts are executed autonomously the moment a verified disruption occurs — with a weekly micro-premium aligned to the partner's own weekly payout cycle.
 
+## Coverage Scope and Standard Exclusions
+
+To align with core insurance product design conventions, Continuum separates covered disruptions from non-covered catastrophic and systemic exclusions.
+
+### Covered Trigger Categories
+
+* Severe weather disruptions that meet parametric thresholds.
+* Verified platform outage disruptions that meet technical outage thresholds.
+* Government-mandated curfews/lockdowns where machine-parseable advisories exist.
+
+### Standard Exclusions (Explicit)
+
+Continuum does **not** cover losses caused directly or indirectly by:
+
+* War, invasion, armed conflict, civil war, insurrection, military action.
+* Terrorism, sabotage, or politically motivated violent acts.
+* Pandemics/epidemics/public-health emergencies (unless a specific rider is approved).
+* Nuclear, radiological, biological, or chemical contamination/events.
+* Platform employment termination, restructuring, or mass layoffs.
+* Voluntary shutdowns, non-mandatory closures, or low-severity events below trigger thresholds.
+
+These exclusions are mapped into policy language in `terms_and_conditions.md`.
+
+### Exclusion Rationale Matrix
+
+| Exclusion Class | Why It Is Excluded | Risk Type |
+|---|---|---|
+| War / Armed conflict | Unbounded correlated loss not priced in weekly micro-premiums | Catastrophic correlated |
+| Terrorism / Sabotage | Intentional extreme loss volatility and accumulation risk | Catastrophic correlated |
+| Pandemic / Epidemic | Long-tail, multi-zone, prolonged business interruption risk | Systemic correlated |
+| Nuclear / CBRN | Severity tail exceeds parametric product risk appetite | Extreme tail |
+| Platform layoffs / restructuring | Employment risk, not short-duration disruption risk | Non-insurable under product scope |
+| Voluntary shutdowns | No objectively verifiable involuntary trigger event | Behavioral / moral hazard |
+
 ## How Continuum Works
 
 The engine behind this promise is fully deterministic — no adjuster, no form, no phone call.
@@ -92,10 +126,88 @@ Our core personas are grounded in **primary field research** — structured inte
 
 Traditional insurance utilizes annual or monthly premiums, fundamentally misaligning with gig worker cash flows. Continuum enforces a strictly **Weekly Premium Cycle** governed by a precise economic heuristic.
 
-* **"The One-Order Rule":** Continuum’s core pricing logic dictates that the weekly premium must mathematically equal the approximate earnings of just 1 to 2 successful deliveries. For example, a ₹49-₹99 weekly premium aligns instantly with the cognitive model of a delivery partner, framing the safety net as the cost of a single missed order rather than a burdensome financial liability.
+* **"The One-Order Rule" (Affordability Anchor):** The weekly premium is designed to feel equivalent to about 1 to 2 successful deliveries, so the product remains behaviorally affordable for partners.
 * **Cash Flow Alignment:** Premiums are deducted on a timeline identical to the Zomato/Swiggy weekly payout cadence, abstracting the cognitive load of large upfront payments.
 * **Dynamic Risk Rating:** The premium is recalculated every week using predictive modeling. For example, premiums marginally adjust based on the 7-day meteorological forecast for the partner's specific operating zone.
 * **Micro-Transactions:** Payments are structured as high-frequency, low-denomination micro-premiums, reducing the barrier to entry to near zero.
+
+### Quantitative Actuarial Framework
+
+The One-Order Rule is now treated as a **UX affordability constraint**, not the sole pricing rule. Final pricing is bounded by an actuarial adequacy floor.
+
+For zone `z`, tier `t`, week `w`:
+
+```text
+ExpectedLoss(z,t,w) = sum_over_events_e [ P(e|z,w) * Severity(e,z,t,w) * Exposure(t,w) ]
+
+TechnicalPremium(z,t,w) = ExpectedLoss + ExpenseLoad + FraudLoad + ReinsuranceLoad + RiskMargin
+
+FinalPremium(z,t,w) = max(AffordabilityAnchor(z,t,w), TechnicalPremium(z,t,w))
+```
+
+### Pricing Inputs and Update Cadence
+
+| Input | Symbol | Source | Update Cadence |
+|---|---|---|---|
+| Event probability by trigger type | `P(e/z,w)` | Historical oracle events + forecast priors | Weekly |
+| Event severity / expected payout weight | `Severity(e,z,t,w)` | Tier limits + disruption intensity mapping | Weekly |
+| Exposure (active policy and activity profile) | `Exposure(t,w)` | Active partner-days and hourly activity curves | Daily/Weekly |
+| Fraud adjustment load | `FraudLoad` | Claims anomaly rates and confirmed fraud recovery | Weekly |
+| Expense load | `ExpenseLoad` | Payment, infra, support, and ops cost allocation | Monthly |
+| Reinsurance load | `ReinsuranceLoad` | Treaty pricing and catastrophe attachment terms | Monthly/Quarterly |
+| Risk margin | `RiskMargin` | Solvency target and volatility buffer | Weekly |
+
+### Actuarial Adequacy and Governance Constraints
+
+* **Affordability is a ceiling objective, not a solvency override:** if affordability anchor is below technical premium, technical premium wins.
+* **Zone repricing trigger:** sustained 4-week zone loss ratio above 80% triggers mandatory premium recalibration.
+* **Escalation trigger:** sustained 13-week loss ratio above 100% triggers exposure controls and underwriting review.
+* **Catastrophe trigger:** events with more than 1,000 simultaneous impacted policies activate reinsurance pathways.
+* **Reserve floor:** minimum 90-day payout runway held in low-risk liquid instruments.
+
+### Actuarial Validation Gates (for Production Readiness)
+
+* **Backtesting depth:** Minimum 24 months event history per mature zone, with rolling out-of-sample validation.
+* **Data-sparse zones:** Proxy-zone bootstrap plus uncertainty multiplier until sufficient local history is collected.
+* **Calibration quality:** Probability calibration checks on trigger frequencies and payout incidence, not only point prediction error.
+* **Loss ratio governance:** Zone-level and portfolio-level loss ratio monitored weekly with documented intervention thresholds.
+* **Capital protection:** Mandatory reserve coverage and correlated-event reinsurance activation thresholds.
+* **Concentration controls:** Exposure caps per trigger type and per zone to prevent single-event liquidity shocks.
+
+### Stress and Solvency Scenarios
+
+The model is validated against at least three quantitative stress classes:
+
+* **Catastrophic correlated event:** Large simultaneous policyholder impact (cyclone/flood cluster).
+* **Systemic technology outage:** Platform-wide service disruption exposure.
+* **Climate drift scenario:** Multi-season increase in severe-event frequency versus training baseline.
+
+Passing these scenarios is required before deployment-grade pricing sign-off.
+
+### Illustrative Weekly Premium Walkthrough (Conceptual)
+
+Example for one zone-tier cell (illustrative only):
+
+```text
+ExpectedLoss = 38
+ExpenseLoad  = 9
+FraudLoad    = 4
+Reinsurance  = 5
+RiskMargin   = 6
+
+TechnicalPremium = 62
+AffordabilityAnchor (One-Order Rule) = 55
+
+FinalPremium = max(55, 62) = 62
+```
+
+This keeps pricing behaviorally affordable where possible, but never below actuarial adequacy.
+
+### Current Validation Status
+
+* **Prototype status:** Framework and controls are implemented conceptually for hackathon scope.
+* **Before production:** Final rates and exclusions require licensed actuarial review and legal/regulatory sign-off.
+* **Why this matters:** It prevents underpriced coverage while preserving partner affordability.
 
 Three tiers map directly to a partner's weekly order volume:
 
@@ -286,6 +398,22 @@ A parametric system is only as trustworthy as its edge-case handling. Three cate
 * **Correlated catastrophic event (cyclone, earthquake) affects >1,000 simultaneous policies:** A mandatory reinsurance treaty is activated for any single event breaching the 1,000-simultaneous-policyholder threshold. This is the capital backstop that prevents catastrophic liquidity events from invalidating all outstanding policies.
 * **Zone-specific loss ratio exceeds 80% for 4 consecutive weeks:** The dynamic pricing engine triggers an automatic premium escalation for that specific zone. Partners in the zone are notified 7 days in advance of premium changes. This is the real-time actuarial feedback loop.
 * **Minimum 90-day reserve requirement:** IRDAI-mandated solvency margins require Continuum to hold a minimum 90-day payout reserve in escrow at all times, held exclusively in RBI-approved low-risk liquid instruments (e.g., Treasury bills, money market funds). Zero equity exposure is permitted on reserve capital.
+
+## Terms and Conditions
+
+The adversarial-risk model has been converted into a formal policy draft here:
+
+* `terms_and_conditions.md`
+
+This draft translates the 100 adversarial failure scenarios into enforceable eligibility, exclusion, anti-fraud, payout, data, and dispute clauses for Continuum's income protection product.
+
+It includes:
+
+* Standard insurance exclusions (war, terrorism, pandemic, nuclear/CBRN categories).
+* Parametric trigger boundaries and non-covered event classes.
+* Financial safeguards tied to reserves, repricing, and reinsurance controls.
+
+For convenience, see exclusion clauses in `terms_and_conditions.md` under `## 9) Exclusions`.
 
 ---
 

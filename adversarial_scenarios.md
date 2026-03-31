@@ -3,6 +3,12 @@
 A structured simulation of every meaningful failure mode across six attack vectors.
 Each entry includes: **Scenario**, **Root Cause**, **Impact**, **Fallback/Defense**.
 
+## Policy Conversion Output
+
+These scenarios have been converted into contractual policy language in:
+
+- `terms_and_conditions.md`
+
 ---
 
 ## Category A: GPS & Location Spoofing (Scenarios 1–20)
