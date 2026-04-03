@@ -1,32 +1,116 @@
 <div align="center">
   <img src="https://img.shields.io/badge/Devtrails_Guidewire_Hackathon-FFD700?style=for-the-badge" alt="Hackathon Badge" />
   <h1>Continuum</h1>
-  <p><em>A continuous sequence in which adjacent elements are not perceptibly different. Ensuring uninterrupted income flow, regardless of external disruptions.</em></p>
+  <p><em>Your safety net. Automatic. Instant. Zero paperwork.</em></p>
+  <img src="assets/logo.png" alt="Continuum Logo" width="180" />
+  <br />
 
-  [![React Native](https://img.shields.io/badge/React_Native-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](#)
+  [![Flutter](https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)](#)
+  [![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](#)
+  [![Express.js](https://img.shields.io/badge/Express.js-000000?style=for-the-badge&logo=express&logoColor=white)](#)
   [![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)](#)
+  [![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)](#)
+  [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-336791?style=for-the-badge&logo=postgresql&logoColor=white)](#)
+  [![CockroachDB](https://img.shields.io/badge/CockroachDB-6933FF?style=for-the-badge&logo=cockroachdb&logoColor=white)](#)
+  [![MongoDB](https://img.shields.io/badge/MongoDB-13AA52?style=for-the-badge&logo=mongodb&logoColor=white)](#)
+  [![Apache Kafka](https://img.shields.io/badge/Apache%20Kafka-000000?style=for-the-badge&logo=apachekafka&logoColor=white)](#)
+  [![Firebase](https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)](#)
+  [![Gemini](https://img.shields.io/badge/Gemini%20AI-8F7EFF?style=for-the-badge&logo=google&logoColor=white)](#)
   [![AI & ML](https://img.shields.io/badge/AI_%26_ML-FF6F00?style=for-the-badge&logo=scikit-learn&logoColor=white)](#)
 
   <br />
 
-  **[Demo Video (Placeholder)](#)** &nbsp;|&nbsp; **[Pitch Deck (Placeholder)](#)**
+  **[Demo Video](https://www.youtube.com/watch?v=IHMCi3f6iaw)** &nbsp;| &nbsp;**[Pitch Deck](https://gamma.app/docs/Continuum-tj9d086rbvfjy58)**
+
+  ![Continuum Homepage](assets/landing-page.jpeg)
 </div>
 
 ---
 
-## Executive Summary
+## The Problem
 
-**Continuum** is an AI-powered, parametric insurance platform engineered specifically for platform-based food delivery partners operating within the **Zomato** and **Swiggy** ecosystems. This platform provides a deterministic financial safety net against uncontrollable external disruptions—such as severe meteorological events, hyper-local application outages, and municipal curfews—that result in an immediate and unavoidable loss of daily wages. It is strictly scoped to **loss of income protection**, expressly excluding traditional indemnification models like vehicle repair, medical, or life insurance.
+> One storm. One app outage. One week of lost income.
 
-By leveraging real-time data oracles and edge-computed risk models, Continuum replaces subjective claims processing with automated, rules-based payouts. The platform utilizes a weekly micro-premium cadence, perfectly aligned with the gig economy's weekly payout cycles, ensuring high conversion and retention. Upon the validation of a predefined parametric trigger, payouts are executed autonomously, providing near-instant liquidity to delivery partners exactly when their earning capacity is disrupted.
+For gig delivery partners on Zomato and Swiggy, income is fragile. There are no sick days, no employer safety nets, and no recourse when the platform goes down at peak hours or rain makes roads unnavigable. A single disruption can wipe out a week's earnings — and filing a traditional insurance claim takes days, not minutes.
 
-## Target Persona & Scenarios
+## The Solution
+
+**Continuum** protects gig delivery partners from losing income during events they can't control — app outages, severe weather, municipal lockdowns. It detects the disruption automatically, validates it in real time, and pays out directly to the partner's UPI wallet — before they even file a complaint.
+
+Continuum is strictly scoped to **loss of income protection** only. It is not vehicle insurance, medical cover, or life insurance. By replacing subjective claims processing with rule-based, parametric triggers, payouts are executed autonomously the moment a verified disruption occurs — with a weekly micro-premium aligned to the partner's own weekly payout cycle.
+
+## Coverage Scope and Standard Exclusions
+
+To align with core insurance product design conventions, Continuum separates covered disruptions from non-covered catastrophic and systemic exclusions.
+
+### Covered Trigger Categories
+
+* Severe weather disruptions that meet parametric thresholds.
+* Verified platform outage disruptions that meet technical outage thresholds.
+* Government-mandated curfews/lockdowns where machine-parseable advisories exist.
+
+### Standard Exclusions (Explicit)
+
+Continuum does **not** cover losses caused directly or indirectly by:
+
+* War, invasion, armed conflict, civil war, insurrection, military action.
+* Terrorism, sabotage, or politically motivated violent acts.
+* Pandemics/epidemics/public-health emergencies (unless a specific rider is approved).
+* Nuclear, radiological, biological, or chemical contamination/events.
+* Platform employment termination, restructuring, or mass layoffs.
+* Voluntary shutdowns, non-mandatory closures, or low-severity events below trigger thresholds.
+
+These exclusions are mapped into policy language in `terms_and_conditions.md`.
+
+### Exclusion Rationale Matrix
+
+| Exclusion Class | Why It Is Excluded | Risk Type |
+|---|---|---|
+| War / Armed conflict | Unbounded correlated loss not priced in weekly micro-premiums | Catastrophic correlated |
+| Terrorism / Sabotage | Intentional extreme loss volatility and accumulation risk | Catastrophic correlated |
+| Pandemic / Epidemic | Long-tail, multi-zone, prolonged business interruption risk | Systemic correlated |
+| Nuclear / CBRN | Severity tail exceeds parametric product risk appetite | Extreme tail |
+| Platform layoffs / restructuring | Employment risk, not short-duration disruption risk | Non-insurable under product scope |
+| Voluntary shutdowns | No objectively verifiable involuntary trigger event | Behavioral / moral hazard |
+
+## How Continuum Works
+
+The engine behind this promise is fully deterministic — no adjuster, no form, no phone call.
+
+Continuum relies on highly deterministic data oracles to eradicate the claims investigation phase entirely.
+
+### Primary Data Oracles
+
+* **Meteorological:** API integrations with the India Meteorological Department (IMD) and hyper-local weather nodes to track rainfall volume, wind speed, and extreme temperature anomalies.
+* **Technological:** Programmatic scraping of Downdetector and synthetic ping monitoring of Zomato/Swiggy delivery/order-routing APIs to detect systematic outages.
+* **Regulatory:** Automated parsing of municipal advisory RSS feeds governing lockdown measures or localized curfews.
+
+When all three signals converge above threshold, the payout is queued — autonomously.
+
+At a glance, here is how the stack connects end to end:
+
+<div align="center">
+  <img src="assets/architecture_diagram.png" alt="Continuum System Architecture Diagram" style="max-width: 100%;" />
+</div>
+
+## Who We Built This For
+
+This isn't a theoretical product. The triggers above were designed around real income patterns from real partners.
 
 **Persona:** The Food Delivery Partner (Swiggy / Zomato Fleet)
 
+Our core personas are grounded in **primary field research** — structured interviews conducted with **3 active Swiggy delivery partners** — revealing massive income volatility and outsized exposure to structural platform penalties. Raw interview recordings are available for review: <div align="center">**[🎙️ User Interview Recordings (Google Drive)](https://drive.google.com/drive/folders/1pVeuibqcbkzK8ll4A9IWnUjMeMUlhQXv)**.
+
+  <img src="assets/drivers_image.png" alt="Continuum auto-protection pitch visual for delivery partners" style="max-width: 100%;" />
+</div>
+
+* **The Power User (Sudarshan):** Works exhaustive 17-hour shifts (e.g., 45-50 orders/day) generating ~₹3,000 gross (₹2,100 net after fuel and food). Highly exposed to the platform's strict **₹250 penalty** for failed deliveries, disproportionately punitive given their operational volume.
+* **The Full-Time Earner (Dakshina Moorthy):** Operates on grueling 15-hour schedules (8 AM - 11 PM), moving ~30 orders/day. They noted that platform penalties frequently equal or exceed the total earnings of a single order, highlighting a fragile risk-to-reward ratio.
+* **The Part-Time Operator (Sudha):** Works focused 8-hour blocks for ~20 orders/day, earning ₹700-₹800. These participants specifically articulated a need for a deterministic safety net against generalized operational shutdowns, such as localized municipality strikes or severe urban waterlogging (floods).
+
 * **Economic Profile:** Relies entirely on daily active hours for income. Highly sensitive to downtime. Operates on weekly aggregate payouts.
 * **Operational Geography:** Hyper-local, constrained to specific municipal zones.
-* **Risk Exposure:** 100% exposed to environmental, technological, and regulatory disruptions without traditional employment benefits.
+* **Risk Exposure:** 100% exposed to environmental, technological, and regulatory disruptions without traditional employment benefits, compounded by outsized punitive frameworks for unfulfilled orders.
 
 ### Scenario 1: Hyper-Local Application Outage
 
@@ -38,103 +122,347 @@ By leveraging real-time data oracles and edge-computed risk models, Continuum re
 * **Disruption:** A sudden, unforecasted torrential downpour and localized waterlogging in the partner's active delivery zone trigger a municipal "Red Alert," making physical delivery impossible.
 * **Continuum Response:** The IMD Weather API oracle registers rainfall exceeding 50mm within a 2-hour window in the specific geographical polygon. The contract executes automatically, compensating the partner for the anticipated lost hours, allowing them to seek shelter safely without financial penalty.
 
-## Parametric Triggers & Workflow
+## The Economics
 
-Continuum relies on highly deterministic data oracles to eradicate the claims investigation phase entirely.
+Traditional insurance utilizes annual or monthly premiums, fundamentally misaligning with gig worker cash flows. Continuum enforces a strictly **Weekly Premium Cycle** governed by a precise economic heuristic.
 
-### Primary Data Oracles
-
-* **Meteorological:** API integrations with the India Meteorological Department (IMD) and hyper-local weather nodes to track rainfall volume, wind speed, and extreme temperature anomalies.
-* **Technological:** Programmatic scraping of Downdetector and synthetic ping monitoring of Zomato/Swiggy delivery/order-routing APIs to detect systematic outages.
-* **Regulatory:** Automated parsing of municipal advisory RSS feeds governing lockdown measures or localized curfews.
-
-### System Workflow
-
-```mermaid
-graph TD
-    %% Custom Styling for Vibrant Colors
-    classDef primary fill:#4F46E5,stroke:#312E81,stroke-width:3px,color:#FFFFFF,font-weight:bold;
-    classDef secondary fill:#10B981,stroke:#047857,stroke-width:3px,color:#FFFFFF,font-weight:bold;
-    classDef warning fill:#F59E0B,stroke:#B45309,stroke-width:3px,color:#000000,font-weight:bold;
-    classDef danger fill:#EF4444,stroke:#B91C1C,stroke-width:3px,color:#FFFFFF,font-weight:bold;
-    classDef oracle fill:#8B5CF6,stroke:#5B21B6,stroke-width:3px,color:#FFFFFF,font-weight:bold;
-    classDef ai fill:#EC4899,stroke:#BE185D,stroke-width:3px,color:#FFFFFF,font-weight:bold;
-
-    A[Partner Opts-in via React Native App]:::primary --> B[Weekly Risk Model Evaluates Premium]:::ai
-    B --> C{Payment Processed via UPI/Wallet}:::secondary
-    C -->|Active Policy Phase| D[Continuous Oracle Monitoring]:::warning
-    D --> E(IMD Weather APIs):::oracle
-    D --> F(App Downtime Scraping):::oracle
-    D --> G(Municipal Advisories):::oracle
-    E --> H{Anomaly Detected?}:::danger
-    F --> H
-    G --> H
-    H -->|Yes| I[AI Fraud & Location Validation]:::ai
-    H -->|No| D
-    I -->|Valid| J[Smart Contract/Logic Execution]:::primary
-    I -->|Invalid| D
-    J --> K[Automated Payout Initialization]:::secondary
-    K --> L[Funds Disbursed to Partner UPI]:::secondary
-    L --> M[Push Notification Sent to Device]:::primary
-```
-
-## The Weekly Premium Model
-
-Traditional insurance utilizes annual or monthly premiums, fundamentally misaligning with gig worker cash flows. Continuum enforces a strictly **Weekly Premium Cycle**.
-
+* **"The One-Order Rule" (Affordability Anchor):** The weekly premium is designed to feel equivalent to about 1 to 2 successful deliveries, so the product remains behaviorally affordable for partners.
 * **Cash Flow Alignment:** Premiums are deducted on a timeline identical to the Zomato/Swiggy weekly payout cadence, abstracting the cognitive load of large upfront payments.
 * **Dynamic Risk Rating:** The premium is recalculated every week using predictive modeling. For example, premiums marginally adjust based on the 7-day meteorological forecast for the partner's specific operating zone.
 * **Micro-Transactions:** Payments are structured as high-frequency, low-denomination micro-premiums, reducing the barrier to entry to near zero.
 
-## Platform Choice Justification
+### Quantitative Actuarial Framework
 
-The user-facing application is fundamentally mobile-first, built using **React Native** and **Expo Go**.
+The One-Order Rule is now treated as a **UX affordability constraint**, not the sole pricing rule. Final pricing is bounded by an actuarial adequacy floor.
 
-* **Mobile-First Audience:** Food delivery partners exist entirely on mobile devices while operating. A web application is fundamentally inappropriate for this demographic and use case.
-* **Critical Push Notifications:** Real-time push notifications are mandatory. When a disruption triggers a payout, the partner must be notified immediately over the lock screen to prevent them from taking unnecessary physical risks. React Native handles OS-level notifications efficiently.
-* **Rapid Cross-Platform Prototyping:** Given the strict 6-week Devtrails Hackathon timeline, React Native combined with Expo Go allows simultaneous deployment to both Android (primary target) and iOS (secondary) from a single codebase, drastically reducing engineering overhead and time-to-market.
+For zone `z`, tier `t`, week `w`:
 
-## AI & ML Integration
+```text
+ExpectedLoss(z,t,w) = sum_over_events_e [ P(e|z,w) * Severity(e,z,t,w) * Exposure(t,w) ]
 
-Continuum moves beyond static actuarial tables, deploying ML models for active risk assessment and platform security.
+TechnicalPremium(z,t,w) = ExpectedLoss + ExpenseLoad + FraudLoad + ReinsuranceLoad + RiskMargin
 
-* **Dynamic Premium Calculation (XGBoost/LightGBM):** Hyper-local risk models consume historical delivery app downtime frequency, seasonal weather variance, and local traffic density to generate bespoke weekly premiums for specific delivery zones. A partner in a dense, flood-prone sector during monsoons will see a dynamically adjusted premium compared to a partner operating in a stable weather window.
-* **Anomaly Detection & Fraud Prevention (Isolation Forests / Autoencoders):** To prevent exploitation (e.g., GPS spoofing into a payout zone during a known disruption event), the AI engine cross-references the partner's historical geographic ping data against their location during the disruption. If the trigger event genuinely impacted the user's habitual, verified operating zone, the payout is cleared; geographical anomalies are flagged and rejected.
+FinalPremium(z,t,w) = max(AffordabilityAnchor(z,t,w), TechnicalPremium(z,t,w))
+```
 
-## Tech Stack & Architecture
+### Pricing Inputs and Update Cadence
 
-This implementation prioritizes speed to production, analytical capability, and reliability for the 6-week build phase.
+| Input | Symbol | Source | Update Cadence |
+|---|---|---|---|
+| Event probability by trigger type | `P(e/z,w)` | Historical oracle events + forecast priors | Weekly |
+| Event severity / expected payout weight | `Severity(e,z,t,w)` | Tier limits + disruption intensity mapping | Weekly |
+| Exposure (active policy and activity profile) | `Exposure(t,w)` | Active partner-days and hourly activity curves | Daily/Weekly |
+| Fraud adjustment load | `FraudLoad` | Claims anomaly rates and confirmed fraud recovery | Weekly |
+| Expense load | `ExpenseLoad` | Payment, infra, support, and ops cost allocation | Monthly |
+| Reinsurance load | `ReinsuranceLoad` | Treaty pricing and catastrophe attachment terms | Monthly/Quarterly |
+| Risk margin | `RiskMargin` | Solvency target and volatility buffer | Weekly |
 
-* **Frontend:** React Native, Expo Go, Tailwind CSS (via Nativewind)
-* **Backend Application:** Node.js / Express.js (REST architecture for low latency)
-* **Database:** PostgreSQL (Relational integrity for financial ledgers) mapped with Prisma ORM
-* **Oracles/Data Ingestion:** Python-based serverless functions (AWS Lambda/GCP Cloud Functions) for cron-based scraping (Downdetector / IMD APIs)
-* **AI/ML Pipeline:** Python (Scikit-Learn, Pandas) deployed via generic FastAPI microservices for premium pricing inferences and fraud scoring
-* **Payments Simulation:** Stripe / Razorpay Sandbox (for weekly premium auths and simulated UPI payouts)
+### Actuarial Adequacy and Governance Constraints
 
-## Development Plan (6-Week Execution)
+* **Affordability is a ceiling objective, not a solvency override:** if affordability anchor is below technical premium, technical premium wins.
+* **Zone repricing trigger:** sustained 4-week zone loss ratio above 80% triggers mandatory premium recalibration.
+* **Escalation trigger:** sustained 13-week loss ratio above 100% triggers exposure controls and underwriting review.
+* **Catastrophe trigger:** events with more than 1,000 simultaneous impacted policies activate reinsurance pathways.
+* **Reserve floor:** minimum 90-day payout runway held in low-risk liquid instruments.
 
-* **Week 1: Architecture & Data Engineering**
-  * Finalize database schema and core data structures.
-  * Build Python ingestion pipelines for IMD and Downdetector data.
-* **Week 2: Backend Core & Oracles**
-  * Develop Node.js core services (User Service, Policy Service).
-  * Implement the Oracle rule engine to parse incoming anomalies.
-* **Week 3: ML Modeling & Pricing Engine**
-  * Train base XGBoost pricing models on synthetic/open weather and downtime data.
-  * Develop the fraud detection heuristic baseline.
-* **Week 4: Mobile Application (React Native)**
-  * Build out core unauthenticated and authenticated React Native flows using Expo.
-  * Integrate the weekly premium subscription UI/UX.
-* **Week 5: Workflow Integration & Notifications**
-  * Connect the mobile frontend to the backend REST APIs.
-  * Implement the automated payout triggers and push notification service.
-* **Week 6: Quality Assurance, Polish & Pitch Prep**
-  * End-to-end simulation of a localized disruption and payout.
-  * Finalize UI polish, documentation, and prepare the hackathon submission video.
+### Actuarial Validation Gates (for Production Readiness)
+
+* **Backtesting depth:** Minimum 24 months event history per mature zone, with rolling out-of-sample validation.
+* **Data-sparse zones:** Proxy-zone bootstrap plus uncertainty multiplier until sufficient local history is collected.
+* **Calibration quality:** Probability calibration checks on trigger frequencies and payout incidence, not only point prediction error.
+* **Loss ratio governance:** Zone-level and portfolio-level loss ratio monitored weekly with documented intervention thresholds.
+* **Capital protection:** Mandatory reserve coverage and correlated-event reinsurance activation thresholds.
+* **Concentration controls:** Exposure caps per trigger type and per zone to prevent single-event liquidity shocks.
+
+### Stress and Solvency Scenarios
+
+The model is validated against at least three quantitative stress classes:
+
+* **Catastrophic correlated event:** Large simultaneous policyholder impact (cyclone/flood cluster).
+* **Systemic technology outage:** Platform-wide service disruption exposure.
+* **Climate drift scenario:** Multi-season increase in severe-event frequency versus training baseline.
+
+Passing these scenarios is required before deployment-grade pricing sign-off.
+
+### Illustrative Weekly Premium Walkthrough (Conceptual)
+
+Example for one zone-tier cell (illustrative only):
+
+```text
+ExpectedLoss = 38
+ExpenseLoad  = 9
+FraudLoad    = 4
+Reinsurance  = 5
+RiskMargin   = 6
+
+TechnicalPremium = 62
+AffordabilityAnchor (One-Order Rule) = 55
+
+FinalPremium = max(55, 62) = 62
+```
+
+This keeps pricing behaviorally affordable where possible, but never below actuarial adequacy.
+
+### Current Validation Status
+
+* **Prototype status:** Framework and controls are implemented conceptually for hackathon scope.
+* **Before production:** Final rates and exclusions require licensed actuarial review and legal/regulatory sign-off.
+* **Why this matters:** It prevents underpriced coverage while preserving partner affordability.
+
+Three tiers map directly to a partner's weekly order volume:
+
+<div align="center">
+  <img src="assets/pricing_tier.png" alt="Continuum Pricing Tiers — Silver ₹49/week, Gold ₹99/week, Platinum ₹199/week" style="max-width: 100%;" />
+
+  **Disclaimer:** The Prices shown are only base prices. Actual prices will be updated in realtime according to the pricing model.
+</div>
+
+## The App Experience
+
+The partner never sees any of the oracle complexity. They see this.
+
+<div align="center">
+  <img src="assets/user_flow.png" alt="User Flow Diagram" style="max-width: 100%;" />
+</div>
+
+<br />
+
+<div align="center">
+
+| | | |
+|:---:|:---:|:---:|
+| ![Dashboard](assets/Dashboard.gif) | ![Claims Management](assets/Claims.gif) | ![Assist Bot](assets/Assist.gif) |
+| | | |
+| ![Claim Form](assets/Claims_apply.gif) | ![Claim Status](assets/Claims_status.gif) | ![User Profile](assets/Profile.gif) |
+
+</div>
+
+### Built for the Field
+
+* **Mobile-first for real field constraints:** Food delivery partners run the job from their phones. Flutter keeps the UI responsive on budget devices (₹8k–₹15k).
+* **Safety-critical notifications in real time:** When a verified disruption triggers a payout, partners get instant lock-screen alerts via Firebase Cloud Messaging.
+* **Shipped fast across Android and iOS:** A single Flutter codebase and hot reload let us prototype and deploy within the hackathon timeline—without doubling engineering cycles.
+* **Offline resilience for unreliable connectivity:** Offline-first persistence (Hive/SQFlite) keeps premium deductions and submissions reliable, syncing safely when the network returns.
+
+## Intelligence Layer
+
+Behind the interface, two ML pipelines run autonomously on every premium cycle and every claim.
+
+Continuum moves beyond static actuarial tables, deploying ML models for active risk assessment and fraud prevention.
+
+**Risk Profile Engine** — Gradient Boosting model consuming TimescaleDB historical weather, live Weather API data, and worker activity to dynamically price each partner's weekly premium:
+
+<div align="center">
+  <img src="assets/Risk_profiler.jpeg" alt="Risk Profile Engine — FastAPI → Feature Builder → Gradient Boosting → Risk Score" style="max-width: 100%;" />
+</div>
+
+<br />
+
+**Claims Scoring Pipeline** — Isolation Forest anomaly detection that auto-approves clean claims (score ≥ 0.7) and routes suspicious ones to the fraud queue:
+
+<div align="center">
+  <img src="assets/Claims_scorer.jpeg" alt="Claims Scoring — FastAPI Gateway → PostGIS + PostgreSQL → Isolation Forest → Auto Approve or Fraud Queue" style="max-width: 100%;" />
+</div>
+
+## System Architecture
+
+The full stack is purpose-built for financial-grade reliability at gig-worker scale. The diagram above shows the end-to-end topology; the table below breaks it down layer by layer.
+
+Every layer was chosen to serve a specific reliability, performance, or compliance constraint:
+
+| Layer | Technology | Role |
+|---|---|---|
+| **Frontend** | Flutter, Dart | Cross-platform mobile app (Android primary, iOS secondary) |
+| **Auth & Identity** | RBAC, JWT, Firebase (Phone OTP), Aadhaar/PAN KYC | Role-based access for partner / admin / insurer; biometric & KYC verification |
+| **Core Backend** | Express.js (Node.js) | REST API server — primary business logic, policy and user services |
+| **Claims API** | FastAPI (Python) | Handles proof data upload and claim processing pipeline |
+| **Message Queue** | Apache Kafka | Real-time data streaming for webhook triggers and oracle events |
+| **Task Queue** | Bull MQ | Prioritized background job processing (payout retries, notification dispatch) |
+| **Database** | CockroachDB | Distributed SQL — horizontally scalable, ACID-compliant financial ledger |
+| **Vector Store** | MongoDB Atlas (Vector Index) | Advanced RAG with Pre-Filtering, Fast-Filtering, and Re-Ranking |
+| **Embeddings** | BGE-Large (HuggingFace) | Text vectorization for RAG knowledge base |
+| **RAG Orchestration** | LangChain + LlamaIndex | Data preprocessing, chunking, and vector upsert pipeline |
+| **Web Intelligence** | ScrapeGraph.AI | LLM-powered structured scraping of news and municipal advisory sources |
+| **Knowledge Graph** | Go (caching layer) | Location-aware knowledge graph built from scraped disruption data |
+| **AI / LLM Engine** | Gemini (gemini-1.5-pro), Groq, GPT-4o | Inference engine for fraud scoring, risk analysis, claim validation |
+| **Agent Orchestration** | Crew AI | Multi-agent task delegation for autonomous claim pipeline steps |
+| **Conversational AI** | RASA + Fi | In-app assistant — context-aware partner support bot |
+| **Multilingual NLP** | IndicConformer (AI4Bharat) | Machine translation for regional Indian languages |
+| **Payments** | PayU Sandbox (via minIO) | Simulated UPI payout disbursement with smoother workload distribution |
+| **Push Notifications** | Firebase Cloud Messaging | Real-time lock-screen alerts on payout and disruption events |
+| **Monitoring** | Prometheus | Continuous log monitoring and alerting across all services |
+| **Admin Dashboard** | Power BI | Business intelligence dashboards for admins and insurers |
+| **Environment** | Sandbox (Flutter/Dart) | Isolated development environment for safe end-to-end simulation |
+
+## Trust Architecture
+
+A system that pays automatically without human review is a system that adversaries will probe. Here is how Continuum is hardened.
+
+> **Threat Model:** A coordinated fraud ring of 500 delivery partners uses consumer-grade GPS spoofing applications to simultaneously position themselves inside a flood-triggered payout zone. Simple GPS verification is insufficient. This section documents a layered, deterministic defense architecture hardened against this specific attack vector and 99 analogous failure modes.
+
+<div align="center">
+  <img src="assets/gps_spoofing_prevention.png" alt="GPS Spoofing Prevention Methodology — 5-layer iceberg diagram" style="max-width: 100%;" />
+</div>
+
+### The Core Insight: GPS is Necessary, Not Sufficient
+
+A single GPS coordinate is a claim, not proof. Every payout gate in Continuum requires **corroborating evidence from independent signal layers**. A fraudster who can fake one layer almost never controls all of them simultaneously.
+
+### Layer 1 — Identity & Device Integrity
+
+The first perimeter. A fraudster who cannot establish a legitimate identity cannot participate.
+
+* **1:1 Device Binding:** Each Policy ID is cryptographically bound to a unique device fingerprint (Device_ID). A second policy registration on the same device is rejected at the database constraint level; no application-layer logic can override this.
+* **National KYC Linkage:** Aadhaar/PAN verification enforces a 1:1 mapping between national identity and active policy count. Family-member account farming is structurally impossible within this constraint.
+* **Play Integrity API / SafetyNet Attestation:** Android emulators and rooted devices lack valid hardware attestation certificates. Claims from non-attested devices are automatically ineligible. The platform periodically re-attests devices on the background to catch post-enrollment compromise.
+* **Biometric Liveness on Claim Submission:** A biometric face-scan challenge is injected at claim submission, defeating both account-lending schemes and static-ID theft. The liveness detection module specifically flags deepfake-generated video via a dedicated third-party API (e.g., iProov), cross-referencing blink patterns and micro-lighting artifacts that generative models fail to replicate consistently.
+
+### Layer 2 — Multi-Signal Location Corroboration
+
+GPS coordinates must be corroborated by at least two independent signals before location is considered verified.
+
+* **Cellular Network Triangulation (Cell-ID):** If the GPS coordinate and the Cell-ID triangulation mismatch by more than 2km, the location claim is flagged. A spoofing app can inject a false GPS position into the OS; it cannot simultaneously spoof the carrier-reported Cell-ID from the cellular basestation.
+* **The Soak Period Requirement:** A partner must have been GPS-verified inside the target polygon for a minimum of **45 continuous minutes before** the parametric trigger fires. Pre-trigger positioning (driving into the zone seconds before a known alert) is thus structurally unrewarded.
+* **Temporal Ping Consistency:** Location is sampled across a minimum of 3 independent timestamps within the disruption window. A single fraudulent ping is insufficient. Coordinate velocity = 0 for extended periods (static lock at a fixed address) triggers an automatic eligibility suspension.
+* **Delivery Platform Cross-Reference:** If the Swiggy/Zomato API reports that a partner *completed* one or more orders during the stated disruption window, the payout claim is vetoed. A partner cannot be both "unable to work due to disruption" and simultaneously transacting on the platform. This cross-reference is a hard, unappealable veto.
+
+### Layer 3 — Population-Level Statistical Anomaly Detection
+
+The most powerful anti-fraud signal is not found by examining individual claims — it is found by examining the **population of claims simultaneously**.
+
+* **Geographic Convergence Alert:** If ≥50 unique policy IDs file claims pointing to an identical or near-identical lat/long polygon within a 5-minute window, the zone triggers an automatic **"Convergence Freeze"**. All pending claims for that zone are queued for a mandatory 24-hour review hold before any payout is released. A genuine flood will affect the zone gradually; 500 fraudsters converging instantaneously is a statistical signature unique to coordinated rings.
+* **Social Graph Clustering:** Device-level Bluetooth and WiFi proximity logs are analyzed at the time of claim. Claims from a cluster of devices that have been in close physical proximity over the prior 7 days (indicative of a coordinated group) are flagged for elevated review. Genuine partners stranded in a flood zone may be near each other, but they did not spend the prior week in the same room.
+* **Velocity Limiting:** A maximum of **3 successful claims per policyholder per 90-day rolling window** is enforced. Chronic super-claimants who exceed this threshold are moved to a mandatory manual review hold, regardless of the technical validity of individual claims.
+
+### Layer 4 — Multi-Oracle Consensus Engine
+
+No single data source can unilaterally authorize a payout. Trigger events require a weighted **3-of-4 oracle consensus**.
+
+* **Oracle Vote Architecture:** 4 independent data oracles vote on whether a qualifying event has occurred: (1) IMD Primary API, (2) Private Weather Network (e.g., AccuWeather commercial feed), (3) Satellite Precipitation Data (NASA GPM API), (4) Ground-level sensor aggregation. A trigger requires a minimum of 3 affirmative votes. A single compromised or failed data source cannot cause a payout.
+* **Stale Data Handling:** Oracle data carries a maximum TTL of 15 minutes. Data exceeding this TTL is treated as an **oracle abstention**, not a vote. An abstaining oracle does not vote "yes."
+* **Certificate Pinning on All Oracle Endpoints:** All HTTPS calls to external data APIs are protected by certificate pinning. An unexpected certificate (indicative of a man-in-the-middle attack or DNS hijack) causes the oracle's vote to be automatically nullified for that polling cycle.
+* **Randomized Poll Scheduling:** Oracle polling intervals are randomized within a ±8 minute window around the base cron schedule. This schedule is never exposed externally, making it computationally infeasible to time fraudulent activity to the exact millisecond between sensor checks.
+
+### Layer 5 — Incentive-Based Fraud Deterrence
+
+Structural policy design that makes fraud economically irrational.
+
+* **72-Hour Activation Delay:** New policy enrollments have a 72-hour waiting period before claim eligibility activates. Same-day enrollment and same-day claims are architecturally impossible.
+* **5-Day Tier-Upgrade Waiting Period:** Tier upgrades (e.g., Silver → Platinum) do not take effect for claim purposes until 5 days after the upgrade is processed. Pre-event opportunistic coverage escalation yields zero payout advantage.
+* **Cancellation Cycle Lock:** Policy cancellations are not effective until the current 7-day billing cycle completes. A partner cannot cancel mid-week after a disruption event is publicly announced.
+* **Referral Reward Delay:** Referral bonuses are withheld until the referred partner completes 60 days with zero claims. This destroys the economics of referral-farming fraud rings.
+
+### How We Distinguish a Genuine Stranded Worker from a Fraudster
+
+| Signal | Genuine Partner | Fraud Ring Member |
+| ------ | --------------- | ----------------- |
+| Device Attestation | Valid hardware cert | Emulator / rooted device |
+| GPS + Cell-ID Match | < 500m divergence | Often > 2km divergence |
+| Soak Period Compliant | In zone ≥ 45 min pre-trigger | Arrived post-trigger announcement |
+| Platform Order History | Zero orders during disruption | May show completed orders |
+| Claim Population Density | Distributed across zone | Statistically converged on identical polygon |
+| Claim Velocity | ≤ 1 claim per event | Multiple claims in short window |
+| Device Proximity History | No prior group clustering | Devices co-located in prior 7 days |
+
+> No single signal is decisive. The genuine partner passes every layer. The fraud ring member cannot simultaneously clear all seven.
+
+---
+
+Anti-fraud is one half of system trust. The other half is deterministic behavior at the boundary conditions where parametric systems typically fail.
+
+### Payout Edge Cases & Fallback Logic
+
+A parametric system is only as trustworthy as its edge-case handling. Three categories of boundary conditions are handled deterministically:
+
+<div align="center">
+  <img src="assets/payout_edgecase.png" alt="Payout Edge Cases: Timing & Boundary Conditions → Oracle & Infrastructure Failures → Actuarial Safeguards" style="max-width: 100%;" />
+</div>
+
+<br />
+
+### Timing & Boundary Conditions
+
+* **Trigger fires at 11:59 PM on last day of policy week:** If a parametric trigger fires while the policy is technically active—even by 1 minute—the full week's coverage benefit is honored. Policies do not expire mid-disruption.
+* **Partner in adjacent, non-triggered zone is also stranded:** Partners in zones immediately bordering a triggered polygon receive a **50% pro-rated payout** (the "Adjacency Grace" rule), acknowledging that physical disruption is not confined to administrative polygon boundaries.
+* **Partner's GPS centroid spans two municipal boundaries:** Payout is calculated against the municipality containing the GPS centroid, not the zone with the higher coverage value. Partial-zone events pay 50% if the centroid falls within the affected region.
+* **Two qualifying disruptions occur within the same 7-day policy cycle:** A hard cap of **one successful payout per 7-day policy cycle** applies, regardless of the number of distinct parametric triggers that fire. This constraint is foundational to actuarial solvency.
+
+### Oracle & Infrastructure Failures
+
+* **≥2 of 4 oracles are offline simultaneously during a verified disaster:** When a catastrophic event physically damages data infrastructure, the system applies a **"Benefit of Doubt" protocol**: a capped 50% payout is automatically authorized for all active policies in the affected zone if at least 1 oracle confirms the event and 2+ are confirmed offline. Waiting for full oracle consensus during a disaster is a design failure.
+* **UPI/NPCI payment rails go down nationally:** All valid payouts are queued in an immutable ledger and auto-retried with exponential backoff. A Razorpay-held wallet escrow serves as an interim reserve for partners who require immediate liquidity.
+* **Partner's UPI number is compromised via SIM swap:** All payout disbursements are subject to a **6-hour SIM-change cooling period**. Any account with a recent SIM change requires biometric re-confirmation before funds are released.
+
+### Actuarial Safeguards & Reserve Architecture
+
+* **Correlated catastrophic event (cyclone, earthquake) affects >1,000 simultaneous policies:** A mandatory reinsurance treaty is activated for any single event breaching the 1,000-simultaneous-policyholder threshold. This is the capital backstop that prevents catastrophic liquidity events from invalidating all outstanding policies.
+* **Zone-specific loss ratio exceeds 80% for 4 consecutive weeks:** The dynamic pricing engine triggers an automatic premium escalation for that specific zone. Partners in the zone are notified 7 days in advance of premium changes. This is the real-time actuarial feedback loop.
+* **Minimum 90-day reserve requirement:** IRDAI-mandated solvency margins require Continuum to hold a minimum 90-day payout reserve in escrow at all times, held exclusively in RBI-approved low-risk liquid instruments (e.g., Treasury bills, money market funds). Zero equity exposure is permitted on reserve capital.
+
+## Terms and Conditions
+
+The adversarial-risk model has been converted into a formal policy draft here:
+
+* `terms_and_conditions.md`
+
+This draft translates the 100 adversarial failure scenarios into enforceable eligibility, exclusion, anti-fraud, payout, data, and dispute clauses for Continuum's income protection product.
+
+It includes:
+
+* Standard insurance exclusions (war, terrorism, pandemic, nuclear/CBRN categories).
+* Parametric trigger boundaries and non-covered event classes.
+* Financial safeguards tied to reserves, repricing, and reinsurance controls.
+
+For convenience, see exclusion clauses in `terms_and_conditions.md` under `## 9) Exclusions`.
+
+---
+
+## Getting Started
+
+The following sets up the full Continuum stack locally.
+
+### Prerequisites
+
+* [Flutter SDK](https://docs.flutter.dev/get-started/install) >= 3.19
+* Node.js >= 20.x
+* Python >= 3.11
+* PostgreSQL >= 15
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/your-org/continuum.git
+cd continuum
+```
+
+### 2. Backend Setup
+
+```bash
+cd backend
+npm install
+cp .env.example .env   # configure DB and API keys
+npx prisma migrate dev
+npm run dev            # starts REST API on :3000
+```
+
+### 3. Python ML & Oracle Services
+
+```bash
+cd ml
+pip install -r requirements.txt
+uvicorn main:app --reload  # FastAPI pricing/fraud service on :8000
+```
+
+### 4. Flutter App
+
+```bash
+cd mobile
+flutter pub get
+flutter run             # targets connected device or emulator
+```
 
 ---
 
 <div align="center">
-  <em>Proudly crafted for the Devtrails Guidewire Hackathon.</em>
+  <em>Continuum turns income protection from a privilege into a default — available to every delivery partner, activated before they even know they need it. Built for the Devtrails Guidewire Hackathon.</em>
 </div>

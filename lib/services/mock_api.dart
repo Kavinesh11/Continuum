@@ -1,4 +1,4 @@
-import 'claim_model.dart';
+import '../models/claim_model.dart';
 import 'package:flutter/material.dart';
 
 class MockApiService {
