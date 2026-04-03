@@ -1,8 +1,10 @@
 import 'dart:math' as math;
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import '../routes/app_routes.dart';
 import '../data/mock_data.dart';
+import '../theme/app_theme.dart';
 import '../sandbox/driver_provider.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -23,32 +25,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ),
     'Monthly': _TrendSeries(
       labels: [
-        'Jan',
-        'Feb',
-        'Mar',
-        'Apr',
-        'May',
-        'Jun',
-        'Jul',
-        'Aug',
-        'Sep',
-        'Oct',
-        'Nov',
-        'Dec',
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
       ],
       payout: [
-        980,
-        1180,
-        1510,
-        1780,
-        2010,
-        1880,
-        2320,
-        2480,
-        2690,
-        2790,
-        3110,
-        2850,
+        980, 1180, 1510, 1780, 2010, 1880,
+        2320, 2480, 2690, 2790, 3110, 2850,
       ],
       premium: [120, 132, 148, 138, 130, 166, 178, 170, 196, 220, 208, 170],
     ),
@@ -63,79 +45,87 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     final driver = DriverProvider.of(context).driver;
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text(
-          'CONTINUUM',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF008A8A),
-          ),
-        ),
-        backgroundColor: Colors.white,
-        elevation: 0,
+        title: const Text('CONTINUUM'),
         leading: GestureDetector(
           onTap: () => Navigator.pushNamed(context, AppRoutes.profile),
           child: Padding(
             padding: const EdgeInsets.all(12.0),
-            child: CircleAvatar(
-              backgroundColor: const Color(0xFFE8A8A8),
-              child: Text(
-                driver.initials,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
+            child: Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: AppTheme.accentGradient,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.primary.withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: const Center(
+                child: Text(
+                  'PS',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                  ),
                 ),
               ),
             ),
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(
-              Icons.notifications_outlined,
-              color: Colors.black54,
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Theme.of(context).scaffoldBackgroundColor,
             ),
-            onPressed: () {},
+            child: IconButton(
+              icon: Icon(
+                Icons.notifications_outlined,
+                color: AppTheme.textSecondaryOf(context),
+                size: 22,
+              ),
+              onPressed: () {},
+            ),
           ),
         ],
       ),
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(20.0),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildGreeting(),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
               _buildPlanStatusCard(),
               const SizedBox(height: 16),
               _buildTwoPillsRow(),
               const SizedBox(height: 24),
-              const Text(
+              Text(
                 'Quick Actions',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               _buildQuickActions(context),
               const SizedBox(height: 24),
               _buildEarningsTrendSection(),
               const SizedBox(height: 24),
-              const Text(
+              Text(
                 'Recent Activity',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
               ),
               const SizedBox(height: 12),
               _buildRecentActivity(),
-              const SizedBox(height: 40),
+              const SizedBox(height: 32),
             ],
           ),
         ),
@@ -147,18 +137,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Hello, ${MockData.user['fullName']}',
-          style: const TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
-          ),
+        Row(
+          children: [
+            Text(
+              'Hello, ${MockData.user['fullName']} ',
+              style: Theme.of(context).textTheme.headlineMedium,
+            ),
+            const Text('👋', style: TextStyle(fontSize: 22)),
+          ],
         ),
         const SizedBox(height: 4),
-        const Text(
+        Text(
           'Your shift ends in 3 hours. Drive safe!',
-          style: TextStyle(fontSize: 14, color: Colors.black54),
+          style: Theme.of(context).textTheme.bodyMedium,
         ),
       ],
     );
@@ -168,72 +159,162 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF008A8A), Color(0xFF005F5F)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF008A8A).withOpacity(0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
+        gradient: AppTheme.primaryGradient,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        boxShadow: AppTheme.primaryGlow(0.25),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Positioned(
+            right: -20,
+            top: -20,
+            child: Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.06),
+              ),
+            ),
+          ),
+          Positioned(
+            right: 20,
+            bottom: -10,
+            child: Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.04),
+              ),
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'PLAN STATUS',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.7),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.2),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 7,
+                              height: 7,
+                              decoration: BoxDecoration(
+                                color: AppTheme.successGreen,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color:
+                                        AppTheme.successGreen.withOpacity(0.6),
+                                    blurRadius: 6,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            const Text(
+                              'SECURE',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
               const Text(
-                'PLAN STATUS',
+                'Coverage Active',
                 style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white24,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Text(
-                  '✓ SECURE',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
+              const SizedBox(height: 14),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.12),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.calendar_today_rounded,
+                            color: Colors.white.withOpacity(0.7), size: 14),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Next renewal on ${MockData.coverage['nextRenewal']}',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.8),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(Icons.location_on_outlined,
+                      color: Colors.white.withOpacity(0.7), size: 16),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Zone: ${MockData.coverage['zone']}',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.85),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
             ],
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'Coverage Active',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Next renewal on ${MockData.coverage['nextRenewal']}',
-            style: const TextStyle(color: Colors.white70, fontSize: 13),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Zone: ${MockData.coverage['zone']}',
-            style: const TextStyle(color: Colors.white, fontSize: 13),
           ),
         ],
       ),
@@ -244,81 +325,96 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Row(
       children: [
         Expanded(
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.black.withOpacity(0.05)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'CURRENT CLAIM',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black54,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  MockData.currentClaim['status'] as String,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  '2 days ago',
-                  style: TextStyle(fontSize: 12, color: Color(0xFFFF8C00)),
-                ),
-              ],
-            ),
-          ),
-        ),
+            child: _buildInfoPill(
+          label: 'CURRENT CLAIM',
+          value: MockData.currentClaim['status'] as String,
+          subtitle: '2 days ago',
+          subtitleColor: AppTheme.warningOrange,
+          accentColor: AppTheme.warningOrange,
+        )),
         const SizedBox(width: 12),
         Expanded(
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.black.withOpacity(0.05)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Weekly PREMIUM',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black54,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  '57',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF008A8A),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Paid via Autopay',
-                  style: TextStyle(fontSize: 12, color: Colors.black54),
-                ),
-              ],
-            ),
-          ),
-        ),
+            child: _buildInfoPill(
+          label: 'WEEKLY PREMIUM',
+          value: '₹57',
+          subtitle: 'Paid via Autopay',
+          subtitleColor: AppTheme.textSecondaryOf(context),
+          accentColor: AppTheme.primary,
+        )),
       ],
+    );
+  }
+
+  Widget _buildInfoPill({
+    required String label,
+    required String value,
+    required String subtitle,
+    required Color subtitleColor,
+    required Color accentColor,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.cardOf(context),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        boxShadow: AppTheme.softShadowOf(context),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        child: Stack(
+          children: [
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              child: Container(
+                width: 4,
+                decoration: BoxDecoration(
+                  color: accentColor,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(14),
+                    bottomLeft: Radius.circular(14),
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 14, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: AppTheme.textSecondaryOf(context),
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: AppTheme.textPrimaryOf(context),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: subtitleColor,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -328,24 +424,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
       children: [
         _buildActionButton(
           context,
-          Icons.note_add,
+          Icons.note_add_rounded,
           'Apply Claim',
-          const Color(0xFF008A8A),
+          AppTheme.primary,
           AppRoutes.apply,
+          true,
         ),
         _buildActionButton(
           context,
           Icons.description_outlined,
           'View Policy',
-          Colors.grey,
+          AppTheme.primary,
           AppRoutes.policy,
+          true,
         ),
         _buildActionButton(
           context,
-          Icons.track_changes_outlined,
-          'Track Latest Claim',
-          Colors.grey,
+          Icons.track_changes_rounded,
+          'Track Claim',
+          AppTheme.primary,
           AppRoutes.claimStatus,
+          true,
         ),
       ],
     );
@@ -357,39 +456,51 @@ class _DashboardScreenState extends State<DashboardScreen> {
     String label,
     Color color,
     String route,
+    bool isPrimary,
   ) {
     return GestureDetector(
       onTap: () {
-        if (route == AppRoutes.home) {
-          return;
-        }
+        if (route == AppRoutes.home) return;
         Navigator.pushNamed(context, route);
       },
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+              gradient: isPrimary
+                  ? LinearGradient(
+                      colors: [color, color.withOpacity(0.7)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                  : null,
+              color: isPrimary ? null : color.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+              boxShadow: isPrimary
+                  ? [
+                      BoxShadow(
+                        color: color.withOpacity(0.3),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ]
+                  : AppTheme.softShadowOf(context),
             ),
-            child: Icon(icon, color: color, size: 24),
+            child: Icon(
+              icon,
+              color: isPrimary ? Colors.white : color,
+              size: 24,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
             label,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.textPrimaryOf(context),
             ),
           ),
         ],
@@ -401,7 +512,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: const Color(0xFFD4EBEE),
+        color: AppTheme.primary.withOpacity(0.08),
         borderRadius: BorderRadius.circular(24),
       ),
       child: Row(
@@ -420,17 +531,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return GestureDetector(
       onTap: () => setState(() => _selectedTrend = label),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
         margin: const EdgeInsets.symmetric(horizontal: 2),
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? Colors.white : Colors.transparent,
+          color: selected ? AppTheme.cardOf(context) : Colors.transparent,
           borderRadius: BorderRadius.circular(18),
           boxShadow: selected
               ? [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.06),
-                    blurRadius: 6,
+                    color: AppTheme.primary.withOpacity(0.12),
+                    blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
                 ]
@@ -439,9 +551,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Text(
           label,
           style: TextStyle(
-            fontSize: 15,
+            fontSize: 14,
             fontWeight: FontWeight.w700,
-            color: selected ? const Color(0xFF28A3AD) : const Color(0xFF3A6D74),
+            color: selected
+                ? AppTheme.primary
+                : AppTheme.textSecondaryOf(context),
           ),
         ),
       ),
@@ -457,37 +571,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFFF9FBFC),
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: const Color(0xFFCBE9ED), width: 1.4),
+        color: AppTheme.cardOf(context),
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        boxShadow: AppTheme.softShadowOf(context),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'EARNINGS TREND',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1,
-                  color: Color(0xFF527B82),
-                ),
-              ),
-              SizedBox(height: 2),
-              Text(
-                'Payout vs Premium Payment by month',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Color(0xFF6C8D93),
-                  fontWeight: FontWeight.w600,
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'EARNINGS TREND',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1,
+                      color: AppTheme.primary.withOpacity(0.8),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Payout vs Premium Payment',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.textSecondaryOf(context),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           Align(alignment: Alignment.center, child: _buildEarningsTabs()),
           const SizedBox(height: 14),
           const Row(
@@ -501,8 +620,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Container(
             padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
             decoration: BoxDecoration(
-              color: const Color(0xFFE1EFF1),
-              borderRadius: BorderRadius.circular(22),
+              gradient: LinearGradient(
+                colors: [
+                  AppTheme.primary.withOpacity(0.06),
+                  AppTheme.primary.withOpacity(0.03),
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+              borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+              border: Border.all(
+                color: AppTheme.primary.withOpacity(0.08),
+              ),
             ),
             child: Column(
               children: [
@@ -522,9 +651,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           child: Text(
                             month,
                             textAlign: TextAlign.center,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 10,
-                              color: Color(0xFF5B7F86),
+                              color: AppTheme.textSecondaryOf(context),
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -540,15 +669,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               Expanded(
                 child: _buildMetricCard(
-                  title: 'LATEST MONTH PAYOUT',
+                  title: 'LATEST PAYOUT',
                   value: 'INR ${_formatNumber(latestPayout)}',
+                  icon: Icons.trending_up_rounded,
+                  color: const Color(0xFF2FA7B1),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _buildMetricCard(
-                  title: 'LATEST MONTH PREMIUM',
+                  title: 'LATEST PREMIUM',
                   value: 'INR ${_formatNumber(latestPremium)}',
+                  icon: Icons.account_balance_wallet_outlined,
+                  color: const Color(0xFF0F5A61),
                 ),
               ),
             ],
@@ -558,31 +691,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildMetricCard({required String title, required String value}) {
+  Widget _buildMetricCard({
+    required String title,
+    required String value,
+    required IconData icon,
+    required Color color,
+  }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFD1E9ED),
-        borderRadius: BorderRadius.circular(18),
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 11,
-              color: Color(0xFF4F757D),
-              letterSpacing: 0.4,
-              fontWeight: FontWeight.w800,
-            ),
+          Row(
+            children: [
+              Icon(icon, size: 14, color: color),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: color.withOpacity(0.8),
+                    letterSpacing: 0.4,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Text(
             value,
-            style: const TextStyle(
-              fontSize: 20,
-              color: Color(0xFF08373F),
+            style: TextStyle(
+              fontSize: 18,
+              color: color,
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -606,63 +752,102 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildRecentActivity() {
     final activity = MockData.recentActivity as List<Map<String, dynamic>>;
+    final icons = [
+      Icons.bolt_rounded,
+      Icons.payment_rounded,
+      Icons.verified_rounded,
+      Icons.access_time_rounded,
+    ];
+    final colors = [
+      AppTheme.primary,
+      const Color(0xFF6366F1),
+      AppTheme.successGreen,
+      AppTheme.warningOrange,
+    ];
+
     return Column(
       children: activity
+          .asMap()
+          .entries
           .map(
-            (item) => Container(
-              margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.black.withOpacity(0.05)),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF008A8A).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.bolt,
-                      color: Color(0xFF008A8A),
-                      size: 18,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          item['title'] as String,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.black87,
-                          ),
+            (entry) {
+              final idx = entry.key;
+              final item = entry.value;
+              final color = colors[idx % colors.length];
+              final icon = icons[idx % icons.length];
+              return Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                decoration: BoxDecoration(
+                  color: AppTheme.cardOf(context),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                  boxShadow: AppTheme.softShadowOf(context),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                  child: Stack(
+                    children: [
+                      Positioned(
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        child: Container(width: 3.5, color: color),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: color.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(icon, color: color, size: 18),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    item['title'] as String,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppTheme.textPrimaryOf(
+                                          context),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    item['subtitle'] as String,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: AppTheme.textSecondaryOf(
+                                          context),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Text(
+                              item['time'] as String,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: AppTheme.textHintOf(context),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          item['subtitle'] as String,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Colors.black54,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                  Text(
-                    item['time'] as String,
-                    style: const TextStyle(fontSize: 11, color: Colors.black45),
-                  ),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           )
           .toList(),
     );
@@ -680,17 +865,26 @@ class _LegendDot extends StatelessWidget {
     return Row(
       children: [
         Container(
-          width: 12,
-          height: 12,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.4),
+                blurRadius: 4,
+              ),
+            ],
+          ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 6),
         Text(
           label,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF446D74),
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.textSecondaryOf(context),
           ),
         ),
       ],
@@ -722,8 +916,8 @@ class _EarningsTrendPainter extends CustomPainter {
     const minValue = 0.0;
 
     final gridPaint = Paint()
-      ..color = const Color(0xFF93D0D8)
-      ..strokeWidth = 1.2;
+      ..color = const Color(0xFF93D0D8).withOpacity(0.4)
+      ..strokeWidth = 1.0;
 
     for (var i = 0; i < 4; i++) {
       final y = size.height * (i / 3);
@@ -738,13 +932,40 @@ class _EarningsTrendPainter extends CustomPainter {
       minValue,
     );
 
+    final fillPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          const Color(0xFF2FA7B1).withOpacity(0.15),
+          const Color(0xFF2FA7B1).withOpacity(0.0),
+        ],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+
+    final fillPath = Path()..moveTo(payoutPoints.first.dx, size.height);
+    for (final p in payoutPoints) {
+      fillPath.lineTo(p.dx, p.dy);
+    }
+    fillPath.lineTo(payoutPoints.last.dx, size.height);
+    fillPath.close();
+    canvas.drawPath(fillPath, fillPaint);
+
     _drawSeries(canvas, payoutPoints, const Color(0xFF2FA7B1), false);
     _drawSeries(canvas, premiumPoints, const Color(0xFF0F5A61), true);
 
+    final glowPaint = Paint()
+      ..color = const Color(0xFF2FA7B1).withOpacity(0.3)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+    canvas.drawCircle(payoutPoints.last, 8, glowPaint);
+
     final pointPaintPayout = Paint()..color = const Color(0xFF2FA7B1);
     final pointPaintPremium = Paint()..color = const Color(0xFF0F5A61);
-    canvas.drawCircle(payoutPoints.last, 6, pointPaintPayout);
-    canvas.drawCircle(premiumPoints.last, 6, pointPaintPremium);
+    canvas.drawCircle(payoutPoints.last, 5, pointPaintPayout);
+    canvas.drawCircle(premiumPoints.last, 5, pointPaintPremium);
+
+    final whiteDot = Paint()..color = Colors.white;
+    canvas.drawCircle(payoutPoints.last, 2.5, whiteDot);
+    canvas.drawCircle(premiumPoints.last, 2.5, whiteDot);
   }
 
   List<Offset> _createPoints(
@@ -776,7 +997,7 @@ class _EarningsTrendPainter extends CustomPainter {
   ) {
     final paint = Paint()
       ..color = color
-      ..strokeWidth = 4
+      ..strokeWidth = 3
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
 
@@ -800,9 +1021,7 @@ class _EarningsTrendPainter extends CustomPainter {
     final dx = end.dx - start.dx;
     final dy = end.dy - start.dy;
     final distance = math.sqrt((dx * dx) + (dy * dy));
-    if (distance == 0) {
-      return;
-    }
+    if (distance == 0) return;
     final dashCount = (distance / (dashWidth + dashSpace)).floor();
 
     for (var i = 0; i < dashCount; i++) {

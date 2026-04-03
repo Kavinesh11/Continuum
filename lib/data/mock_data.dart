@@ -135,4 +135,68 @@ class MockData {
       'time': '1d ago',
     },
   ];
+
+  static const subscriptionPlan = {
+    'planName': 'Comprehensive Shield',
+    'weeklyCost': 57,
+    'billingCycle': 'Weekly',
+    'nextBillingDate': 'Apr 09, 2026',
+    'autoPay': true,
+    'coverage': 'Accident + Weather + App Outage',
+  };
+
+  static const paymentMethods = [
+    {
+      'id': 'upi_1',
+      'type': 'UPI',
+      'label': 'partha@oksbi',
+      'icon': 'account_balance',
+      'isDefault': true,
+    },
+    {
+      'id': 'card_1',
+      'type': 'Card',
+      'label': '•••• •••• •••• 4821',
+      'icon': 'credit_card',
+      'isDefault': false,
+    },
+    {
+      'id': 'upi_2',
+      'type': 'UPI',
+      'label': 'partha@paytm',
+      'icon': 'account_balance',
+      'isDefault': false,
+    },
+  ];
+
+  static const paymentHistory = [
+    {
+      'id': 'TXN-90281',
+      'date': 'Mar 26, 2026',
+      'amount': 57,
+      'method': 'UPI • partha@oksbi',
+      'status': 'Success',
+    },
+    {
+      'id': 'TXN-89102',
+      'date': 'Mar 19, 2026',
+      'amount': 57,
+      'method': 'UPI • partha@oksbi',
+      'status': 'Success',
+    },
+    {
+      'id': 'TXN-87934',
+      'date': 'Mar 12, 2026',
+      'amount': 57,
+      'method': 'Card • ••4821',
+      'status': 'Success',
+    },
+    {
+      'id': 'TXN-86011',
+      'date': 'Mar 05, 2026',
+      'amount': 57,
+      'method': 'UPI • partha@oksbi',
+      'status': 'Failed',
+    },
+  ];
 }

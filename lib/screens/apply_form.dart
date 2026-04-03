@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
@@ -5,6 +6,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
 import '../data/mock_data.dart';
 import '../routes/app_routes.dart';
+import '../theme/app_theme.dart';
 
 class ApplyFormScreen extends StatefulWidget {
   const ApplyFormScreen({Key? key}) : super(key: key);
@@ -20,8 +22,8 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
   final AudioRecorder _audioRecorder = AudioRecorder();
   final ImagePicker _imagePicker = ImagePicker();
   bool _isRecording = false;
-  String? _audioPath;
-  XFile? _capturedPhoto;
+  List<String> _audioPaths = [];
+  List<XFile> _capturedPhotos = [];
 
   @override
   void initState() {
@@ -42,51 +44,120 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        title: const Text('CONTINUUM Claim', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
-        centerTitle: true,
-        backgroundColor: Colors.white,
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('New Claim')),
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(20.0),
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Tell us about your incident',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+              _buildStepIndicator(),
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppTheme.primary.withOpacity(0.06),
+                      AppTheme.primary.withOpacity(0.02),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                  border: Border.all(
+                    color: AppTheme.primary.withOpacity(0.1),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.description_outlined,
+                          color: AppTheme.primary, size: 22),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Tell us about your incident',
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.textPrimaryOf(context),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Share key details and capture live evidence.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppTheme.textSecondaryOf(context),
+                              height: 1.3,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(height: 22),
+              _buildSectionLabel(
+                  Icons.help_outline_rounded, 'Reason for Claim'),
               const SizedBox(height: 8),
-              const Text(
-                'We are here to support your claim quickly.\nShare key details and capture live evidence in-app.',
-                style: TextStyle(fontSize: 13, color: Colors.black54),
-              ),
-              const SizedBox(height: 24),
               _buildReasonDropdown(),
-              const SizedBox(height: 16),
+              const SizedBox(height: 18),
+              _buildSectionLabel(
+                  Icons.calendar_today_rounded, 'Date of Occurrence'),
+              const SizedBox(height: 8),
               _buildDateField(),
-              const SizedBox(height: 16),
+              const SizedBox(height: 18),
+              _buildSectionLabel(Icons.notes_rounded, 'Brief Description'),
+              const SizedBox(height: 8),
               _buildDescriptionField(),
-              const SizedBox(height: 16),
+              const SizedBox(height: 18),
               _buildPhotoCaptureCard(),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               _buildAudioOption(),
-              const SizedBox(height: 24),
-              SizedBox(
+              const SizedBox(height: 28),
+              Container(
                 width: double.infinity,
+                decoration: BoxDecoration(
+                  gradient: AppTheme.primaryGradient,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                  boxShadow: AppTheme.primaryGlow(0.25),
+                ),
                 child: ElevatedButton(
                   onPressed: _submitForm,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF008A8A),
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius:
+                          BorderRadius.circular(AppTheme.radiusMd),
+                    ),
                   ),
-                  child: const Text(
-                    'Submit Claim',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.send_rounded,
+                          color: Colors.white, size: 18),
+                      SizedBox(width: 10),
+                      Text(
+                        'Submit Claim',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -98,133 +169,199 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
     );
   }
 
-  Widget _buildReasonDropdown() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Reason for Claim', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87)),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+  Widget _buildStepIndicator() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(3, (i) {
+        final isActive = i == 0;
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          width: isActive ? 28 : 8,
+          height: 8,
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.black.withOpacity(0.1)),
+            color: isActive
+                ? AppTheme.primary
+                : AppTheme.primary.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(4),
           ),
-          child: DropdownButton<String>(
-            value: _selectedReason,
-            isExpanded: true,
-            underline: Container(),
-            items: (MockData.applyDefaults['reasons'] as List)
-                .cast<String>()
-                .map((reason) => DropdownMenuItem(value: reason, child: Text(reason)))
-                .toList(),
-            onChanged: (newValue) {
-              setState(() => _selectedReason = newValue!);
-            },
+        );
+      }),
+    );
+  }
+
+  Widget _buildSectionLabel(IconData icon, String text) {
+    return Row(
+      children: [
+        Icon(icon, color: AppTheme.primary, size: 16),
+        const SizedBox(width: 8),
+        Text(
+          text,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: AppTheme.textPrimaryOf(context),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildReasonDropdown() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: AppTheme.cardDecorationOf(context),
+      child: DropdownButton<String>(
+        value: _selectedReason,
+        isExpanded: true,
+        underline: Container(),
+        dropdownColor: AppTheme.cardOf(context),
+        icon: Icon(Icons.keyboard_arrow_down_rounded,
+            color: AppTheme.textSecondaryOf(context)),
+        style: TextStyle(
+          color: AppTheme.textPrimaryOf(context),
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+        ),
+        items: (MockData.applyDefaults['reasons'] as List)
+            .cast<String>()
+            .map((reason) =>
+                DropdownMenuItem(value: reason, child: Text(reason)))
+            .toList(),
+        onChanged: (newValue) {
+          setState(() => _selectedReason = newValue!);
+        },
+      ),
     );
   }
 
   Widget _buildDateField() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Date of occurrence', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87)),
-        const SizedBox(height: 8),
-        TextField(
-          controller: _dateController,
-          readOnly: true,
-          onTap: () async {
-            final pickedDate = await showDatePicker(
-              context: context,
-              initialDate: DateTime.now(),
-              firstDate: DateTime(2020),
-              lastDate: DateTime.now(),
-            );
-            if (pickedDate != null) {
-              _dateController.text = '${pickedDate.day}/${pickedDate.month}/${pickedDate.year}';
-            }
-          },
-          decoration: InputDecoration(
-            hintText: MockData.applyDefaults['dateHint'] as String,
-            suffixIcon: const Icon(Icons.calendar_today, color: Colors.black54),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-            filled: true,
-            fillColor: Colors.white,
-            contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.black.withOpacity(0.1)),
-            ),
-          ),
+    return TextField(
+      controller: _dateController,
+      readOnly: true,
+      onTap: () async {
+        final pickedDate = await showDatePicker(
+          context: context,
+          initialDate: DateTime.now(),
+          firstDate: DateTime(2020),
+          lastDate: DateTime.now(),
+        );
+        if (pickedDate != null) {
+          _dateController.text =
+              '${pickedDate.day}/${pickedDate.month}/${pickedDate.year}';
+        }
+      },
+      decoration: InputDecoration(
+        hintText: MockData.applyDefaults['dateHint'] as String,
+        suffixIcon: Container(
+          margin: const EdgeInsets.only(right: 8),
+          child: const Icon(Icons.calendar_today_rounded,
+              color: AppTheme.primary, size: 18),
         ),
-      ],
+      ),
     );
   }
 
   Widget _buildDescriptionField() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Brief description', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87)),
-        const SizedBox(height: 8),
-        TextField(
-          controller: _descriptionController,
-          maxLines: 4,
-          decoration: InputDecoration(
-            hintText: 'Describe what happened...',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-            filled: true,
-            fillColor: Colors.white,
-            contentPadding: const EdgeInsets.all(16),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.black.withOpacity(0.1)),
-            ),
-          ),
-        ),
-      ],
+    return TextField(
+      controller: _descriptionController,
+      maxLines: 4,
+      decoration: const InputDecoration(
+        hintText: 'Describe what happened...',
+      ),
     );
   }
 
   Widget _buildPhotoCaptureCard() {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.black.withOpacity(0.1)),
-      ),
+      decoration: AppTheme.cardDecorationOf(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Live photo evidence', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87)),
-          const SizedBox(height: 10),
           Row(
             children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _capturePhoto,
-                  icon: const Icon(Icons.camera_alt, color: Color(0xFF008A8A), size: 18),
-                  label: Text(
-                    _capturedPhoto == null ? 'Take Photo' : 'Retake Photo',
-                    style: const TextStyle(color: Color(0xFF008A8A), fontWeight: FontWeight.w600),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFF008A8A)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.camera_alt_rounded,
+                    color: AppTheme.primary, size: 18),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Live photo evidence',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textPrimaryOf(context),
                 ),
               ),
             ],
           ),
-          if (_capturedPhoto != null) ...[
-            const SizedBox(height: 8),
-            const Text('Photo captured', style: TextStyle(fontSize: 12, color: Colors.green, fontWeight: FontWeight.w600)),
-          ],
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              ..._capturedPhotos.asMap().entries.map((entry) {
+                final int index = entry.key;
+                final XFile file = entry.value;
+                return Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      width: 70,
+                      height: 70,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                            color: AppTheme.primary.withOpacity(0.2)),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(11),
+                        child: kIsWeb
+                            ? Image.network(file.path, fit: BoxFit.cover)
+                            : Image.file(File(file.path), fit: BoxFit.cover),
+                      ),
+                    ),
+                    Positioned(
+                      right: -6,
+                      top: -6,
+                      child: GestureDetector(
+                        onTap: () => setState(() => _capturedPhotos.removeAt(index)),
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.cancel_rounded,
+                              color: AppTheme.dangerRed, size: 20),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              }).toList(),
+              GestureDetector(
+                onTap: _capturePhoto,
+                child: Container(
+                  width: 70,
+                  height: 70,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                        color: AppTheme.primary.withOpacity(0.3), width: 1.5),
+                  ),
+                  child: const Icon(Icons.add_a_photo_rounded,
+                      color: AppTheme.primary, size: 24),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -233,44 +370,139 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
   Widget _buildAudioOption() {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.black.withOpacity(0.1)),
-      ),
+      decoration: AppTheme.cardDecorationOf(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Row(
-                children: [
-                  Icon(Icons.mic, color: Color(0xFF008A8A), size: 20),
-                  SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Audio statement (optional)', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87)),
-                      Text('Use device microphone', style: TextStyle(fontSize: 11, color: Colors.black54)),
-                    ],
-                  ),
-                ],
-              ),
-              FilledButton.icon(
-                onPressed: _toggleRecording,
-                style: FilledButton.styleFrom(
-                  backgroundColor: _isRecording ? Colors.red : const Color(0xFF008A8A),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _isRecording
+                      ? AppTheme.dangerRed.withOpacity(0.1)
+                      : AppTheme.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                icon: Icon(_isRecording ? Icons.stop : Icons.mic, size: 16),
-                label: Text(_isRecording ? 'Stop' : 'Record'),
+                child: Icon(
+                  Icons.mic_rounded,
+                  color:
+                      _isRecording ? AppTheme.dangerRed : AppTheme.primary,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Audio statement',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.textPrimaryOf(context),
+                      ),
+                    ),
+                    Text(
+                      'Optional • Use device microphone',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppTheme.textSecondaryOf(context),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                decoration: BoxDecoration(
+                  gradient: _isRecording
+                      ? const LinearGradient(
+                          colors: [Color(0xFFEF4444), Color(0xFFDC2626)])
+                      : AppTheme.accentGradient,
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: (_isRecording
+                              ? AppTheme.dangerRed
+                              : AppTheme.primary)
+                          .withOpacity(0.25),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: ElevatedButton.icon(
+                  onPressed: _toggleRecording,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 8),
+                    minimumSize: Size.zero,
+                  ),
+                  icon: Icon(
+                    _isRecording ? Icons.stop_rounded : Icons.mic_rounded,
+                    size: 16,
+                    color: Colors.white,
+                  ),
+                  label: Text(
+                    _isRecording ? 'Stop' : 'Record',
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13),
+                  ),
+                ),
               ),
             ],
           ),
-          if (_audioPath != null) ...[
-            const SizedBox(height: 8),
-            const Text('Audio captured', style: TextStyle(fontSize: 12, color: Colors.green, fontWeight: FontWeight.w600)),
+          if (_audioPaths.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Column(
+              children: _audioPaths.asMap().entries.map((entry) {
+                int i = entry.key;
+                return Container(
+                  margin: const EdgeInsets.only(top: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppTheme.successGreen.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppTheme.successGreen.withOpacity(0.15)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.check_circle_rounded,
+                          color: AppTheme.successGreen, size: 16),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Audio note ${i + 1} captured',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppTheme.successGreen,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => setState(() => _audioPaths.removeAt(i)),
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.delete_outline_rounded,
+                              color: AppTheme.dangerRed, size: 16),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
           ],
         ],
       ),
@@ -278,9 +510,17 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
   }
 
   void _submitForm() {
-    if (_selectedReason == 'Select a reason' || _dateController.text.isEmpty || _descriptionController.text.isEmpty) {
+    if (_selectedReason == 'Select a reason' ||
+        _dateController.text.isEmpty ||
+        _descriptionController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill all required fields')),
+        SnackBar(
+          content: const Text('Please fill all required fields'),
+          backgroundColor: AppTheme.dangerRed,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10)),
+        ),
       );
       return;
     }
@@ -288,17 +528,61 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
-        title: const Text('Claim Submitted'),
-        content: const Text('Your claim has been submitted successfully. Check the Status Tracker to monitor progress.'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              Navigator.pushReplacementNamed(context, AppRoutes.claimStatus);
-            },
-            child: const Text('Done', style: TextStyle(color: Color(0xFF008A8A), fontWeight: FontWeight.bold)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusLg)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppTheme.successGreen.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.check_circle_rounded,
+                  color: AppTheme.successGreen, size: 22),
+            ),
+            const SizedBox(width: 12),
+            const Text(
+              'Claim Submitted',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
+            ),
+          ],
+        ),
+        content: Text(
+          'Your claim has been submitted successfully. Check the Status Tracker to monitor progress.',
+          style: TextStyle(
+            color: AppTheme.textSecondaryOf(context),
+            height: 1.4,
           ),
+        ),
+        actions: [
+          Container(
+            decoration: BoxDecoration(
+              gradient: AppTheme.accentGradient,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                Navigator.pushReplacementNamed(
+                    context, AppRoutes.claimStatus);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+              child: const Text(
+                'Done',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+
         ],
       ),
     );
@@ -310,15 +594,18 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
       if (!cameraStatus.isGranted) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Camera permission is required to take photo evidence')),
+          const SnackBar(
+              content: Text(
+                  'Camera permission is required to take photo evidence')),
         );
         return;
       }
     }
 
-    final photo = await _imagePicker.pickImage(source: ImageSource.camera, imageQuality: 75);
+    final photo = await _imagePicker.pickImage(
+        source: ImageSource.camera, imageQuality: 75);
     if (photo != null && mounted) {
-      setState(() => _capturedPhoto = photo);
+      setState(() => _capturedPhotos.add(photo));
     }
   }
 
@@ -328,23 +615,16 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
       if (!mounted) return;
       setState(() {
         _isRecording = false;
-        _audioPath = path;
+        if (path != null) {
+          _audioPaths.add(path);
+        }
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(path == null ? 'Recording stopped' : 'Audio captured')),
+        SnackBar(
+            content: Text(
+                path == null ? 'Recording stopped' : 'Audio captured')),
       );
       return;
-    }
-
-    if (!kIsWeb) {
-      final micStatus = await Permission.microphone.request();
-      if (!micStatus.isGranted) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Microphone permission is required to record audio')),
-        );
-        return;
-      }
     }
 
     final hasPermission = await _audioRecorder.hasPermission();
@@ -356,11 +636,17 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
       return;
     }
 
-    await _audioRecorder.start(const RecordConfig(), path: 'claim_audio_note.m4a');
+    String path = 'claim_audio_note_${DateTime.now().millisecondsSinceEpoch}.m4a';
+    if (!kIsWeb) {
+      path = '${Directory.systemTemp.path}/$path';
+    }
+
+    await _audioRecorder.start(const RecordConfig(), path: path);
     if (!mounted) return;
     setState(() => _isRecording = true);
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Recording started')),
     );
   }
+
 }
