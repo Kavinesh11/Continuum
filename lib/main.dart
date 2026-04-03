@@ -8,6 +8,8 @@ import 'screens/profile.dart';
 import 'screens/apply_form.dart';
 import 'screens/policy.dart';
 import 'screens/status_tracker.dart';
+import 'sandbox/driver_provider.dart';
+import 'sandbox/sandbox_selector_screen.dart';
 
 void main() {
   usePathUrlStrategy();
@@ -23,23 +25,26 @@ class ContinuumApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Continuum',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueAccent),
-        useMaterial3: true,
-        fontFamily: 'Roboto',
+    return DriverProviderRoot(
+      child: MaterialApp(
+        title: 'Continuum',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueAccent),
+          useMaterial3: true,
+          fontFamily: 'Roboto',
+        ),
+        initialRoute: AppRoutes.login,
+        routes: {
+          AppRoutes.login: (context) => const LoginScreen(),
+          AppRoutes.sandboxSelect: (context) => const SandboxSelectorScreen(),
+          AppRoutes.home: (context) => const HomeShell(),
+          AppRoutes.apply: (context) => const ApplyFormScreen(),
+          AppRoutes.claimStatus: (context) => const StatusTrackerScreen(),
+          AppRoutes.profile: (context) => const ProfileScreen(),
+          AppRoutes.policy: (context) => const PolicyScreen(),
+        },
       ),
-      initialRoute: AppRoutes.login,
-      routes: {
-        AppRoutes.login: (context) => const LoginScreen(),
-        AppRoutes.home: (context) => const HomeShell(),
-        AppRoutes.apply: (context) => const ApplyFormScreen(),
-        AppRoutes.claimStatus: (context) => const StatusTrackerScreen(),
-        AppRoutes.profile: (context) => const ProfileScreen(),
-        AppRoutes.policy: (context) => const PolicyScreen(),
-      },
     );
   }
 }
