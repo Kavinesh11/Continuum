@@ -4,33 +4,62 @@ import '../routes/app_routes.dart';
 import '../data/mock_data.dart';
 import '../theme/app_theme.dart';
 import '../main.dart';
+import '../sandbox/driver_provider.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final user = MockData.user as Map<String, dynamic>;
-    final stats = MockData.profileStats as Map<String, dynamic>;
-    final history = MockData.profileHistory as List;
+    final driver = DriverProvider.of(context).driver;
     return Scaffold(
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildGradientHeader(context, user),
+            _buildGradientHeader(
+              context,
+              driver.fullName,
+              driver.initials,
+              'Delivery Partner',
+              driver.city,
+              driver.memberSince,
+              driver.tier,
+            ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildStatsPills(context, stats),
+                  _buildStatsPills(
+                    context,
+                    '₹ ${driver.totalProtected.toStringAsFixed(0)}',
+                    driver.claimsApproved,
+                  ),
                   const SizedBox(height: 24),
-                  _buildPersonalData(context, user),
+                  _buildPersonalData(
+                    context,
+                    driver.phone,
+                    driver.platform,
+                    driver.emergencyContact,
+                    driver.zone,
+                  ),
+                  const SizedBox(height: 24),
+                  _buildOrderSummary(
+                    driver.weeklyOrderCount,
+                    driver.weeklyEarnings,
+                    driver.completionRate,
+                  ),
+                  const SizedBox(height: 24),
+                  _buildLocationSection(
+                    driver.currentLocation.address,
+                    driver.currentLocation.zone,
+                    driver.locationHistory.length,
+                  ),
                   const SizedBox(height: 24),
                   _buildQuickLinks(context),
                   const SizedBox(height: 24),
-                  _buildHistorySection(context, history),
+                  _buildHistorySection(context, MockData.profileHistory as List),
                   const SizedBox(height: 24),
                   _buildSignOutButton(context),
                   const SizedBox(height: 20),
@@ -44,7 +73,14 @@ class ProfileScreen extends StatelessWidget {
   }
 
   Widget _buildGradientHeader(
-      BuildContext context, Map<String, dynamic> user) {
+    BuildContext context,
+    String name,
+    String initials,
+    String role,
+    String city,
+    String since,
+    String tier,
+  ) {
     return Container(
       padding: EdgeInsets.fromLTRB(
           20, MediaQuery.of(context).padding.top + 16, 20, 24),
@@ -86,30 +122,47 @@ class ProfileScreen extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.12),
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.2),
-                            ),
+                            border: Border.all(color: Colors.white.withOpacity(0.2)),
                           ),
-                          child: const Icon(
-                            Icons.arrow_back_ios_new_rounded,
-                            color: Colors.white,
-                            size: 18,
-                          ),
+                          child: const Icon(Icons.arrow_back_ios_new_rounded,
+                              color: Colors.white, size: 18),
                         ),
                       ),
                     ),
                   ),
-                  const Text(
-                    'Profile',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                    ),
+                  Column(
+                    children: [
+                      const Text(
+                        'Profile',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      // Sandbox badge in header
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: Colors.amber.withOpacity(0.4)),
+                        ),
+                        child: Text(
+                          '🧪 SANDBOX — $tier tier',
+                          style: const TextStyle(
+                            color: Colors.amber,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   GestureDetector(
-                    onTap: () => Navigator.pushNamed(
-                        context, AppRoutes.editProfile),
+                    onTap: () => Navigator.pushNamed(context, AppRoutes.editProfile),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(10),
                       child: BackdropFilter(
@@ -119,15 +172,10 @@ class ProfileScreen extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.12),
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.2),
-                            ),
+                            border: Border.all(color: Colors.white.withOpacity(0.2)),
                           ),
-                          child: const Icon(
-                            Icons.edit_rounded,
-                            color: Colors.white,
-                            size: 18,
-                          ),
+                          child: const Icon(Icons.edit_rounded,
+                              color: Colors.white, size: 18),
                         ),
                       ),
                     ),
@@ -144,9 +192,7 @@ class ProfileScreen extends StatelessWidget {
                       shape: BoxShape.circle,
                       color: Colors.white.withOpacity(0.2),
                       border: Border.all(
-                        color: Colors.white.withOpacity(0.4),
-                        width: 3,
-                      ),
+                          color: Colors.white.withOpacity(0.4), width: 3),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.15),
@@ -155,8 +201,16 @@ class ProfileScreen extends StatelessWidget {
                         ),
                       ],
                     ),
-                    child: const Icon(Icons.person,
-                        color: Colors.white, size: 32),
+                    child: Center(
+                      child: Text(
+                        initials,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 20,
+                        ),
+                      ),
+                    ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -164,7 +218,7 @@ class ProfileScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          user['fullName'] as String,
+                          name,
                           style: const TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w800,
@@ -173,7 +227,7 @@ class ProfileScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '${user['role']} • ${user['city']}',
+                          '$role • $city',
                           style: TextStyle(
                             fontSize: 13,
                             color: Colors.white.withOpacity(0.7),
@@ -192,11 +246,10 @@ class ProfileScreen extends StatelessWidget {
                                 color: Colors.white.withOpacity(0.12),
                                 borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
-                                  color: Colors.white.withOpacity(0.18),
-                                ),
+                                    color: Colors.white.withOpacity(0.18)),
                               ),
                               child: Text(
-                                'Since ${user['memberSince']}',
+                                'Since $since',
                                 style: TextStyle(
                                   fontSize: 11,
                                   color: Colors.white.withOpacity(0.8),
@@ -219,7 +272,7 @@ class ProfileScreen extends StatelessWidget {
   }
 
   Widget _buildStatsPills(
-      BuildContext context, Map<String, dynamic> stats) {
+      BuildContext context, String totalProtected, int claimsApproved) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -234,24 +287,18 @@ class ProfileScreen extends StatelessWidget {
         const SizedBox(height: 12),
         Row(
           children: [
-            Expanded(
-              child: _buildStatCard(
-                context: context,
-                label: 'Total Protected',
-                value: '₹ ${stats['totalProtected']}',
-                icon: Icons.shield_outlined,
-                color: AppTheme.primary,
-              ),
+            _StatCard(
+              label: 'Total Protected',
+              value: totalProtected,
+              icon: Icons.shield_outlined,
+              color: AppTheme.primary,
             ),
             const SizedBox(width: 12),
-            Expanded(
-              child: _buildStatCard(
-                context: context,
-                label: 'Claims Approved',
-                value: stats['claimsApproved'].toString(),
-                icon: Icons.check_circle_outline,
-                color: AppTheme.successGreen,
-              ),
+            _StatCard(
+              label: 'Claims Approved',
+              value: '$claimsApproved',
+              icon: Icons.check_circle_outline,
+              color: AppTheme.successGreen,
             ),
           ],
         ),
@@ -259,68 +306,246 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatCard({
-    required BuildContext context,
-    required String label,
-    required String value,
-    required IconData icon,
-    required Color color,
-  }) {
+  Widget _buildPersonalData(
+    BuildContext context,
+    String phone,
+    String platform,
+    String emergency,
+    String zone,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Personal Data',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: AppTheme.textPrimaryOf(context),
+          ),
+        ),
+        const SizedBox(height: 12),
+        _buildDataRow(context, Icons.phone_outlined, 'Phone', phone),
+        const SizedBox(height: 8),
+        _buildDataRow(context, Icons.delivery_dining_outlined, 'Platform', platform),
+        const SizedBox(height: 8),
+        _buildDataRow(context, Icons.location_on_outlined, 'Zone', zone),
+        const SizedBox(height: 8),
+        _buildDataRow(context, Icons.emergency_outlined, 'Emergency Contact', emergency),
+      ],
+    );
+  }
+
+  Widget _buildDataRow(
+      BuildContext context, IconData icon, String label, String value) {
     return Container(
+      padding: const EdgeInsets.all(14),
       decoration: AppTheme.cardDecorationOf(context),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        child: Stack(
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppTheme.primary.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: AppTheme.primary, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                color: AppTheme.textSecondaryOf(context),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.textPrimaryOf(context),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOrderSummary(int count, double earnings, double rate) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "This Week's Orders",
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
           children: [
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: Container(
-                height: 3.5,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [color, color.withOpacity(0.3)],
+            _StatCard(
+              label: 'Orders',
+              value: '$count',
+              icon: Icons.receipt_long_outlined,
+              color: AppTheme.primary,
+            ),
+            const SizedBox(width: 12),
+            _StatCard(
+              label: 'Earnings',
+              value: '₹${earnings.toStringAsFixed(0)}',
+              icon: Icons.account_balance_wallet_outlined,
+              color: AppTheme.successGreen,
+            ),
+            const SizedBox(width: 12),
+            _StatCard(
+              label: 'Completion',
+              value: '${(rate * 100).toStringAsFixed(0)}%',
+              icon: Icons.task_alt_outlined,
+              color: AppTheme.primary,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLocationSection(String address, String zone, int pingCount) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Current Location',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.black.withOpacity(0.05)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.location_on, color: AppTheme.primary, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      address,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    Text(
+                      zone,
+                      style: const TextStyle(fontSize: 12, color: Colors.black54),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                '$pingCount pings',
+                style: const TextStyle(fontSize: 12, color: Colors.black38),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+
+  const _StatCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        decoration: AppTheme.cardDecorationOf(context),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+          child: Stack(
+            children: [
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  height: 3.5,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [color, color.withOpacity(0.3)],
+                    ),
                   ),
                 ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(icon, size: 14, color: color),
-                      const SizedBox(width: 6),
-                      Text(
-                        label,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.textSecondaryOf(context),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(icon, size: 14, color: color),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            label,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.textSecondaryOf(context),
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    value,
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: AppTheme.textPrimaryOf(context),
+                      ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 8),
+                    Text(
+                      value,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.textPrimaryOf(context),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
+}
 
   Widget _buildPersonalData(
       BuildContext context, Map<String, dynamic> user) {
@@ -715,6 +940,41 @@ class ProfileScreen extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _DataRow extends StatelessWidget {
+  final String label;
+  final String value;
+  const _DataRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.black.withOpacity(0.05)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(fontSize: 13, color: Colors.black54),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+        ],
       ),
     );
   }

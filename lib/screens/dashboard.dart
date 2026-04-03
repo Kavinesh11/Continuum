@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../routes/app_routes.dart';
 import '../data/mock_data.dart';
 import '../theme/app_theme.dart';
+import '../sandbox/driver_provider.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({Key? key}) : super(key: key);
@@ -42,6 +43,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final driver = DriverProvider.of(context).driver;
     return Scaffold(
       appBar: AppBar(
         title: const Text('CONTINUUM'),
