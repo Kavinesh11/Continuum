@@ -41,20 +41,20 @@ pub async fn check_frequency(pool: &PgPool, worker_id: Uuid) -> Result<Frequency
 }
 
 async fn run_frequency_query(pool: &PgPool, worker_id: Uuid) -> Result<FrequencyResult> {
-    let row = sqlx::query!(
+    let count: i64 = sqlx::query_scalar(
         r#"
-        SELECT COUNT(*) AS "count!"
+        SELECT COUNT(*)
         FROM claims
         WHERE worker_id = $1
           AND status IN ('auto_approved', 'approved')
           AND submitted_at > NOW() - INTERVAL '90 days'
         "#,
-        worker_id
     )
+    .bind(worker_id)
     .fetch_one(pool)
     .await?;
 
-    let claims_90d = row.count;
+    let claims_90d = count;
     let velocity_cap_exceeded = claims_90d > 3;
     let score = if velocity_cap_exceeded { 0.0 } else { 1.0 };
 

@@ -5,7 +5,7 @@
 use crate::models::GpsPoint;
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
-use tracing::{error, warn};
+use tracing::warn;
 use uuid::Uuid;
 
 /// Result of all GPS spoofing prevention checks
@@ -135,23 +135,22 @@ async fn check_soak_period(
 
     // Verify all points are within the zone polygon using PostGIS ST_Contains
     for point in &window_points {
-        let in_zone = sqlx::query_scalar!(
+        let in_zone: Option<bool> = sqlx::query_scalar(
             r#"
             SELECT ST_Contains(z.polygon, ST_SetSRID(ST_Point($1, $2), 4326))
             FROM zones z
             WHERE z.zone_id = $3
             "#,
-            point.lon,
-            point.lat,
-            zone_id
         )
+        .bind(point.lon)
+        .bind(point.lat)
+        .bind(zone_id)
         .fetch_optional(pool)
         .await
         .unwrap_or(None)
-        .flatten()
-        .unwrap_or(false);
+        .flatten();
 
-        if !in_zone {
+        if !in_zone.unwrap_or(false) {
             warn!(
                 lat = point.lat,
                 lon = point.lon,

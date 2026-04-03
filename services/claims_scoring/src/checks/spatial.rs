@@ -1,7 +1,6 @@
 use anyhow::Result;
 use sqlx::PgPool;
 use tracing::{error, info};
-use uuid::Uuid;
 
 /// Result of the spatial zone check
 #[derive(Debug, Clone)]
@@ -48,8 +47,13 @@ pub async fn check_spatial(
 }
 
 async fn run_spatial_query(pool: &PgPool, zone_id: &str, lat: f64, lon: f64) -> Result<SpatialResult> {
-    // Query checks both ST_Contains and ST_DWithin (2km = 2000 metres in geography)
-    let row = sqlx::query!(
+    #[derive(sqlx::FromRow)]
+    struct SpatialRow {
+        within_zone: Option<bool>,
+        within_buffer: Option<bool>,
+    }
+
+    let row: Option<SpatialRow> = sqlx::query_as(
         r#"
         SELECT
             ST_Contains(z.polygon, ST_SetSRID(ST_Point($1, $2), 4326)) AS within_zone,
@@ -61,10 +65,10 @@ async fn run_spatial_query(pool: &PgPool, zone_id: &str, lat: f64, lon: f64) -> 
         FROM zones z
         WHERE z.zone_id = $3
         "#,
-        lon,  // ST_Point takes (lon, lat)
-        lat,
-        zone_id
     )
+    .bind(lon)
+    .bind(lat)
+    .bind(zone_id)
     .fetch_optional(pool)
     .await?;
 

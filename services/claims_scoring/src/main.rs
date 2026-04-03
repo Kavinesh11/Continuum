@@ -1,5 +1,6 @@
 mod attestation;
 mod checks;
+#[cfg(feature = "kafka")]
 mod kafka_publisher;
 mod metrics;
 mod models;
@@ -14,7 +15,9 @@ use axum::{
     Json, Router,
 };
 use chrono::Utc;
-use models::{ClaimDecisionEvent, ClaimStatus, ScoreRequest, ScoreResponse};
+use models::{ClaimStatus, ScoreRequest, ScoreResponse};
+#[cfg(feature = "kafka")]
+use models::ClaimDecisionEvent;
 use scoring::ScoringInputs;
 use sqlx::PgPool;
 use std::sync::Arc;
@@ -228,6 +231,8 @@ async fn process_claim(pool: &PgPool, req: ScoreRequest) -> anyhow::Result<Score
     }
 
     // ── Step 7: Publish claim_decision to Kafka ──
+    #[cfg(feature = "kafka")]
+    {
     let event = ClaimDecisionEvent {
         claim_id: response.claim_id,
         worker_id: req.worker_id,
@@ -243,6 +248,7 @@ async fn process_claim(pool: &PgPool, req: ScoreRequest) -> anyhow::Result<Score
             error = %e,
             "Failed to publish claim_decision to Kafka"
         );
+    }
     }
 
     info!(
