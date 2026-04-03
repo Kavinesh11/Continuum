@@ -1,0 +1,13 @@
+D:/Continuum/services/claims_scoring/target/debug/build/rdkafka-sys-a0b3c5d0c382891e/out/lib/cmake/RdKafka/RdKafkaConfig.cmake
+D:/Continuum/services/claims_scoring/target/debug/build/rdkafka-sys-a0b3c5d0c382891e/out/lib/cmake/RdKafka/RdKafkaConfigVersion.cmake
+D:/Continuum/services/claims_scoring/target/debug/build/rdkafka-sys-a0b3c5d0c382891e/out/lib/cmake/RdKafka/FindLZ4.cmake
+D:/Continuum/services/claims_scoring/target/debug/build/rdkafka-sys-a0b3c5d0c382891e/out/lib/cmake/RdKafka/RdKafkaTargets.cmake
+D:/Continuum/services/claims_scoring/target/debug/build/rdkafka-sys-a0b3c5d0c382891e/out/lib/cmake/RdKafka/RdKafkaTargets-debug.cmake
+D:/Continuum/services/claims_scoring/target/debug/build/rdkafka-sys-a0b3c5d0c382891e/out/share/licenses/librdkafka/LICENSES.txt
+D:/Continuum/services/claims_scoring/target/debug/build/rdkafka-sys-a0b3c5d0c382891e/out/lib/pkgconfig/rdkafka-static.pc
+D:/Continuum/services/claims_scoring/target/debug/build/rdkafka-sys-a0b3c5d0c382891e/out/lib/rdkafka.lib
+D:/Continuum/services/claims_scoring/target/debug/build/rdkafka-sys-a0b3c5d0c382891e/out/include/librdkafka/rdkafka.h
+D:/Continuum/services/claims_scoring/target/debug/build/rdkafka-sys-a0b3c5d0c382891e/out/include/librdkafka/rdkafka_mock.h
+D:/Continuum/services/claims_scoring/target/debug/build/rdkafka-sys-a0b3c5d0c382891e/out/lib/pkgconfig/rdkafka++-static.pc
+D:/Continuum/services/claims_scoring/target/debug/build/rdkafka-sys-a0b3c5d0c382891e/out/lib/rdkafka++.lib
+D:/Continuum/services/claims_scoring/target/debug/build/rdkafka-sys-a0b3c5d0c382891e/out/include/librdkafka/rdkafkacpp.h

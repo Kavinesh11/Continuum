@@ -1,0 +1,9 @@
+{
+	"InstallScripts" : 
+	[
+		"D:/Continuum/services/claims_scoring/target/debug/build/rdkafka-sys-a0b3c5d0c382891e/out/build/cmake_install.cmake",
+		"D:/Continuum/services/claims_scoring/target/debug/build/rdkafka-sys-a0b3c5d0c382891e/out/build/src/cmake_install.cmake",
+		"D:/Continuum/services/claims_scoring/target/debug/build/rdkafka-sys-a0b3c5d0c382891e/out/build/src-cpp/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

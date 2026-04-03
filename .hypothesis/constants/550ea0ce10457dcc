@@ -1,0 +1,4 @@
+# file: D:\Continuum\services\oracle_engine\oracles.py
+# hypothesis_version: 6.151.5
+
+[0.0, 10.0, '+00:00', '10.0', '5.0', '70.0', 'IMD_API_BASE_URL', 'IMD_CERT_FINGERPRINT', 'Z', '_stream', 'abstain', 'accuweather', 'affirm', 'affirmative', 'alert_active', 'base', 'data_timestamp', 'deny', 'ground_sensor', 'imd', 'nasa_gpm', 'nullified', 'rainfall_mm_hr', 'timestamp', 'tls_mismatch']

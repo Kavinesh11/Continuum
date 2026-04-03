@@ -1,0 +1,14 @@
+prefix=D:\Continuum\services\claims_scoring\target\debug\build\libz-sys-6d6cb930c9c6e89f\out
+exec_prefix=@exec_prefix@
+libdir=${prefix}/lib
+sharedlibdir=@sharedlibdir@
+includedir=${prefix}/include
+
+Name: zlib
+Description: zlib compression library
+Version: 1.3.2
+License: Zlib
+
+Requires:
+Libs: -L${libdir} -L${sharedlibdir} -lz
+Cflags: -I${includedir}
