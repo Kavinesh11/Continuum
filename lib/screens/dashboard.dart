@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../routes/app_routes.dart';
 import '../data/mock_data.dart';
+import '../sandbox/driver_provider.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({Key? key}) : super(key: key);
@@ -60,6 +61,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final driver = DriverProvider.of(context).driver;
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
@@ -78,9 +80,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             padding: const EdgeInsets.all(12.0),
             child: CircleAvatar(
               backgroundColor: const Color(0xFFE8A8A8),
-              child: const Text(
-                'PS',
-                style: TextStyle(
+              child: Text(
+                driver.initials,
+                style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
                 ),
