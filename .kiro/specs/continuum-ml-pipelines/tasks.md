@@ -154,39 +154,39 @@ Incremental build-out of the full Continuum backend and ML pipeline, replacing t
     - Emit oracle failure rate metric; alert rule: failure rate > 50%
     - _Requirements: 16.1, 16.3_
 
-- [-] 8. Core Backend (Express.js)
-  - [ ] 8.1 Implement JWT authentication and RBAC middleware
+- [ ] 8. Core Backend (Express.js)
+  - [x] 8.1 Implement JWT authentication and RBAC middleware
     - Implement `POST /auth/register` and `POST /auth/login` endpoints
     - Write JWT verification middleware (24-hour max lifetime); return HTTP 401 on expired/invalid token
     - Write role guard middleware for Worker / Admin / Insurer roles; return HTTP 403 on violation
     - _Requirements: 6.1, 6.2, 6.3, 6.4_
-  - [ ] 8.2 Write property tests for JWT expiry rejection and RBAC (Properties 18, 19)
+  - [x] 8.2 Write property tests for JWT expiry rejection and RBAC (Properties 18, 19)
     - **Property 18: JWT Expiry Rejection**
     - **Property 19: RBAC Access Control**
     - **Validates: Requirements 6.2, 6.3, 6.4**
     - File: `services/core_backend/tests/test_core_backend.js` — `fc.assert(..., { numRuns: 100 })`
     - Generate tokens with arbitrary ages; assert HTTP 401 for age > 24h; assert HTTP 403 for role violations
-  - [ ] 8.3 Implement policy management endpoints with business rule enforcement
+  - [x] 8.3 Implement policy management endpoints with business rule enforcement
     - Implement `POST /policies` (72-hour activation delay), `GET /policies/:id`, `DELETE /policies/:id` (defer to billing cycle end)
     - Implement tier upgrade waiting period (5-day delay on claim eligibility)
     - Enforce 1 successful payout per worker per 7-day cycle; return HTTP 409 on duplicate attempt
     - Publish `worker_onboarding` and policy lifecycle events to Kafka
     - _Requirements: 6.1, 6.5, 6.6, 6.7, 6.8, 6.9, 6.10_
-  - [ ] 8.4 Write property tests for policy activation delay, tier upgrade wait, payout cycle cap, and cancellation deferral (Properties 20, 21, 22, 23)
+  - [x] 8.4 Write property tests for policy activation delay, tier upgrade wait, payout cycle cap, and cancellation deferral (Properties 20, 21, 22, 23)
     - **Property 20: Policy Activation Delay**
     - **Property 21: Tier Upgrade Waiting Period**
     - **Property 22: Payout Cycle Cap**
     - **Property 23: Policy Cancellation Deferral**
     - **Validates: Requirements 6.5, 6.6, 6.9, 6.10**
     - File: `services/core_backend/tests/test_core_backend.js` — `fc.assert(..., { numRuns: 100 })`
-  - [ ] 8.5 Implement payout and claim status endpoints
+  - [x] 8.5 Implement payout and claim status endpoints
     - Implement `GET /payouts` (worker's own history), `GET /claims/:id/status`
     - Use optimistic concurrency control on CockroachDB payout writes to prevent double-disbursement
     - _Requirements: 6.1, 9.5_
-  - [ ] 8.6 Implement FCM device token registration and premium change notification
+  - [x] 8.6 Implement FCM device token registration and premium change notification
     - Implement FCM token upsert on app launch; send FCM notification ≥7 days before premium change
     - _Requirements: 2.5, 15.5_
-  - [ ] 8.7 Add Prometheus /metrics endpoint to Core Backend
+  - [x] 8.7 Add Prometheus /metrics endpoint to Core Backend
     - Emit: `active_policies_count`, `weekly_premiums_collected`, `payouts_disbursed_total`
     - _Requirements: 16.1, 16.4_
 
