@@ -190,45 +190,45 @@ Incremental build-out of the full Continuum backend and ML pipeline, replacing t
     - Emit: `active_policies_count`, `weekly_premiums_collected`, `payouts_disbursed_total`
     - _Requirements: 16.1, 16.4_
 
-- [ ] 9. Checkpoint — Core Backend complete
+- [x] 9. Checkpoint — Core Backend complete
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 10. BullMQ Workers and PayU/FCM integration
-  - [ ] 10.1 Implement BullMQ worker processors for all four queues
+  - [x] 10.1 Implement BullMQ worker processors for all four queues
     - Implement processors for: `premium_recalculation`, `payout_disbursement`, `notification_dispatch`, `fraud_review_escalation`
     - Configure exponential backoff delays `[1s, 2s, 4s, 8s, 16s]`, max 5 attempts, then DLQ
     - Schedule weekly `premium_recalculation` jobs for all active policies at billing cycle start; complete within 1-hour window
     - _Requirements: 2.1, 2.2, 8.1, 8.2, 8.5_
-  - [ ] 10.2 Write property tests for exponential backoff and DLQ escalation timeout (Properties 24, 25)
+  - [x] 10.2 Write property tests for exponential backoff and DLQ escalation timeout (Properties 24, 25)
     - **Property 24: BullMQ Exponential Backoff**
     - **Property 25: DLQ Escalation Timeout**
     - **Validates: Requirements 8.2, 8.4, 14.3**
     - File: `services/core_backend/tests/test_bullmq.js` — `fc.assert(..., { numRuns: 100 })`
     - Assert retry delays follow exponential sequence; assert DLQ entries >24h trigger `fraud_alert` Kafka event
-  - [ ] 10.3 Implement PayU UPI payout disbursement
+  - [x] 10.3 Implement PayU UPI payout disbursement
     - Implement PayU Gateway client; disburse within 60 seconds of job execution
     - Implement SIM change detection hold (6-hour window → require biometric re-confirmation before release)
     - Record disbursement status, PayU transaction ref, and timestamp to CockroachDB `payouts` table
     - _Requirements: 14.1, 14.2, 14.3, 14.4, 14.5_
-  - [ ] 10.4 Write property test for SIM change disbursement hold (Property 35)
+  - [x] 10.4 Write property test for SIM change disbursement hold (Property 35)
     - **Property 35: SIM Change Disbursement Hold**
     - **Validates: Requirements 14.4**
     - File: `services/core_backend/tests/test_payu.js` — `fc.assert(..., { numRuns: 100 })`
-  - [ ] 10.5 Implement FCM push notification dispatch
+  - [x] 10.5 Implement FCM push notification dispatch
     - Send `payout_credited` notification within 30 seconds of successful disbursement
     - Send zone-specific `disruption_alert` to all active-policy workers in affected zone within 60 seconds of oracle trigger
     - Handle delivery failure with Firebase built-in 24-hour retry
     - _Requirements: 15.1, 15.2, 15.3, 15.4_
-  - [ ] 10.6 Implement CockroachDB payout record completeness enforcement
+  - [x] 10.6 Implement CockroachDB payout record completeness enforcement
     - Enforce all required fields (`payout_id`, `worker_id`, `claim_id`, `amount`, `oracle_vote_breakdown`, `zone_id`, `tier`, `timestamp`) are non-null before commit
     - Enforce 90-day reserve balance constraint at application layer
     - _Requirements: 9.2, 9.3_
-  - [ ] 10.7 Write property test for payout record completeness (Property 26)
+  - [x] 10.7 Write property test for payout record completeness (Property 26)
     - **Property 26: Payout Record Completeness**
     - **Validates: Requirements 9.3**
     - File: `services/core_backend/tests/test_ledger.js` — `fc.assert(..., { numRuns: 100 })`
     - Generate arbitrary payout inputs; assert all required fields present and non-null in persisted record
-  - [ ] 10.8 Add Prometheus /metrics endpoint to BullMQ Worker
+  - [x] 10.8 Add Prometheus /metrics endpoint to BullMQ Worker
     - Emit: job completion rate, failure rate, queue depth per queue name
     - Alert rule: DLQ depth > 10 jobs
     - _Requirements: 8.3, 16.1, 16.3_
