@@ -28,12 +28,6 @@ class StatusTrackerScreen extends StatelessWidget {
                     blurRadius: 6,
                     offset: const Offset(0, 2),
                   ),
-                  if (idx < stages.length - 1)
-                    Container(
-                      width: 24,
-                      height: 2,
-                      color: isCompleted ? Colors.green : Colors.grey.shade300,
-                    ),
                 ],
               ),
               child: const Center(
