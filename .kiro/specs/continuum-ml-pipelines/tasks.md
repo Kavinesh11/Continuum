@@ -76,55 +76,55 @@ Incremental build-out of the full Continuum backend and ML pipeline, replacing t
 - [x] 4. Checkpoint — Risk Profiler complete
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 5. Isolation Forest sidecar and Claims Scoring Service (Rust)
-  - [ ] 5.1 Implement Isolation Forest Python sidecar
+- [x] 5. Isolation Forest sidecar and Claims Scoring Service (Rust)
+  - [x] 5.1 Implement Isolation Forest Python sidecar
     - Load serialized Isolation Forest model; expose JSON-RPC over Unix domain socket
     - Normalize raw anomaly score to `Fraud_Score = 1 - (raw_score + 0.5)`, clip to [0.0, 1.0]
     - Keep model in memory; target <50ms response per inference call
     - _Requirements: 3.9_
-  - [ ] 5.2 Implement Rust Claims Scoring Service (Axum)
+  - [x] 5.2 Implement Rust Claims Scoring Service (Axum)
     - Create Axum service on :8002 with `POST /score` endpoint
     - Implement Play Integrity API attestation check; reject with `DEVICE_NOT_ATTESTED` + score 0.0 on failure
     - Implement three parallel checks: PostGIS spatial (`ST_Contains`), PostgreSQL frequency (90-day window), Isolation Forest sidecar (Unix socket)
     - Compute composite: `Fraud_Score = 0.4×spatial + 0.2×frequency + 0.4×isolation_forest`
     - Route: `>= 0.7 → AUTO_APPROVED`, `< 0.7 → FRAUD_QUEUE`; publish `claim_decision` to Kafka
     - _Requirements: 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 3.10, 3.11, 3.12, 3.13_
-  - [ ] 5.3 Write property tests for Fraud_Score range and claim routing completeness (Properties 7, 8)
+  - [x] 5.3 Write property tests for Fraud_Score range and claim routing completeness (Properties 7, 8)
     - **Property 7: Fraud_Score Range Invariant**
     - **Property 8: Claim Routing Completeness**
     - **Validates: Requirements 3.9, 3.11, 3.12**
     - File: `services/claims_scoring/tests/test_claims_scoring.rs` — `proptest_config!(cases: 100)`
     - Assert score ∈ [0.0, 1.0]; assert every scored claim routes to exactly one of AUTO_APPROVED / FRAUD_QUEUE
-  - [ ] 5.4 Write property tests for velocity cap, spatial penalty, and device attestation (Properties 9, 10, 11)
+  - [x] 5.4 Write property tests for velocity cap, spatial penalty, and device attestation (Properties 9, 10, 11)
     - **Property 9: Velocity Cap Override**
     - **Property 10: Spatial Zone Mismatch Penalty**
     - **Property 11: Device Attestation Rejection**
     - **Validates: Requirements 3.3, 3.5, 3.6, 3.7, 3.8, 4.1, 4.2, 17.5**
     - File: `services/claims_scoring/tests/test_claims_scoring.rs` — `proptest_config!(cases: 100)`
-  - [ ] 5.5 Implement GPS spoofing prevention checks in Claims Scoring Service
+  - [x] 5.5 Implement GPS spoofing prevention checks in Claims Scoring Service
     - Add Cell-ID vs GPS divergence check (>2km → LOCATION_MISMATCH, -0.3 penalty)
     - Add 45-minute soak period check (fail → FRAUD_QUEUE)
     - Add platform API order cross-reference (orders during window → PLATFORM_ACTIVITY_VETO)
     - Add static-lock detection (velocity=0 for full window → elevated review flag)
     - _Requirements: 4.3, 4.4, 4.5, 4.6, 4.7, 4.8, 4.9, 4.10_
-  - [ ] 5.6 Write property tests for GPS spoofing checks (Properties 12, 13, 14)
+  - [x] 5.6 Write property tests for GPS spoofing checks (Properties 12, 13, 14)
     - **Property 12: GPS Soak Period Enforcement**
     - **Property 13: Platform Activity Veto**
     - **Property 14: Static-Lock Detection**
     - **Validates: Requirements 4.5, 4.6, 4.7, 4.8, 4.9, 4.10**
     - File: `services/claims_scoring/tests/test_claims_scoring.rs` — `proptest_config!(cases: 100)`
-  - [ ] 5.7 Implement population-level fraud detection (Convergence Freeze and device proximity)
+  - [x] 5.7 Implement population-level fraud detection (Convergence Freeze and device proximity)
     - Monitor claim rate per zone in 5-minute sliding window; trigger Convergence Freeze at ≥50 unique policy IDs
     - Implement device Bluetooth/WiFi proximity co-location check (cluster of ≥5 devices within 7 days)
     - Publish `fraud_alert` to Kafka on Convergence Freeze with `zone_id`, `claim_count`, `timestamp`
     - _Requirements: 17.1, 17.2, 17.3, 17.4, 17.5, 17.6_
-  - [ ] 5.8 Write property tests for convergence freeze and device proximity (Properties 36, 37, 38)
+  - [x] 5.8 Write property tests for convergence freeze and device proximity (Properties 36, 37, 38)
     - **Property 36: Convergence Freeze Threshold**
     - **Property 37: Device Proximity Cluster Flagging**
     - **Property 38: Convergence Freeze Kafka Publication**
     - **Validates: Requirements 17.1, 17.2, 17.3, 17.4, 17.6**
     - File: `services/claims_scoring/tests/test_claims_scoring.rs` — `proptest_config!(cases: 100)`
-  - [ ] 5.9 Add Prometheus /metrics endpoint to Claims Scoring Service
+  - [x] 5.9 Add Prometheus /metrics endpoint to Claims Scoring Service
     - Emit: `claims_auto_approved_total`, `claims_fraud_queued_total`, `fraud_score_histogram`
     - _Requirements: 16.1, 16.5_
 
