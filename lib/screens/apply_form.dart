@@ -582,10 +582,7 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
               ),
             ),
           ),
-          if (_audioPath != null) ...[
-            const SizedBox(height: 8),
-            const Text('Audio captured', style: TextStyle(fontSize: 12, color: Colors.green, fontWeight: FontWeight.w600)),
-          ],
+
         ],
       ),
     );
@@ -652,63 +649,4 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
     );
   }
 
-  Future<void> _capturePhoto() async {
-    if (!kIsWeb) {
-      final cameraStatus = await Permission.camera.request();
-      if (!cameraStatus.isGranted) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Camera permission is required to take photo evidence')),
-        );
-        return;
-      }
-    }
-
-    final photo = await _imagePicker.pickImage(source: ImageSource.camera, imageQuality: 75);
-    if (photo != null && mounted) {
-      setState(() => _capturedPhoto = photo);
-    }
-  }
-
-  Future<void> _toggleRecording() async {
-    if (_isRecording) {
-      final path = await _audioRecorder.stop();
-      if (!mounted) return;
-      setState(() {
-        _isRecording = false;
-        _audioPath = path;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(path == null ? 'Recording stopped' : 'Audio captured')),
-      );
-      return;
-    }
-
-    if (!kIsWeb) {
-      final micStatus = await Permission.microphone.request();
-      if (!micStatus.isGranted) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Microphone permission is required to record audio')),
-        );
-        return;
-      }
-    }
-
-    final hasPermission = await _audioRecorder.hasPermission();
-    if (!hasPermission) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Microphone permission denied')),
-      );
-      return;
-    }
-
-    await _audioRecorder.start(const RecordConfig(), path: 'claim_audio_note.m4a');
-    if (!mounted) return;
-    setState(() => _isRecording = true);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Recording started')),
-    );
-  }
 }

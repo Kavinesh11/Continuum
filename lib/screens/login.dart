@@ -26,6 +26,8 @@ class _LoginScreenState extends State<LoginScreen>
     _glowAnimation = Tween<double>(begin: 0.3, end: 0.7).animate(
       CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
     );
+  }
+
   void _login() {
     Navigator.of(context).pushReplacementNamed(AppRoutes.sandboxSelect);
   }
