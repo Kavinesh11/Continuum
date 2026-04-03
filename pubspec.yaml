@@ -9,6 +9,7 @@ dependencies:
   permission_handler: ^11.0.1
   image_picker: ^1.0.7
   record: ^5.2.1
+  google_fonts: ^6.1.0
   # No extra overlay package needed, will use OverlayEntry/Stack
 
 flutter:
@@ -17,3 +18,5 @@ flutter:
     - assets/
 
 # Add any other required fields as needed
+dependency_overrides:
+  record_linux: ^1.0.0
