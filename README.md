@@ -22,6 +22,8 @@
 
   **[Demo Video](https://www.youtube.com/watch?v=IHMCi3f6iaw)** &nbsp;| &nbsp;**[Pitch Deck](https://gamma.app/docs/Continuum-tj9d086rbvfjy58)**
 
+  > **Round 2 Update:** This submission addresses reviewer feedback on insurance domain completeness. Standard coverage exclusions (war, terrorism, pandemic, CBRN) are now formally documented with actuarial rationale. The financial model has been upgraded from a conceptual heuristic to a full actuarial adequacy framework with quantitative inputs, governance triggers, and stress scenarios.
+
   ![Continuum Homepage](assets/landing-page.jpeg)
 </div>
 
@@ -41,7 +43,7 @@ Continuum is strictly scoped to **loss of income protection** only. It is not ve
 
 ## Coverage Scope and Standard Exclusions
 
-To align with core insurance product design conventions, Continuum separates covered disruptions from non-covered catastrophic and systemic exclusions.
+Continuum is a **parametric income protection product**, not a general insurance policy. Coverage is strictly bounded. The following is the formal product scope, including standard exclusions aligned with IRDAI-compliant insurance product design conventions.
 
 ### Covered Trigger Categories
 
@@ -53,14 +55,14 @@ To align with core insurance product design conventions, Continuum separates cov
 
 Continuum does **not** cover losses caused directly or indirectly by:
 
-* War, invasion, armed conflict, civil war, insurrection, military action.
-* Terrorism, sabotage, or politically motivated violent acts.
-* Pandemics/epidemics/public-health emergencies (unless a specific rider is approved).
-* Nuclear, radiological, biological, or chemical contamination/events.
-* Platform employment termination, restructuring, or mass layoffs.
-* Voluntary shutdowns, non-mandatory closures, or low-severity events below trigger thresholds.
+* **War, invasion, armed conflict, civil war, insurrection, or military action** — unbounded correlated loss, uninsurable under parametric micro-premium structure.
+* **Terrorism, sabotage, or politically motivated violent acts** — intentional extreme loss volatility and accumulation risk.
+* **Pandemics, epidemics, or declared public-health emergencies** — long-tail, multi-zone, prolonged business interruption risk that exceeds parametric product risk appetite (unless a specific approved rider is in force).
+* **Nuclear, radiological, biological, or chemical (CBRN) contamination or events** — severity tail exceeds any parametric product's capital structure.
+* **Platform employment termination, restructuring, or mass layoffs** — employment risk, not short-duration involuntary disruption risk.
+* **Voluntary shutdowns, non-mandatory closures, or events below parametric trigger thresholds** — no objectively verifiable involuntary trigger event exists.
 
-These exclusions are mapped into policy language in `terms_and_conditions.md`.
+These exclusions mirror standard market practice (e.g., Lloyd's of London war exclusion clauses, Swiss Re pandemic exclusion frameworks) and are encoded in `terms_and_conditions.md` under `## 9) Exclusions`.
 
 ### Exclusion Rationale Matrix
 
@@ -124,16 +126,18 @@ Our core personas are grounded in **primary field research** — structured inte
 
 ## The Economics
 
-Traditional insurance utilizes annual or monthly premiums, fundamentally misaligning with gig worker cash flows. Continuum enforces a strictly **Weekly Premium Cycle** governed by a precise economic heuristic.
+Traditional insurance utilizes annual or monthly premiums, fundamentally misaligning with gig worker cash flows. Continuum enforces a strictly **Weekly Premium Cycle** anchored to actuarial adequacy first, affordability second.
 
-* **"The One-Order Rule" (Affordability Anchor):** The weekly premium is designed to feel equivalent to about 1 to 2 successful deliveries, so the product remains behaviorally affordable for partners.
+* **"The One-Order Rule" (UX Affordability Constraint):** The weekly premium targets the behavioral cost of 1–2 successful deliveries. This is a UX ceiling, not a pricing floor — the technical premium always wins if it exceeds the affordability anchor.
 * **Cash Flow Alignment:** Premiums are deducted on a timeline identical to the Zomato/Swiggy weekly payout cadence, abstracting the cognitive load of large upfront payments.
-* **Dynamic Risk Rating:** The premium is recalculated every week using predictive modeling. For example, premiums marginally adjust based on the 7-day meteorological forecast for the partner's specific operating zone.
+* **Dynamic Risk Rating:** The premium is recalculated every week using predictive modeling. Premiums adjust based on the 7-day meteorological forecast, zone-level loss ratio history, and partner activity profile.
 * **Micro-Transactions:** Payments are structured as high-frequency, low-denomination micro-premiums, reducing the barrier to entry to near zero.
 
 ### Quantitative Actuarial Framework
 
-The One-Order Rule is now treated as a **UX affordability constraint**, not the sole pricing rule. Final pricing is bounded by an actuarial adequacy floor.
+The One-Order Rule is a **UX affordability constraint**, not a pricing rule. Pricing is governed by an actuarial adequacy floor derived from expected loss modeling. The framework below defines the technical premium calculation that the affordability anchor is bounded by.
+
+> The affordability anchor is a ceiling objective. If the technical premium exceeds it, the technical premium is charged. Solvency is never subordinated to UX.
 
 For zone `z`, tier `t`, week `w`:
 
@@ -186,19 +190,24 @@ Passing these scenarios is required before deployment-grade pricing sign-off.
 
 ### Illustrative Weekly Premium Walkthrough (Conceptual)
 
-Example for one zone-tier cell (illustrative only):
+Example for one zone-tier cell — Silver tier, Bangalore South zone, moderate-risk week (illustrative only; production values require licensed actuarial calibration against ≥24 months of historical event data):
 
 ```text
-ExpectedLoss = 38
-ExpenseLoad  = 9
-FraudLoad    = 4
-Reinsurance  = 5
-RiskMargin   = 6
+P(weather_event | zone, week) = 0.12   (12% weekly trigger probability, from IMD historical data)
+AvgSeverity                   = ₹320   (weighted avg payout across disruption intensities)
+Exposure                      = 1.0    (full active week)
 
-TechnicalPremium = 62
-AffordabilityAnchor (One-Order Rule) = 55
+ExpectedLoss = 0.12 × 320 × 1.0 = ₹38
 
-FinalPremium = max(55, 62) = 62
+ExpenseLoad  = ₹9   (payment rails, infra, support — ~24% of expected loss)
+FraudLoad    = ₹4   (anomaly rate × recovery cost)
+Reinsurance  = ₹5   (treaty cost allocation per policy)
+RiskMargin   = ₹6   (solvency buffer targeting 150% coverage ratio)
+
+TechnicalPremium = 38 + 9 + 4 + 5 + 6 = ₹62
+AffordabilityAnchor (One-Order Rule) = ₹55
+
+FinalPremium = max(55, 62) = ₹62
 ```
 
 This keeps pricing behaviorally affordable where possible, but never below actuarial adequacy.
