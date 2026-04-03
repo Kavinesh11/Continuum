@@ -154,7 +154,7 @@ Incremental build-out of the full Continuum backend and ML pipeline, replacing t
     - Emit oracle failure rate metric; alert rule: failure rate > 50%
     - _Requirements: 16.1, 16.3_
 
-- [ ] 8. Core Backend (Express.js)
+- [-] 8. Core Backend (Express.js)
   - [ ] 8.1 Implement JWT authentication and RBAC middleware
     - Implement `POST /auth/register` and `POST /auth/login` endpoints
     - Write JWT verification middleware (24-hour max lifetime); return HTTP 401 on expired/invalid token
