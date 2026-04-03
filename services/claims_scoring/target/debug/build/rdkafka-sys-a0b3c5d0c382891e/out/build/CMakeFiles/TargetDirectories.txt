@@ -1,0 +1,7 @@
+D:/Continuum/services/claims_scoring/target/debug/build/rdkafka-sys-a0b3c5d0c382891e/out/build/CMakeFiles/INSTALL.dir
+D:/Continuum/services/claims_scoring/target/debug/build/rdkafka-sys-a0b3c5d0c382891e/out/build/CMakeFiles/ALL_BUILD.dir
+D:/Continuum/services/claims_scoring/target/debug/build/rdkafka-sys-a0b3c5d0c382891e/out/build/CMakeFiles/ZERO_CHECK.dir
+D:/Continuum/services/claims_scoring/target/debug/build/rdkafka-sys-a0b3c5d0c382891e/out/build/src/CMakeFiles/rdkafka.dir
+D:/Continuum/services/claims_scoring/target/debug/build/rdkafka-sys-a0b3c5d0c382891e/out/build/src/CMakeFiles/INSTALL.dir
+D:/Continuum/services/claims_scoring/target/debug/build/rdkafka-sys-a0b3c5d0c382891e/out/build/src-cpp/CMakeFiles/rdkafka++.dir
+D:/Continuum/services/claims_scoring/target/debug/build/rdkafka-sys-a0b3c5d0c382891e/out/build/src-cpp/CMakeFiles/INSTALL.dir

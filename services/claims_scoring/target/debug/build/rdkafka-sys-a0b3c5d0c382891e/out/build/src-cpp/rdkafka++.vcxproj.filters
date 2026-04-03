@@ -1,0 +1,49 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="C:\Users\KAVINESH\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rdkafka-sys-4.10.0+2.12.1\librdkafka\src-cpp\ConfImpl.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\KAVINESH\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rdkafka-sys-4.10.0+2.12.1\librdkafka\src-cpp\ConsumerImpl.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\KAVINESH\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rdkafka-sys-4.10.0+2.12.1\librdkafka\src-cpp\HandleImpl.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\KAVINESH\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rdkafka-sys-4.10.0+2.12.1\librdkafka\src-cpp\HeadersImpl.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\KAVINESH\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rdkafka-sys-4.10.0+2.12.1\librdkafka\src-cpp\KafkaConsumerImpl.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\KAVINESH\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rdkafka-sys-4.10.0+2.12.1\librdkafka\src-cpp\MessageImpl.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\KAVINESH\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rdkafka-sys-4.10.0+2.12.1\librdkafka\src-cpp\MetadataImpl.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\KAVINESH\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rdkafka-sys-4.10.0+2.12.1\librdkafka\src-cpp\ProducerImpl.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\KAVINESH\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rdkafka-sys-4.10.0+2.12.1\librdkafka\src-cpp\QueueImpl.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\KAVINESH\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rdkafka-sys-4.10.0+2.12.1\librdkafka\src-cpp\RdKafka.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\KAVINESH\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rdkafka-sys-4.10.0+2.12.1\librdkafka\src-cpp\TopicImpl.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\KAVINESH\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rdkafka-sys-4.10.0+2.12.1\librdkafka\src-cpp\TopicPartitionImpl.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\KAVINESH\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rdkafka-sys-4.10.0+2.12.1\librdkafka\src-cpp\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{7267EFD2-E44E-359C-935B-4BC45031AE4D}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
