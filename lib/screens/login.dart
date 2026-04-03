@@ -13,7 +13,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
 
   void _login() {
-    Navigator.of(context).pushReplacementNamed(AppRoutes.home);
+    Navigator.of(context).pushReplacementNamed(AppRoutes.sandboxSelect);
   }
 
   @override
@@ -38,10 +38,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   SizedBox(
                     height: 150,
                     width: 150,
-                    child: Image.asset(
-                      'assets/Logo2.png',
-                      fit: BoxFit.contain,
-                    ),
+                    child: Image.asset('assets/Logo2.png', fit: BoxFit.contain),
                   ),
                   const SizedBox(height: 4),
                   const Text(
@@ -58,10 +55,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   const Text(
                     'Gig Worker Protection. Always on.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.white70,
-                    ),
+                    style: TextStyle(fontSize: 16, color: Colors.white70),
                   ),
                   const SizedBox(height: 48),
                   _buildTextField(
@@ -89,25 +83,39 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     child: const Text(
                       'Sign In',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),
                   Row(
                     children: const [
-                      Expanded(child: Divider(color: Colors.white24, thickness: 1)),
+                      Expanded(
+                        child: Divider(color: Colors.white24, thickness: 1),
+                      ),
                       Padding(
                         padding: EdgeInsets.symmetric(horizontal: 8.0),
-                        child: Text('OR', style: TextStyle(color: Colors.white54)),
+                        child: Text(
+                          'OR',
+                          style: TextStyle(color: Colors.white54),
+                        ),
                       ),
-                      Expanded(child: Divider(color: Colors.white24, thickness: 1)),
+                      Expanded(
+                        child: Divider(color: Colors.white24, thickness: 1),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 24),
                   OutlinedButton.icon(
                     onPressed: _login,
                     icon: const Icon(Icons.motorcycle, color: Colors.white),
-                    label: const Text('Login with Partner ID (Swiggy/Zomato)', style: TextStyle(color: Colors.white)),
+                    label: const Text(
+                      'Login with Partner ID (Swiggy/Zomato)',
+                      style: TextStyle(color: Colors.white),
+                    ),
                     style: OutlinedButton.styleFrom(
                       side: const BorderSide(color: Colors.white24),
                       padding: const EdgeInsets.symmetric(vertical: 16),
