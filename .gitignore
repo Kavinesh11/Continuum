@@ -46,3 +46,7 @@ app.*.map.json
 
 # OpenMemory - IDE/Assistant specific rules
 .cursor\rules\openmemory.mdc
+
+
+
+services/claims_scoring/target/
