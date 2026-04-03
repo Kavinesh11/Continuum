@@ -1,0 +1,67 @@
+{
+  "topics": [
+    {
+      "name": "worker_onboarding",
+      "partitions": 3,
+      "replication-factor": 3,
+      "configs": {
+        "retention.ms": "604800000",
+        "cleanup.policy": "delete"
+      }
+    },
+    {
+      "name": "claim_submitted",
+      "partitions": 3,
+      "replication-factor": 3,
+      "configs": {
+        "retention.ms": "604800000",
+        "cleanup.policy": "delete"
+      }
+    },
+    {
+      "name": "claim_decision",
+      "partitions": 3,
+      "replication-factor": 3,
+      "configs": {
+        "retention.ms": "604800000",
+        "cleanup.policy": "delete"
+      }
+    },
+    {
+      "name": "payout_authorized",
+      "partitions": 3,
+      "replication-factor": 3,
+      "configs": {
+        "retention.ms": "604800000",
+        "cleanup.policy": "delete"
+      }
+    },
+    {
+      "name": "oracle_trigger",
+      "partitions": 3,
+      "replication-factor": 3,
+      "configs": {
+        "retention.ms": "604800000",
+        "cleanup.policy": "delete"
+      }
+    },
+    {
+      "name": "premium_updated",
+      "partitions": 3,
+      "replication-factor": 3,
+      "configs": {
+        "retention.ms": "604800000",
+        "cleanup.policy": "delete"
+      }
+    },
+    {
+      "name": "fraud_alert",
+      "partitions": 3,
+      "replication-factor": 3,
+      "configs": {
+        "retention.ms": "604800000",
+        "cleanup.policy": "delete"
+      }
+    }
+  ]
+}
