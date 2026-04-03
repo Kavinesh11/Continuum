@@ -24,9 +24,12 @@
 /// CREATE INDEX ON device_proximity_log (device_id_b, recorded_at DESC);
 /// ```
 use chrono::{DateTime, Utc};
+#[cfg(feature = "kafka")]
 use rdkafka::config::ClientConfig;
+#[cfg(feature = "kafka")]
 use rdkafka::producer::{FutureProducer, FutureRecord};
 use sqlx::PgPool;
+#[cfg(feature = "kafka")]
 use std::time::Duration;
 use tracing::{error, info};
 use uuid::Uuid;
@@ -82,6 +85,7 @@ pub async fn check_population_fraud(
             claim_count = claim_count_5min,
             "Convergence Freeze triggered"
         );
+        #[cfg(feature = "kafka")]
         publish_convergence_freeze_alert(zone_id, claim_count_5min).await;
     }
 
@@ -160,6 +164,7 @@ async fn query_device_cluster_size(pool: &PgPool, device_id: &str) -> usize {
 
 /// Publishes a `fraud_alert` event to Kafka for a Convergence Freeze (Req 17.6).
 /// On Kafka error, logs the error but does not fail the check.
+#[cfg(feature = "kafka")]
 async fn publish_convergence_freeze_alert(zone_id: &str, claim_count: usize) {
     let brokers =
         std::env::var("KAFKA_BROKERS").unwrap_or_else(|_| "localhost:9092".to_string());
