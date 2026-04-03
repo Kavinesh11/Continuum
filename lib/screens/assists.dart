@@ -1,99 +1,235 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 
-class AssistsScreen extends StatelessWidget {
+class AssistsScreen extends StatefulWidget {
   const AssistsScreen({Key? key}) : super(key: key);
+
+  @override
+  State<AssistsScreen> createState() => _AssistsScreenState();
+}
+
+class _AssistsScreenState extends State<AssistsScreen> {
+  final TextEditingController _messageController = TextEditingController();
+
+  final List<Map<String, dynamic>> _messages = [
+    {
+      'text': 'Hi there! I am Continuum Assist. How can I help you today?',
+      'isBot': true,
+      'time': '10:00 AM',
+    },
+    {
+      'text': 'What is my current expected payout?',
+      'isBot': false,
+      'time': '10:01 AM',
+    },
+    {
+      'text': 'Based on your latest shifts, your expected payout is ₹2,850. Would you like to view detailed earnings?',
+      'isBot': true,
+      'time': '10:01 AM',
+    },
+  ];
+
+  @override
+  void dispose() {
+    _messageController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text('Emergency Assists', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
-        iconTheme: const IconThemeData(color: Colors.black87),
-        elevation: 0,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(20),
+        title: const Text('CONTINUUM'),
+        leading: GestureDetector(
+          onTap: () => Navigator.pushNamed(context, '/profile'),
+          child: Padding(
+            padding: const EdgeInsets.all(10.0),
+            child: Container(
               decoration: BoxDecoration(
-                color: Colors.redAccent.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: const BoxDecoration(
-                      color: Colors.redAccent,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.sos, color: Colors.white, size: 32),
+                shape: BoxShape.circle,
+                gradient: AppTheme.accentGradient,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.primary.withOpacity(0.3),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text('Immediate SOS', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 18)),
-                        SizedBox(height: 4),
-                        Text('Tap here for immediate medical or police assistance.', style: TextStyle(color: Colors.black87, fontSize: 12)),
-                      ],
-                    ),
-                  )
                 ],
               ),
+              child: const Center(
+                child: Icon(Icons.person, color: Colors.white, size: 18),
+              ),
             ),
-            const SizedBox(height: 24),
-            const Text('Roadside Assistance', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
-            const SizedBox(height: 16),
-            _buildAssistCard('Tow Truck Service', 'Flat tire, engine failure, etc.', Icons.car_repair, Colors.orange),
-            const SizedBox(height: 12),
-            _buildAssistCard('Battery Jumpstart', 'Dead battery? We will send help.', Icons.battery_charging_full, Colors.green),
-            const SizedBox(height: 12),
-            _buildAssistCard('Fuel Delivery', 'Out of fuel during a delivery?', Icons.local_gas_station, Colors.blue),
-            const SizedBox(height: 24),
-            const Text('Legal & Regulatory', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
-            const SizedBox(height: 16),
-            _buildAssistCard('Traffic Checkpost Support', 'Issues with local municipal police', Icons.local_police, Colors.indigo),
-          ],
+          ),
         ),
+        actions: [
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Theme.of(context).scaffoldBackgroundColor,
+            ),
+            child: IconButton(
+              onPressed: () {},
+              icon: Icon(Icons.notifications_none_rounded,
+                  color: AppTheme.textSecondaryOf(context), size: 22),
+            ),
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16.0),
+              itemCount: _messages.length,
+              itemBuilder: (context, index) {
+                final msg = _messages[index];
+                return _buildMessageBubble(
+                  context: context,
+                  text: msg['text'] as String,
+                  isBot: msg['isBot'] as bool,
+                  time: msg['time'] as String,
+                );
+              },
+            ),
+          ),
+          _buildChatInput(context),
+        ],
       ),
     );
   }
 
-  Widget _buildAssistCard(String title, String subtitle, IconData icon, Color color) {
+  Widget _buildMessageBubble({
+    required BuildContext context,
+    required String text,
+    required bool isBot,
+    required String time,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: Row(
+        mainAxisAlignment:
+            isBot ? MainAxisAlignment.start : MainAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (isBot) ...[
+            Container(
+              margin: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                gradient: AppTheme.primaryGradient,
+                shape: BoxShape.circle,
+                boxShadow: AppTheme.primaryGlow(0.2),
+              ),
+              child: const Icon(Icons.smart_toy_rounded,
+                  size: 16, color: Colors.white),
+            ),
+          ],
+          Flexible(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: isBot
+                    ? AppTheme.cardOf(context)
+                    : AppTheme.primary.withOpacity(0.9),
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(16),
+                  topRight: const Radius.circular(16),
+                  bottomLeft: Radius.circular(isBot ? 0 : 16),
+                  bottomRight: Radius.circular(isBot ? 16 : 0),
+                ),
+                boxShadow: AppTheme.softShadowOf(context),
+              ),
+              child: Column(
+                crossAxisAlignment:
+                    isBot ? CrossAxisAlignment.start : CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    text,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: isBot ? AppTheme.textPrimaryOf(context) : Colors.white,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    time,
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: isBot
+                          ? AppTheme.textHintOf(context)
+                          : Colors.white.withOpacity(0.7),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (!isBot) const SizedBox(width: 24),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChatInput(BuildContext context) {
     return Container(
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        color: Theme.of(context).scaffoldBackgroundColor,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: Colors.black.withOpacity(0.05),
+            offset: const Offset(0, -4),
+            blurRadius: 10,
           ),
         ],
       ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        leading: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                color: AppTheme.cardOf(context),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: AppTheme.dividerOf(context),
+                ),
+              ),
+              child: TextField(
+                controller: _messageController,
+                style: TextStyle(
+                  color: AppTheme.textPrimaryOf(context),
+                  fontSize: 14,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'Ask Assist anything...',
+                  hintStyle: TextStyle(
+                    color: AppTheme.textHintOf(context),
+                  ),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 14,
+                  ),
+                ),
+              ),
+            ),
           ),
-          child: Icon(icon, color: color, size: 28),
-        ),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-        subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.black38),
-        onTap: () {},
+          const SizedBox(width: 12),
+          Container(
+            decoration: BoxDecoration(
+              gradient: AppTheme.accentGradient,
+              shape: BoxShape.circle,
+              boxShadow: AppTheme.primaryGlow(0.2),
+            ),
+            child: IconButton(
+              onPressed: () {},
+              icon: const Icon(Icons.send_rounded, color: Colors.white),
+            ),
+          ),
+        ],
       ),
     );
   }
