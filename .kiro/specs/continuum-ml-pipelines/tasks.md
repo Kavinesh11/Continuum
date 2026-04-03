@@ -236,24 +236,24 @@ Incremental build-out of the full Continuum backend and ML pipeline, replacing t
 - [ ] 11. Checkpoint — BullMQ / PayU / FCM complete
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 12. Web Intelligence Service and Knowledge Graph Cache
-  - [ ] 12.1 Implement Web Intelligence Service with ScrapeGraph.AI
+- [x] 12. Web Intelligence Service and Knowledge Graph Cache
+  - [x] 12.1 Implement Web Intelligence Service with ScrapeGraph.AI
     - Implement Downdetector scraper (5-minute polling interval, configurable)
     - Implement IMD weather advisory RSS feed parser and municipal lockdown advisory feed parser
     - On malformed/unparseable content: log error and skip record without raising unhandled exception
     - _Requirements: 11.1, 11.2, 11.3_
-  - [ ] 12.2 Write property tests for malformed scrape resilience and advisory text round-trip (Properties 30, 31)
+  - [x] 12.2 Write property tests for malformed scrape resilience and advisory text round-trip (Properties 30, 31)
     - **Property 30: Advisory Text Round-Trip**
     - **Property 31: Malformed Scrape Resilience**
     - **Validates: Requirements 11.3, 11.7**
     - File: `services/web_intelligence/tests/test_web_intel.py` — `@settings(max_examples=100)`
     - Generate arbitrary malformed inputs; assert no unhandled exception; assert round-trip identity for valid inputs
-  - [ ] 12.3 Implement Knowledge Graph Cache (Go) with zone-keyed TTL
+  - [x] 12.3 Implement Knowledge Graph Cache (Go) with zone-keyed TTL
     - Implement in-memory cache keyed by `{zone_id}:{event_type}` with 15-minute TTL per entry
     - On TTL expiry: evict entry and trigger async re-scrape via Web_Intelligence_Service HTTP callback
     - Expose HTTP API for Oracle Consensus Engine and RAG Orchestrator lookups
     - _Requirements: 11.4, 11.5, 11.6_
-  - [ ] 12.4 Write property test for Knowledge Graph Cache TTL expiry (Property 32)
+  - [x] 12.4 Write property test for Knowledge Graph Cache TTL expiry (Property 32)
     - **Property 32: Knowledge Graph TTL Expiry**
     - **Validates: Requirements 11.4**
     - File: `services/kg_cache/tests/test_kg_cache_test.go` — gopter, ≥100 runs
