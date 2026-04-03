@@ -1,230 +1,237 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 import '../data/mock_data.dart';
 
-class AssistsScreen extends StatelessWidget {
+class AssistsScreen extends StatefulWidget {
   const AssistsScreen({Key? key}) : super(key: key);
+
+  @override
+  State<AssistsScreen> createState() => _AssistsScreenState();
+}
+
+class _AssistsScreenState extends State<AssistsScreen> {
+  final TextEditingController _messageController = TextEditingController();
+
+  final List<Map<String, dynamic>> _messages = [
+    {
+      'text': 'Hi there! I am Continuum Assist. How can I help you today?',
+      'isBot': true,
+      'time': '10:00 AM',
+    },
+    {
+      'text': 'What is my current expected payout?',
+      'isBot': false,
+      'time': '10:01 AM',
+    },
+    {
+      'text': 'Based on your latest shifts, your expected payout is ₹2,850. Would you like to view detailed earnings?',
+      'isBot': true,
+      'time': '10:01 AM',
+    },
+  ];
+
+  @override
+  void dispose() {
+    _messageController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text('Assist', style: TextStyle(color: Color(0xFF008A8A), fontWeight: FontWeight.bold)),
-        centerTitle: true,
-        backgroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.more_vert, color: Colors.black54),
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildBotHeroCard(),
-              const SizedBox(height: 24),
-              _buildPreviousChatsSection(),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBotHeroCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [const Color(0xFF008A8A), const Color(0xFF006666)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 12),
-          const Text(
-            'Continuum Assist Bot',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Quick support for your claims and coverage questions',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.white70,
-            ),
-          ),
-          const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: () {},
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.chat_bubble_outline, color: Color(0xFF008A8A), size: 18),
-                SizedBox(width: 8),
-                Text(
-                  'Start New Chat',
-                  style: TextStyle(
-                    color: Color(0xFF008A8A),
-                    fontWeight: FontWeight.bold,
+        title: const Text('CONTINUUM'),
+        leading: GestureDetector(
+          onTap: () => Navigator.pushNamed(context, '/profile'),
+          child: Padding(
+            padding: const EdgeInsets.all(10.0),
+            child: Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: AppTheme.accentGradient,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.primary.withOpacity(0.3),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
                   ),
-                ),
-              ],
+                ],
+              ),
+              child: const Center(
+                child: Icon(Icons.person, color: Colors.white, size: 18),
+              ),
             ),
           ),
+        ),
+        actions: [
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Theme.of(context).scaffoldBackgroundColor,
+            ),
+            child: IconButton(
+              onPressed: () {},
+              icon: Icon(Icons.notifications_none_rounded,
+                  color: AppTheme.textSecondaryOf(context), size: 22),
+            ),
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16.0),
+              itemCount: _messages.length,
+              itemBuilder: (context, index) {
+                final msg = _messages[index];
+                return _buildMessageBubble(
+                  context: context,
+                  text: msg['text'] as String,
+                  isBot: msg['isBot'] as bool,
+                  time: msg['time'] as String,
+                );
+              },
+            ),
+          ),
+          _buildChatInput(context),
         ],
       ),
     );
   }
 
-  Widget _buildPreviousChatsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'Previous Chats',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
+  Widget _buildMessageBubble({
+    required BuildContext context,
+    required String text,
+    required bool isBot,
+    required String time,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: Row(
+        mainAxisAlignment:
+            isBot ? MainAxisAlignment.start : MainAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (isBot) ...[
+            Container(
+              margin: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                gradient: AppTheme.primaryGradient,
+                shape: BoxShape.circle,
+                boxShadow: AppTheme.primaryGlow(0.2),
               ),
-            ),
-            GestureDetector(
-              onTap: () {},
-              child: const Text(
-                'See all',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF008A8A),
-                ),
-              ),
+              child: const Icon(Icons.smart_toy_rounded,
+                  size: 16, color: Colors.white),
             ),
           ],
-        ),
-        const SizedBox(height: 16),
-        Column(
-          children: (MockData.previousChats as List<Map<String, dynamic>>)
-              .asMap()
-              .entries
-              .map((entry) {
-                int idx = entry.key;
-                var chat = entry.value;
-                return Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.black.withOpacity(0.05)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      chat['title'] as String,
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.black87,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      chat['subtitle'] as String,
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.black54,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Text(
-                                chat['date'] as String,
-                                style: const TextStyle(fontSize: 11, color: Colors.black45),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              OutlinedButton(
-                                onPressed: () {},
-                                style: OutlinedButton.styleFrom(
-                                  side: const BorderSide(color: Color(0xFF008A8A)),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                ),
-                                child: const Text(
-                                  'Resume',
-                                  style: TextStyle(
-                                    color: Color(0xFF008A8A),
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              OutlinedButton(
-                                onPressed: () {},
-                                style: OutlinedButton.styleFrom(
-                                  side: const BorderSide(color: Colors.black26),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                ),
-                                child: const Text(
-                                  'Details',
-                                  style: TextStyle(
-                                    color: Colors.black87,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
+          Flexible(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: isBot
+                    ? AppTheme.cardOf(context)
+                    : AppTheme.primary.withOpacity(0.9),
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(16),
+                  topRight: const Radius.circular(16),
+                  bottomLeft: Radius.circular(isBot ? 0 : 16),
+                  bottomRight: Radius.circular(isBot ? 16 : 0),
+                ),
+                boxShadow: AppTheme.softShadowOf(context),
+              ),
+              child: Column(
+                crossAxisAlignment:
+                    isBot ? CrossAxisAlignment.start : CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    text,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: isBot ? AppTheme.textPrimaryOf(context) : Colors.white,
+                      height: 1.4,
                     ),
-                    if (idx < (MockData.previousChats.length - 1)) const SizedBox(height: 12),
-                  ],
-                );
-              })
-              .toList(),
-        ),
-      ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    time,
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: isBot
+                          ? AppTheme.textHintOf(context)
+                          : Colors.white.withOpacity(0.7),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (!isBot) const SizedBox(width: 24),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChatInput(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            offset: const Offset(0, -4),
+            blurRadius: 10,
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                color: AppTheme.cardOf(context),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: AppTheme.dividerOf(context),
+                ),
+              ),
+              child: TextField(
+                controller: _messageController,
+                style: TextStyle(
+                  color: AppTheme.textPrimaryOf(context),
+                  fontSize: 14,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'Ask Assist anything...',
+                  hintStyle: TextStyle(
+                    color: AppTheme.textHintOf(context),
+                  ),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 14,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Container(
+            decoration: BoxDecoration(
+              gradient: AppTheme.accentGradient,
+              shape: BoxShape.circle,
+              boxShadow: AppTheme.primaryGlow(0.2),
+            ),
+            child: IconButton(
+              onPressed: () {},
+              icon: const Icon(Icons.send_rounded, color: Colors.white),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
