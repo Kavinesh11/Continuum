@@ -281,33 +281,33 @@ Incremental build-out of the full Continuum backend and ML pipeline, replacing t
   - [x] 13.5 Add Prometheus /metrics endpoint to RAG Orchestrator
     - _Requirements: 16.1_
 
-- [~] 14. Crew AI Multi-Agent Orchestrator
-  - [ ] 14.1 Implement four Crew AI agents and orchestration pipeline
+- [x] 14. Crew AI Multi-Agent Orchestrator
+  - [x] 14.1 Implement four Crew AI agents and orchestration pipeline
     - Implement agents: `document_verification`, `oracle_cross_check`, `fraud_signal_aggregation`, `payout_authorization`
     - On FRAUD_QUEUE entry: assign to `fraud_signal_aggregation` within 60 seconds; complete secondary analysis within 5 minutes
     - `fraud_signal_aggregation` queries Knowledge_Graph_Cache, Vector_Store, and PostgreSQL claim history to produce structured `fraud_analysis_report`
     - Log all agent actions, tool calls, and decisions to PostgreSQL `agent_audit_log`
     - _Requirements: 12.1, 12.2, 12.3, 12.5, 12.6_
-  - [ ] 14.2 Implement confidence-based human escalation
+  - [x] 14.2 Implement confidence-based human escalation
     - If `fraud_analysis_report.confidence > 0.85`: escalate to human adjuster with report attached
     - _Requirements: 12.4_
-  - [ ] 14.3 Write property test for Crew AI confidence escalation (Property 33)
+  - [x] 14.3 Write property test for Crew AI confidence escalation (Property 33)
     - **Property 33: Crew AI Confidence Escalation**
     - **Validates: Requirements 12.4**
     - File: `services/crew_ai/tests/test_crew_ai.py` — `@settings(max_examples=100)`
     - Generate reports with arbitrary confidence scores; assert escalation triggered iff confidence > 0.85
 
-- [ ] 15. RASA Conversational Assistant and IndicConformer NLP
-  - [ ] 15.1 Implement RASA Assistant with intent handlers
+- [x] 15. RASA Conversational Assistant and IndicConformer NLP
+  - [x] 15.1 Implement RASA Assistant with intent handlers
     - Define intents: `policy_inquiry`, `claim_status`, `payout_inquiry`, `disruption_alert`, `escalate_to_human`
     - Integrate Core_Backend REST calls (authenticated) for policy and claim context retrieval
     - Escalate to human support agent when intent confidence < 0.7; notify worker
     - _Requirements: 13.1, 13.4, 13.5_
-  - [ ] 15.2 Integrate IndicConformer for multilingual NLP (5 languages)
+  - [x] 15.2 Integrate IndicConformer for multilingual NLP (5 languages)
     - Integrate AI4Bharat IndicConformer for transliteration/translation: Hindi, Tamil, Telugu, Kannada, Bengali
     - Pre-process incoming regional language messages to English before RASA; back-translate English responses to worker's detected language
     - _Requirements: 13.2, 13.3, 13.6_
-  - [ ] 15.3 Write property test for RASA low-confidence escalation (Property 34)
+  - [x] 15.3 Write property test for RASA low-confidence escalation (Property 34)
     - **Property 34: RASA Low-Confidence Escalation**
     - **Validates: Requirements 13.4**
     - File: `services/rasa_assistant/tests/test_rasa.py` — `@settings(max_examples=100)`
@@ -316,7 +316,7 @@ Incremental build-out of the full Continuum backend and ML pipeline, replacing t
 - [ ] 16. Checkpoint — Intelligence and AI layer complete
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 17. Flutter App Integration
+- [~] 17. Flutter App Integration
   - [ ] 17.1 Replace MockApiService with live ApiService
     - Create `lib/services/api_service.dart` implementing all methods currently in `lib/services/mock_api.dart`
     - Use `flutter_secure_storage` for JWT storage; implement automatic token refresh on expiry
