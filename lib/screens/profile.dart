@@ -5,69 +5,150 @@ import '../data/mock_data.dart';
 import '../theme/app_theme.dart';
 import '../main.dart';
 import '../sandbox/driver_provider.dart';
+import '../services/api_service.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  Map<String, dynamic>? _workerData;
+  bool _isOffline = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    try {
+      final result = await ApiService().getWorkerProfile('current_worker');
+      if (!mounted) return;
+      setState(() {
+        _workerData = result;
+        _isOffline = result['_isOffline'] == true;
+      });
+    } on ServerException {
+      if (!mounted) return;
+      setState(() => _isOffline = true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Service temporarily unavailable. Please try again.',
+          ),
+          behavior: SnackBarBehavior.floating,
+          action: SnackBarAction(label: 'Retry', onPressed: _loadProfile),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isOffline = true);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final driver = DriverProvider.of(context).driver;
+    // Use live data when available, fall back to sandbox driver
+    final name = _workerData?['full_name'] as String? ?? driver.fullName;
+    final initials = name.isNotEmpty
+        ? name.split(' ').map((p) => p.isNotEmpty ? p[0] : '').take(2).join()
+        : driver.initials;
+    final city = _workerData?['city'] as String? ?? driver.city;
+    final phone = _workerData?['phone'] as String? ?? driver.phone;
+    final platform = _workerData?['platform'] as String? ?? driver.platform;
+    final zone = _workerData?['zone_id'] as String? ?? driver.zone;
+    final tier = _workerData?['tier'] as String? ?? driver.tier;
+
     return Scaffold(
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildGradientHeader(
-              context,
-              driver.fullName,
-              driver.initials,
-              'Delivery Partner',
-              driver.city,
-              driver.memberSince,
-              driver.tier,
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      body: Column(
+        children: [
+          if (_isOffline)
+            Container(
+              width: double.infinity,
+              color: Colors.amber.shade700,
+              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
+              child: const Row(
                 children: [
-                  _buildStatsPills(
-                    context,
-                    '₹ ${driver.totalProtected.toStringAsFixed(0)}',
-                    driver.claimsApproved,
+                  Icon(Icons.wifi_off_rounded, color: Colors.white, size: 16),
+                  SizedBox(width: 8),
+                  Text(
+                    'Offline — showing cached data',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                  const SizedBox(height: 24),
-                  _buildPersonalData(
-                    context,
-                    driver.phone,
-                    driver.platform,
-                    driver.emergencyContact,
-                    driver.zone,
-                  ),
-                  const SizedBox(height: 24),
-                  _buildOrderSummary(
-                    driver.weeklyOrderCount,
-                    driver.weeklyEarnings,
-                    driver.completionRate,
-                  ),
-                  const SizedBox(height: 24),
-                  _buildLocationSection(
-                    driver.currentLocation.address,
-                    driver.currentLocation.zone,
-                    driver.locationHistory.length,
-                  ),
-                  const SizedBox(height: 24),
-                  _buildQuickLinks(context),
-                  const SizedBox(height: 24),
-                  _buildHistorySection(context, MockData.profileHistory as List),
-                  const SizedBox(height: 24),
-                  _buildSignOutButton(context),
-                  const SizedBox(height: 20),
                 ],
               ),
             ),
-          ],
-        ),
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildGradientHeader(
+                    context,
+                    name,
+                    initials,
+                    'Delivery Partner',
+                    city,
+                    driver.memberSince,
+                    tier,
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildStatsPills(
+                          context,
+                          '₹ ${driver.totalProtected.toStringAsFixed(0)}',
+                          driver.claimsApproved,
+                        ),
+                        const SizedBox(height: 24),
+                        _buildPersonalData(
+                          context,
+                          phone,
+                          platform,
+                          driver.emergencyContact,
+                          zone,
+                        ),
+                        const SizedBox(height: 24),
+                        _buildOrderSummary(
+                          driver.weeklyOrderCount,
+                          driver.weeklyEarnings,
+                          driver.completionRate,
+                        ),
+                        const SizedBox(height: 24),
+                        _buildLocationSection(
+                          driver.currentLocation.address,
+                          driver.currentLocation.zone,
+                          driver.locationHistory.length,
+                        ),
+                        const SizedBox(height: 24),
+                        _buildQuickLinks(context),
+                        const SizedBox(height: 24),
+                        _buildHistorySection(
+                          context,
+                          MockData.profileHistory as List,
+                        ),
+                        const SizedBox(height: 24),
+                        _buildSignOutButton(context),
+                        const SizedBox(height: 20),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -83,7 +164,11 @@ class ProfileScreen extends StatelessWidget {
   ) {
     return Container(
       padding: EdgeInsets.fromLTRB(
-          20, MediaQuery.of(context).padding.top + 16, 20, 24),
+        20,
+        MediaQuery.of(context).padding.top + 16,
+        20,
+        24,
+      ),
       decoration: BoxDecoration(
         gradient: AppTheme.primaryGradient,
         borderRadius: const BorderRadius.only(
@@ -122,10 +207,15 @@ class ProfileScreen extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.12),
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: Colors.white.withOpacity(0.2)),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.2),
+                            ),
                           ),
-                          child: const Icon(Icons.arrow_back_ios_new_rounded,
-                              color: Colors.white, size: 18),
+                          child: const Icon(
+                            Icons.arrow_back_ios_new_rounded,
+                            color: Colors.white,
+                            size: 18,
+                          ),
                         ),
                       ),
                     ),
@@ -143,11 +233,16 @@ class ProfileScreen extends StatelessWidget {
                       const SizedBox(height: 4),
                       // Sandbox badge in header
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.amber.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: Colors.amber.withOpacity(0.4)),
+                          border: Border.all(
+                            color: Colors.amber.withOpacity(0.4),
+                          ),
                         ),
                         child: Text(
                           '🧪 SANDBOX — $tier tier',
@@ -162,7 +257,8 @@ class ProfileScreen extends StatelessWidget {
                     ],
                   ),
                   GestureDetector(
-                    onTap: () => Navigator.pushNamed(context, AppRoutes.editProfile),
+                    onTap: () =>
+                        Navigator.pushNamed(context, AppRoutes.editProfile),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(10),
                       child: BackdropFilter(
@@ -172,10 +268,15 @@ class ProfileScreen extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.12),
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: Colors.white.withOpacity(0.2)),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.2),
+                            ),
                           ),
-                          child: const Icon(Icons.edit_rounded,
-                              color: Colors.white, size: 18),
+                          child: const Icon(
+                            Icons.edit_rounded,
+                            color: Colors.white,
+                            size: 18,
+                          ),
                         ),
                       ),
                     ),
@@ -192,7 +293,9 @@ class ProfileScreen extends StatelessWidget {
                       shape: BoxShape.circle,
                       color: Colors.white.withOpacity(0.2),
                       border: Border.all(
-                          color: Colors.white.withOpacity(0.4), width: 3),
+                        color: Colors.white.withOpacity(0.4),
+                        width: 3,
+                      ),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.15),
@@ -241,12 +344,15 @@ class ProfileScreen extends StatelessWidget {
                             filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
                             child: Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 4),
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.white.withOpacity(0.12),
                                 borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
-                                    color: Colors.white.withOpacity(0.18)),
+                                  color: Colors.white.withOpacity(0.18),
+                                ),
                               ),
                               child: Text(
                                 'Since $since',
@@ -272,7 +378,10 @@ class ProfileScreen extends StatelessWidget {
   }
 
   Widget _buildStatsPills(
-      BuildContext context, String totalProtected, int claimsApproved) {
+    BuildContext context,
+    String totalProtected,
+    int claimsApproved,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -327,17 +436,31 @@ class ProfileScreen extends StatelessWidget {
         const SizedBox(height: 12),
         _buildDataRow(context, Icons.phone_outlined, 'Phone', phone),
         const SizedBox(height: 8),
-        _buildDataRow(context, Icons.delivery_dining_outlined, 'Platform', platform),
+        _buildDataRow(
+          context,
+          Icons.delivery_dining_outlined,
+          'Platform',
+          platform,
+        ),
         const SizedBox(height: 8),
         _buildDataRow(context, Icons.location_on_outlined, 'Zone', zone),
         const SizedBox(height: 8),
-        _buildDataRow(context, Icons.emergency_outlined, 'Emergency Contact', emergency),
+        _buildDataRow(
+          context,
+          Icons.emergency_outlined,
+          'Emergency Contact',
+          emergency,
+        ),
       ],
     );
   }
 
   Widget _buildDataRow(
-      BuildContext context, IconData icon, String label, String value) {
+    BuildContext context,
+    IconData icon,
+    String label,
+    String value,
+  ) {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: AppTheme.cardDecorationOf(context),
@@ -454,7 +577,10 @@ class ProfileScreen extends StatelessWidget {
                     ),
                     Text(
                       zone,
-                      style: const TextStyle(fontSize: 12, color: Colors.black54),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.black54,
+                      ),
                     ),
                   ],
                 ),
@@ -500,8 +626,11 @@ class ProfileScreen extends StatelessWidget {
                     color: const Color(0xFF6366F1).withOpacity(0.08),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.payment_rounded,
-                      color: Color(0xFF6366F1), size: 18),
+                  child: const Icon(
+                    Icons.payment_rounded,
+                    color: Color(0xFF6366F1),
+                    size: 18,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -514,8 +643,11 @@ class ProfileScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-                Icon(Icons.chevron_right_rounded,
-                    color: AppTheme.textHintOf(context), size: 22),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppTheme.textHintOf(context),
+                  size: 22,
+                ),
               ],
             ),
           ),
@@ -524,8 +656,7 @@ class ProfileScreen extends StatelessWidget {
 
         // ── Edit Profile row ──
         GestureDetector(
-          onTap: () =>
-              Navigator.pushNamed(context, AppRoutes.editProfile),
+          onTap: () => Navigator.pushNamed(context, AppRoutes.editProfile),
           child: Container(
             padding: const EdgeInsets.all(14),
             decoration: AppTheme.cardDecorationOf(context),
@@ -537,8 +668,11 @@ class ProfileScreen extends StatelessWidget {
                     color: AppTheme.primary.withOpacity(0.08),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.edit_outlined,
-                      color: AppTheme.primary, size: 18),
+                  child: const Icon(
+                    Icons.edit_outlined,
+                    color: AppTheme.primary,
+                    size: 18,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -551,8 +685,11 @@ class ProfileScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-                Icon(Icons.chevron_right_rounded,
-                    color: AppTheme.textHintOf(context), size: 22),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppTheme.textHintOf(context),
+                  size: 22,
+                ),
               ],
             ),
           ),
@@ -633,8 +770,7 @@ class ProfileScreen extends StatelessWidget {
               ),
             ),
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
                 color: AppTheme.primary.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(20),
@@ -661,10 +797,7 @@ class ProfileScreen extends StatelessWidget {
                   left: 0,
                   top: 0,
                   bottom: 0,
-                  child: Container(
-                    width: 4,
-                    color: AppTheme.successGreen,
-                  ),
+                  child: Container(width: 4, color: AppTheme.successGreen),
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(18, 16, 16, 16),
@@ -672,8 +805,7 @@ class ProfileScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
-                        mainAxisAlignment:
-                            MainAxisAlignment.spaceBetween,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Expanded(
                             child: Text(
@@ -681,19 +813,18 @@ class ProfileScreen extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
-                                color:
-                                    AppTheme.textPrimaryOf(context),
+                                color: AppTheme.textPrimaryOf(context),
                               ),
                             ),
                           ),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 4),
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
-                              color: AppTheme.successGreen
-                                  .withOpacity(0.1),
-                              borderRadius:
-                                  BorderRadius.circular(20),
+                              color: AppTheme.successGreen.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(20),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -723,17 +854,17 @@ class ProfileScreen extends StatelessWidget {
                       const SizedBox(height: 8),
                       Row(
                         children: [
-                          Icon(Icons.calendar_today_rounded,
-                              size: 12,
-                              color:
-                                  AppTheme.textHintOf(context)),
+                          Icon(
+                            Icons.calendar_today_rounded,
+                            size: 12,
+                            color: AppTheme.textHintOf(context),
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             recent['date'] as String,
                             style: TextStyle(
                               fontSize: 12,
-                              color: AppTheme.textSecondaryOf(
-                                  context),
+                              color: AppTheme.textSecondaryOf(context),
                             ),
                           ),
                         ],
@@ -743,8 +874,7 @@ class ProfileScreen extends StatelessWidget {
                         recent['detail'] as String,
                         style: TextStyle(
                           fontSize: 12,
-                          color:
-                              AppTheme.textSecondaryOf(context),
+                          color: AppTheme.textSecondaryOf(context),
                           height: 1.4,
                         ),
                       ),
@@ -777,15 +907,14 @@ class ProfileScreen extends StatelessWidget {
             side: BorderSide.none,
             padding: const EdgeInsets.symmetric(vertical: 14),
             shape: RoundedRectangleBorder(
-                borderRadius:
-                    BorderRadius.circular(AppTheme.radiusMd)),
+              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+            ),
             backgroundColor: AppTheme.dangerRed.withOpacity(0.04),
           ),
           child: const Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.logout_rounded,
-                  color: AppTheme.dangerRed, size: 18),
+              Icon(Icons.logout_rounded, color: AppTheme.dangerRed, size: 18),
               SizedBox(width: 8),
               Text(
                 'Sign Out',
@@ -801,7 +930,6 @@ class ProfileScreen extends StatelessWidget {
       ),
     );
   }
-
 }
 
 class _StatCard extends StatelessWidget {
@@ -875,42 +1003,6 @@ class _StatCard extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-
-class _DataRow extends StatelessWidget {
-  final String label;
-  final String value;
-  const _DataRow({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.black.withOpacity(0.05)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(fontSize: 13, color: Colors.black54),
-          ),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
-        ],
       ),
     );
   }

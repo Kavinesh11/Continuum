@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../routes/app_routes.dart';
 import '../data/mock_data.dart';
 import '../theme/app_theme.dart';
+import '../services/api_service.dart';
 
 class ClaimsScreen extends StatefulWidget {
   const ClaimsScreen({Key? key}) : super(key: key);
@@ -12,6 +13,49 @@ class ClaimsScreen extends StatefulWidget {
 
 class _ClaimsScreenState extends State<ClaimsScreen> {
   String _selectedFilter = 'All';
+  bool _isOffline = false;
+  bool _isLoading = true;
+  List<Map<String, dynamic>> _liveClaims = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadClaims();
+  }
+
+  Future<void> _loadClaims() async {
+    setState(() => _isLoading = true);
+    try {
+      final claims = await ApiService().getClaims();
+      if (!mounted) return;
+      setState(() {
+        _liveClaims = claims;
+        _isOffline = false;
+        _isLoading = false;
+      });
+    } on ServerException {
+      if (!mounted) return;
+      setState(() {
+        _isOffline = true;
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Service temporarily unavailable. Please try again.',
+          ),
+          behavior: SnackBarBehavior.floating,
+          action: SnackBarAction(label: 'Retry', onPressed: _loadClaims),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isOffline = true;
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,71 +93,114 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
             ),
             child: IconButton(
               onPressed: () {},
-              icon: Icon(Icons.notifications_none_rounded,
-                  color: AppTheme.textSecondaryOf(context), size: 22),
+              icon: Icon(
+                Icons.notifications_none_rounded,
+                color: AppTheme.textSecondaryOf(context),
+                size: 22,
+              ),
             ),
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('My Claims',
-                  style: Theme.of(context).textTheme.displayLarge),
-              const SizedBox(height: 4),
-              Text('Track and manage your claims',
-                  style: Theme.of(context).textTheme.bodyMedium),
-              const SizedBox(height: 18),
-              _buildSummaryPills(),
-              const SizedBox(height: 20),
-              Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  gradient: AppTheme.primaryGradient,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                  boxShadow: AppTheme.primaryGlow(0.2),
-                ),
-                child: ElevatedButton(
-                  onPressed: () =>
-                      Navigator.pushNamed(context, AppRoutes.apply),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.transparent,
-                    shadowColor: Colors.transparent,
-                    padding: const EdgeInsets.symmetric(vertical: 15),
-                    shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(AppTheme.radiusMd),
+      body: Column(
+        children: [
+          if (_isOffline)
+            Container(
+              width: double.infinity,
+              color: Colors.amber.shade700,
+              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
+              child: const Row(
+                children: [
+                  Icon(Icons.wifi_off_rounded, color: Colors.white, size: 16),
+                  SizedBox(width: 8),
+                  Text(
+                    'Offline — showing cached data',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.note_add_rounded,
-                          color: Colors.white, size: 20),
-                      SizedBox(width: 10),
-                      Text(
-                        'Apply New Claim',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                ],
               ),
-              const SizedBox(height: 22),
-              _buildFilterChips(),
-              const SizedBox(height: 16),
-              _buildClaimsList(context),
-              const SizedBox(height: 20),
-            ],
+            ),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : SingleChildScrollView(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'My Claims',
+                            style: Theme.of(context).textTheme.displayLarge,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Track and manage your claims',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                          const SizedBox(height: 18),
+                          _buildSummaryPills(),
+                          const SizedBox(height: 20),
+                          Container(
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              gradient: AppTheme.primaryGradient,
+                              borderRadius: BorderRadius.circular(
+                                AppTheme.radiusMd,
+                              ),
+                              boxShadow: AppTheme.primaryGlow(0.2),
+                            ),
+                            child: ElevatedButton(
+                              onPressed: () =>
+                                  Navigator.pushNamed(context, AppRoutes.apply),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.transparent,
+                                shadowColor: Colors.transparent,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 15,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    AppTheme.radiusMd,
+                                  ),
+                                ),
+                              ),
+                              child: const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.note_add_rounded,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
+                                  SizedBox(width: 10),
+                                  Text(
+                                    'Apply New Claim',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 22),
+                          _buildFilterChips(),
+                          const SizedBox(height: 16),
+                          _buildClaimsList(context),
+                          const SizedBox(height: 20),
+                        ],
+                      ),
+                    ),
+                  ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -219,54 +306,61 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
       scrollDirection: Axis.horizontal,
       child: Row(
         children: filters
-            .map((filter) => Padding(
-                  padding: const EdgeInsets.only(right: 8.0),
-                  child: GestureDetector(
-                    onTap: () => setState(() => _selectedFilter = filter),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 18, vertical: 10),
-                      decoration: BoxDecoration(
+            .map(
+              (filter) => Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: GestureDetector(
+                  onTap: () => setState(() => _selectedFilter = filter),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _selectedFilter == filter
+                          ? AppTheme.primary
+                          : AppTheme.cardOf(context),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
                         color: _selectedFilter == filter
                             ? AppTheme.primary
-                            : AppTheme.cardOf(context),
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(
-                          color: _selectedFilter == filter
-                              ? AppTheme.primary
-                              : AppTheme.dividerOf(context),
-                          width: 1.5,
-                        ),
-                        boxShadow: _selectedFilter == filter
-                            ? AppTheme.primaryGlow(0.15)
-                            : null,
+                            : AppTheme.dividerOf(context),
+                        width: 1.5,
                       ),
-                      child: Text(
-                        filter,
-                        style: TextStyle(
-                          color: _selectedFilter == filter
-                              ? Colors.white
-                              : AppTheme.textSecondaryOf(context),
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
-                        ),
+                      boxShadow: _selectedFilter == filter
+                          ? AppTheme.primaryGlow(0.15)
+                          : null,
+                    ),
+                    child: Text(
+                      filter,
+                      style: TextStyle(
+                        color: _selectedFilter == filter
+                            ? Colors.white
+                            : AppTheme.textSecondaryOf(context),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
                       ),
                     ),
                   ),
-                ))
+                ),
+              ),
+            )
             .toList(),
       ),
     );
   }
 
   Widget _buildClaimsList(BuildContext context) {
-    final allClaims = MockData.claims as List<Map<String, dynamic>>;
+    // Use live data if available, otherwise fall back to mock
+    final allClaims = _liveClaims.isNotEmpty
+        ? _liveClaims
+        : MockData.claims as List<Map<String, dynamic>>;
     final filteredClaims = _selectedFilter == 'All'
         ? allClaims
         : allClaims
-            .where((claim) => claim['status'] == _selectedFilter)
-            .toList();
+              .where((claim) => claim['status'] == _selectedFilter)
+              .toList();
 
     return Column(
       children: filteredClaims.asMap().entries.map((entry) {
@@ -277,57 +371,47 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
         return Column(
           children: [
             GestureDetector(
-              onTap: () =>
-                  Navigator.pushNamed(context, AppRoutes.claimStatus),
+              onTap: () => Navigator.pushNamed(context, AppRoutes.claimStatus),
               child: Container(
                 decoration: BoxDecoration(
                   color: AppTheme.cardOf(context),
-                  borderRadius:
-                      BorderRadius.circular(AppTheme.radiusMd),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                   boxShadow: AppTheme.softShadowOf(context),
                 ),
                 child: ClipRRect(
-                  borderRadius:
-                      BorderRadius.circular(AppTheme.radiusMd),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                   child: Stack(
                     children: [
                       Positioned(
                         left: 0,
                         top: 0,
                         bottom: 0,
-                        child:
-                            Container(width: 4, color: statusColor),
+                        child: Container(width: 4, color: statusColor),
                       ),
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(
-                            18, 16, 16, 16),
+                        padding: const EdgeInsets.fromLTRB(18, 16, 16, 16),
                         child: Column(
-                          crossAxisAlignment:
-                              CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
-                              mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
                                   claim['id'] as String,
                                   style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700,
-                                    color: AppTheme.textHintOf(
-                                        context),
+                                    color: AppTheme.textHintOf(context),
                                   ),
                                 ),
                                 Container(
-                                  padding: const EdgeInsets
-                                      .symmetric(
-                                      horizontal: 10,
-                                      vertical: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 4,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: statusColor
-                                        .withOpacity(0.1),
-                                    borderRadius:
-                                        BorderRadius.circular(20),
+                                    color: statusColor.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(20),
                                   ),
                                   child: Text(
                                     claim['status'] as String,
@@ -346,32 +430,28 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
-                                color: AppTheme.textPrimaryOf(
-                                    context),
+                                color: AppTheme.textPrimaryOf(context),
                               ),
                             ),
                             const SizedBox(height: 10),
                             Row(
-                              mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Row(
                                   children: [
                                     Icon(
-                                        Icons
-                                            .calendar_today_rounded,
-                                        size: 13,
-                                        color:
-                                            AppTheme.textHintOf(
-                                                context)),
+                                      Icons.calendar_today_rounded,
+                                      size: 13,
+                                      color: AppTheme.textHintOf(context),
+                                    ),
                                     const SizedBox(width: 4),
                                     Text(
                                       claim['date'] as String,
                                       style: TextStyle(
                                         fontSize: 12,
-                                        color: AppTheme
-                                            .textSecondaryOf(
-                                                context),
+                                        color: AppTheme.textSecondaryOf(
+                                          context,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -381,26 +461,21 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
                                   style: TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w800,
-                                    color:
-                                        AppTheme.textPrimaryOf(
-                                            context),
+                                    color: AppTheme.textPrimaryOf(context),
                                   ),
                                 ),
                               ],
                             ),
                             const SizedBox(height: 12),
                             ClipRRect(
-                              borderRadius:
-                                  BorderRadius.circular(6),
+                              borderRadius: BorderRadius.circular(6),
                               child: LinearProgressIndicator(
-                                value: claim['progressPct']
-                                    as double,
+                                value: claim['progressPct'] as double,
                                 minHeight: 4,
-                                backgroundColor: statusColor
-                                    .withOpacity(0.1),
-                                valueColor:
-                                    AlwaysStoppedAnimation<Color>(
-                                        statusColor),
+                                backgroundColor: statusColor.withOpacity(0.1),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  statusColor,
+                                ),
                               ),
                             ),
                           ],
@@ -411,8 +486,7 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
                 ),
               ),
             ),
-            if (idx < (filteredClaims.length - 1))
-              const SizedBox(height: 12),
+            if (idx < (filteredClaims.length - 1)) const SizedBox(height: 12),
           ],
         );
       }).toList(),

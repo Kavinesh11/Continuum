@@ -1,15 +1,99 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../data/mock_data.dart';
 import '../theme/app_theme.dart';
+import '../services/api_service.dart';
 
-class StatusTrackerScreen extends StatelessWidget {
+class StatusTrackerScreen extends StatefulWidget {
   const StatusTrackerScreen({Key? key}) : super(key: key);
 
   @override
+  State<StatusTrackerScreen> createState() => _StatusTrackerScreenState();
+}
+
+class _StatusTrackerScreenState extends State<StatusTrackerScreen> {
+  Map<String, dynamic>? _liveData;
+  bool _isOffline = false;
+  bool _isLoading = true;
+  String? _claimId;
+  Timer? _pollTimer;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is String && _claimId == null) {
+      _claimId = args;
+      _loadStatus();
+    } else if (_claimId == null) {
+      // No claimId — use mock data
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _loadStatus() async {
+    if (_claimId == null) {
+      setState(() => _isLoading = false);
+      return;
+    }
+    try {
+      final result = await ApiService().getClaimStatus(_claimId!);
+      if (!mounted) return;
+      setState(() {
+        _liveData = result;
+        _isOffline = result['_isOffline'] == true;
+        _isLoading = false;
+      });
+      _maybeStartPolling(result['status'] as String?);
+    } on ServerException {
+      if (!mounted) return;
+      setState(() {
+        _isOffline = true;
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Service temporarily unavailable. Please try again.',
+          ),
+          behavior: SnackBarBehavior.floating,
+          action: SnackBarAction(label: 'Retry', onPressed: _loadStatus),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isOffline = true;
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _maybeStartPolling(String? status) {
+    _pollTimer?.cancel();
+    if (status == 'processing') {
+      _pollTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+        _loadStatus();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final data = MockData.claimStatusDetail as Map<String, dynamic>;
-    final stages = data['stages'] as List<Map<String, dynamic>>;
+    // Use live data if available, otherwise fall back to mock
+    final data =
+        _liveData ?? MockData.claimStatusDetail as Map<String, dynamic>;
+    final stages =
+        data['stages'] as List<Map<String, dynamic>>? ??
+        (MockData.claimStatusDetail as Map<String, dynamic>)['stages']
+            as List<Map<String, dynamic>>;
 
     return Scaffold(
       appBar: AppBar(
@@ -45,37 +129,67 @@ class StatusTrackerScreen extends StatelessWidget {
             ),
             child: IconButton(
               onPressed: () {},
-              icon: Icon(Icons.notifications_none_rounded,
-                  color: AppTheme.textSecondaryOf(context), size: 22),
+              icon: Icon(
+                Icons.notifications_none_rounded,
+                color: AppTheme.textSecondaryOf(context),
+                size: 22,
+              ),
             ),
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildStatusHeader(context, data),
-              const SizedBox(height: 22),
-              _buildProgressCard(context, stages),
-              const SizedBox(height: 22),
-              _buildPayoutCard(context, data),
-              const SizedBox(height: 16),
-              _buildTimelineCard(context, data),
-              const SizedBox(height: 16),
-              _buildVerificationPanel(context, data),
-              const SizedBox(height: 20),
-            ],
+      body: Column(
+        children: [
+          if (_isOffline)
+            Container(
+              width: double.infinity,
+              color: Colors.amber.shade700,
+              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
+              child: const Row(
+                children: [
+                  Icon(Icons.wifi_off_rounded, color: Colors.white, size: 16),
+                  SizedBox(width: 8),
+                  Text(
+                    'Offline — showing cached data',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : SingleChildScrollView(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildStatusHeader(context, data),
+                          const SizedBox(height: 22),
+                          _buildProgressCard(context, stages),
+                          const SizedBox(height: 22),
+                          _buildPayoutCard(context, data),
+                          const SizedBox(height: 16),
+                          _buildTimelineCard(context, data),
+                          const SizedBox(height: 16),
+                          _buildVerificationPanel(context, data),
+                          const SizedBox(height: 20),
+                        ],
+                      ),
+                    ),
+                  ),
           ),
-        ),
+        ],
       ),
     );
   }
 
-  Widget _buildStatusHeader(
-      BuildContext context, Map<String, dynamic> data) {
+  Widget _buildStatusHeader(BuildContext context, Map<String, dynamic> data) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -98,7 +212,7 @@ class StatusTrackerScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'CLAIM ${data['claimId']}',
+            'CLAIM ${data['claimId'] ?? data['claim_id'] ?? '—'}',
             style: TextStyle(
               color: Colors.white.withOpacity(0.7),
               fontSize: 11,
@@ -108,7 +222,7 @@ class StatusTrackerScreen extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            data['status'] as String,
+            (data['status'] as String? ?? 'Processing').toUpperCase(),
             style: const TextStyle(
               color: Colors.white,
               fontSize: 24,
@@ -129,7 +243,9 @@ class StatusTrackerScreen extends StatelessWidget {
   }
 
   Widget _buildProgressCard(
-      BuildContext context, List<Map<String, dynamic>> stages) {
+    BuildContext context,
+    List<Map<String, dynamic>> stages,
+  ) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: AppTheme.cardDecorationOf(context),
@@ -152,45 +268,41 @@ class StatusTrackerScreen extends StatelessWidget {
   }
 
   Widget _buildProgressStepper(
-      BuildContext context, List<Map<String, dynamic>> stages) {
+    BuildContext context,
+    List<Map<String, dynamic>> stages,
+  ) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: stages.asMap().entries.map((entry) {
         final idx = entry.key;
         final stage = entry.value;
-        final isComplete = stage['complete'] as bool;
-        
-        final leftLineColor = idx == 0 
-           ? Colors.transparent 
-           : (stages[idx]['complete'] as bool ? AppTheme.primary : AppTheme.dividerOf(context));
-        
+        final isComplete = stage['complete'] as bool? ?? false;
+
+        final leftLineColor = idx == 0
+            ? Colors.transparent
+            : (stages[idx]['complete'] as bool? ?? false
+                  ? AppTheme.primary
+                  : AppTheme.dividerOf(context));
+
         final rightLineColor = idx == stages.length - 1
-           ? Colors.transparent
-           : ((stages[idx + 1]['complete'] as bool) ? AppTheme.primary : AppTheme.dividerOf(context));
+            ? Colors.transparent
+            : ((stages[idx + 1]['complete'] as bool? ?? false)
+                  ? AppTheme.primary
+                  : AppTheme.dividerOf(context));
 
         return Expanded(
           child: Column(
             children: [
               Row(
                 children: [
-                  Expanded(
-                    child: Container(
-                      height: 3,
-                      color: leftLineColor,
-                    ),
-                  ),
+                  Expanded(child: Container(height: 3, color: leftLineColor)),
                   _buildCircle(context, stage, idx),
-                  Expanded(
-                    child: Container(
-                      height: 3,
-                      color: rightLineColor,
-                    ),
-                  ),
+                  Expanded(child: Container(height: 3, color: rightLineColor)),
                 ],
               ),
               const SizedBox(height: 12),
               Text(
-                stage['name'] as String,
+                stage['name'] as String? ?? '',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 10,
@@ -203,7 +315,7 @@ class StatusTrackerScreen extends StatelessWidget {
               ),
               const SizedBox(height: 3),
               Text(
-                stage['time'] as String,
+                stage['time'] as String? ?? '',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 10,
@@ -218,8 +330,11 @@ class StatusTrackerScreen extends StatelessWidget {
   }
 
   Widget _buildCircle(
-      BuildContext context, Map<String, dynamic> stage, int index) {
-    final isComplete = stage['complete'] as bool;
+    BuildContext context,
+    Map<String, dynamic> stage,
+    int index,
+  ) {
+    final isComplete = stage['complete'] as bool? ?? false;
     const size = 38.0;
 
     return Container(
@@ -240,8 +355,7 @@ class StatusTrackerScreen extends StatelessWidget {
       ),
       child: Center(
         child: isComplete
-            ? const Icon(Icons.check_rounded,
-                color: Colors.white, size: 18)
+            ? const Icon(Icons.check_rounded, color: Colors.white, size: 18)
             : Text(
                 '${index + 1}',
                 style: TextStyle(
@@ -254,8 +368,12 @@ class StatusTrackerScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPayoutCard(
-      BuildContext context, Map<String, dynamic> data) {
+  Widget _buildPayoutCard(BuildContext context, Map<String, dynamic> data) {
+    final payout =
+        data['expectedPayout'] ??
+        data['estimated_payout'] ??
+        data['amount'] ??
+        '—';
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -291,7 +409,7 @@ class StatusTrackerScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    '₹ ${data['expectedPayout']}',
+                    '₹ $payout',
                     style: const TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.w800,
@@ -300,7 +418,6 @@ class StatusTrackerScreen extends StatelessWidget {
                   ),
                 ],
               ),
-              // Glassmorphic icon container
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: BackdropFilter(
@@ -310,12 +427,13 @@ class StatusTrackerScreen extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.15),
-                      ),
+                      border: Border.all(color: Colors.white.withOpacity(0.15)),
                     ),
-                    child: const Icon(Icons.trending_up_rounded,
-                        color: Colors.white, size: 22),
+                    child: const Icon(
+                      Icons.trending_up_rounded,
+                      color: Colors.white,
+                      size: 22,
+                    ),
                   ),
                 ),
               ),
@@ -326,8 +444,9 @@ class StatusTrackerScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTimelineCard(
-      BuildContext context, Map<String, dynamic> data) {
+  Widget _buildTimelineCard(BuildContext context, Map<String, dynamic> data) {
+    final timeline =
+        data['timelineText'] ?? data['timeline'] ?? 'Pending review';
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: AppTheme.cardDecorationOf(context),
@@ -339,8 +458,11 @@ class StatusTrackerScreen extends StatelessWidget {
               color: AppTheme.primary.withOpacity(0.08),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.access_time_rounded,
-                color: AppTheme.primary, size: 20),
+            child: const Icon(
+              Icons.access_time_rounded,
+              color: AppTheme.primary,
+              size: 20,
+            ),
           ),
           const SizedBox(width: 14),
           Column(
@@ -356,7 +478,7 @@ class StatusTrackerScreen extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                data['timelineText'] as String,
+                timeline.toString(),
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
@@ -371,7 +493,13 @@ class StatusTrackerScreen extends StatelessWidget {
   }
 
   Widget _buildVerificationPanel(
-      BuildContext context, Map<String, dynamic> data) {
+    BuildContext context,
+    Map<String, dynamic> data,
+  ) {
+    final msg =
+        data['verificationMessage'] ??
+        data['verification_message'] ??
+        'Verification in progress';
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -382,9 +510,7 @@ class StatusTrackerScreen extends StatelessWidget {
           ],
         ),
         borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        border: Border.all(
-          color: AppTheme.primary.withOpacity(0.1),
-        ),
+        border: Border.all(color: AppTheme.primary.withOpacity(0.1)),
       ),
       child: Row(
         children: [
@@ -417,7 +543,7 @@ class StatusTrackerScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  data['verificationMessage'] as String,
+                  msg.toString(),
                   style: TextStyle(
                     fontSize: 12,
                     color: AppTheme.textSecondaryOf(context),

@@ -4,9 +4,11 @@ import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
+import 'package:uuid/uuid.dart';
 import '../data/mock_data.dart';
 import '../routes/app_routes.dart';
 import '../theme/app_theme.dart';
+import '../services/api_service.dart';
 
 class ApplyFormScreen extends StatefulWidget {
   const ApplyFormScreen({Key? key}) : super(key: key);
@@ -22,6 +24,7 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
   final AudioRecorder _audioRecorder = AudioRecorder();
   final ImagePicker _imagePicker = ImagePicker();
   bool _isRecording = false;
+  bool _isSubmitting = false;
   List<String> _audioPaths = [];
   List<XFile> _capturedPhotos = [];
 
@@ -63,9 +66,7 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
                     ],
                   ),
                   borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                  border: Border.all(
-                    color: AppTheme.primary.withOpacity(0.1),
-                  ),
+                  border: Border.all(color: AppTheme.primary.withOpacity(0.1)),
                 ),
                 child: Row(
                   children: [
@@ -75,8 +76,11 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
                         color: AppTheme.primary.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.description_outlined,
-                          color: AppTheme.primary, size: 22),
+                      child: const Icon(
+                        Icons.description_outlined,
+                        color: AppTheme.primary,
+                        size: 22,
+                      ),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -108,12 +112,16 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
               ),
               const SizedBox(height: 22),
               _buildSectionLabel(
-                  Icons.help_outline_rounded, 'Reason for Claim'),
+                Icons.help_outline_rounded,
+                'Reason for Claim',
+              ),
               const SizedBox(height: 8),
               _buildReasonDropdown(),
               const SizedBox(height: 18),
               _buildSectionLabel(
-                  Icons.calendar_today_rounded, 'Date of Occurrence'),
+                Icons.calendar_today_rounded,
+                'Date of Occurrence',
+              ),
               const SizedBox(height: 8),
               _buildDateField(),
               const SizedBox(height: 18),
@@ -133,32 +141,43 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
                   boxShadow: AppTheme.primaryGlow(0.25),
                 ),
                 child: ElevatedButton(
-                  onPressed: _submitForm,
+                  onPressed: _isSubmitting ? null : _submitForm,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.transparent,
                     shadowColor: Colors.transparent,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(AppTheme.radiusMd),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                     ),
                   ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.send_rounded,
-                          color: Colors.white, size: 18),
-                      SizedBox(width: 10),
-                      Text(
-                        'Submit Claim',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 16,
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.send_rounded,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                            SizedBox(width: 10),
+                            Text(
+                              'Submit Claim',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
-                  ),
                 ),
               ),
               const SizedBox(height: 20),
@@ -215,8 +234,10 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
         isExpanded: true,
         underline: Container(),
         dropdownColor: AppTheme.cardOf(context),
-        icon: Icon(Icons.keyboard_arrow_down_rounded,
-            color: AppTheme.textSecondaryOf(context)),
+        icon: Icon(
+          Icons.keyboard_arrow_down_rounded,
+          color: AppTheme.textSecondaryOf(context),
+        ),
         style: TextStyle(
           color: AppTheme.textPrimaryOf(context),
           fontSize: 14,
@@ -224,8 +245,9 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
         ),
         items: (MockData.applyDefaults['reasons'] as List)
             .cast<String>()
-            .map((reason) =>
-                DropdownMenuItem(value: reason, child: Text(reason)))
+            .map(
+              (reason) => DropdownMenuItem(value: reason, child: Text(reason)),
+            )
             .toList(),
         onChanged: (newValue) {
           setState(() => _selectedReason = newValue!);
@@ -254,8 +276,11 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
         hintText: MockData.applyDefaults['dateHint'] as String,
         suffixIcon: Container(
           margin: const EdgeInsets.only(right: 8),
-          child: const Icon(Icons.calendar_today_rounded,
-              color: AppTheme.primary, size: 18),
+          child: const Icon(
+            Icons.calendar_today_rounded,
+            color: AppTheme.primary,
+            size: 18,
+          ),
         ),
       ),
     );
@@ -265,9 +290,7 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
     return TextField(
       controller: _descriptionController,
       maxLines: 4,
-      decoration: const InputDecoration(
-        hintText: 'Describe what happened...',
-      ),
+      decoration: const InputDecoration(hintText: 'Describe what happened...'),
     );
   }
 
@@ -286,8 +309,11 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
                   color: AppTheme.primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.camera_alt_rounded,
-                    color: AppTheme.primary, size: 18),
+                child: const Icon(
+                  Icons.camera_alt_rounded,
+                  color: AppTheme.primary,
+                  size: 18,
+                ),
               ),
               const SizedBox(width: 12),
               Text(
@@ -317,7 +343,8 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                            color: AppTheme.primary.withOpacity(0.2)),
+                          color: AppTheme.primary.withOpacity(0.2),
+                        ),
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(11),
@@ -330,15 +357,19 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
                       right: -6,
                       top: -6,
                       child: GestureDetector(
-                        onTap: () => setState(() => _capturedPhotos.removeAt(index)),
+                        onTap: () =>
+                            setState(() => _capturedPhotos.removeAt(index)),
                         child: Container(
                           padding: const EdgeInsets.all(2),
                           decoration: const BoxDecoration(
                             color: Colors.white,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.cancel_rounded,
-                              color: AppTheme.dangerRed, size: 20),
+                          child: const Icon(
+                            Icons.cancel_rounded,
+                            color: AppTheme.dangerRed,
+                            size: 20,
+                          ),
                         ),
                       ),
                     ),
@@ -354,10 +385,15 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
                     color: AppTheme.primary.withOpacity(0.05),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                        color: AppTheme.primary.withOpacity(0.3), width: 1.5),
+                      color: AppTheme.primary.withOpacity(0.3),
+                      width: 1.5,
+                    ),
                   ),
-                  child: const Icon(Icons.add_a_photo_rounded,
-                      color: AppTheme.primary, size: 24),
+                  child: const Icon(
+                    Icons.add_a_photo_rounded,
+                    color: AppTheme.primary,
+                    size: 24,
+                  ),
                 ),
               ),
             ],
@@ -386,8 +422,7 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
                 ),
                 child: Icon(
                   Icons.mic_rounded,
-                  color:
-                      _isRecording ? AppTheme.dangerRed : AppTheme.primary,
+                  color: _isRecording ? AppTheme.dangerRed : AppTheme.primary,
                   size: 18,
                 ),
               ),
@@ -417,15 +452,15 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
                 decoration: BoxDecoration(
                   gradient: _isRecording
                       ? const LinearGradient(
-                          colors: [Color(0xFFEF4444), Color(0xFFDC2626)])
+                          colors: [Color(0xFFEF4444), Color(0xFFDC2626)],
+                        )
                       : AppTheme.accentGradient,
                   borderRadius: BorderRadius.circular(10),
                   boxShadow: [
                     BoxShadow(
-                      color: (_isRecording
-                              ? AppTheme.dangerRed
-                              : AppTheme.primary)
-                          .withOpacity(0.25),
+                      color:
+                          (_isRecording ? AppTheme.dangerRed : AppTheme.primary)
+                              .withOpacity(0.25),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -437,9 +472,12 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
                     backgroundColor: Colors.transparent,
                     shadowColor: Colors.transparent,
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 8),
+                      horizontal: 14,
+                      vertical: 8,
+                    ),
                     minimumSize: Size.zero,
                   ),
                   icon: Icon(
@@ -450,9 +488,10 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
                   label: Text(
                     _isRecording ? 'Stop' : 'Record',
                     style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13),
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
                   ),
                 ),
               ),
@@ -465,16 +504,24 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
                 int i = entry.key;
                 return Container(
                   margin: const EdgeInsets.only(top: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     color: AppTheme.successGreen.withOpacity(0.08),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppTheme.successGreen.withOpacity(0.15)),
+                    border: Border.all(
+                      color: AppTheme.successGreen.withOpacity(0.15),
+                    ),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.check_circle_rounded,
-                          color: AppTheme.successGreen, size: 16),
+                      const Icon(
+                        Icons.check_circle_rounded,
+                        color: AppTheme.successGreen,
+                        size: 16,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
@@ -494,8 +541,11 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
                             color: Colors.white,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.delete_outline_rounded,
-                              color: AppTheme.dangerRed, size: 16),
+                          child: const Icon(
+                            Icons.delete_outline_rounded,
+                            color: AppTheme.dangerRed,
+                            size: 16,
+                          ),
                         ),
                       ),
                     ],
@@ -509,7 +559,7 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
     );
   }
 
-  void _submitForm() {
+  Future<void> _submitForm() async {
     if (_selectedReason == 'Select a reason' ||
         _dateController.text.isEmpty ||
         _descriptionController.text.isEmpty) {
@@ -519,71 +569,64 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
           backgroundColor: AppTheme.dangerRed,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10)),
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
       return;
     }
 
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppTheme.radiusLg)),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppTheme.successGreen.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.check_circle_rounded,
-                  color: AppTheme.successGreen, size: 22),
-            ),
-            const SizedBox(width: 12),
-            const Text(
-              'Claim Submitted',
-              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
-            ),
-          ],
-        ),
-        content: Text(
-          'Your claim has been submitted successfully. Check the Status Tracker to monitor progress.',
-          style: TextStyle(
-            color: AppTheme.textSecondaryOf(context),
-            height: 1.4,
-          ),
-        ),
-        actions: [
-          Container(
-            decoration: BoxDecoration(
-              gradient: AppTheme.accentGradient,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.of(ctx).pop();
-                Navigator.pushReplacementNamed(
-                    context, AppRoutes.claimStatus);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                shadowColor: Colors.transparent,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-              ),
-              child: const Text(
-                'Done',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
+    setState(() => _isSubmitting = true);
+    try {
+      final claimId = const Uuid().v4();
+      final payload = {
+        'claim_id': claimId,
+        'worker_id': 'current_worker',
+        'event_type': _selectedReason,
+        'event_timestamp': DateTime.now().toIso8601String(),
+        'gps_coordinates': [0.0, 0.0],
+        'zone_id': 'default',
+        'device_attestation_token': 'mock_token',
+      };
 
-        ],
+      final result = await ApiService().submitClaim(payload);
+      if (!mounted) return;
+
+      if (result.containsKey('claim_id') || result.containsKey('status')) {
+        Navigator.pushReplacementNamed(
+          context,
+          AppRoutes.claimStatus,
+          arguments: result['claim_id'] ?? claimId,
+        );
+      } else {
+        _showSubmitError('Claim submission failed. Please try again.');
+      }
+    } on ServerException {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Service temporarily unavailable. Please try again.',
+          ),
+          behavior: SnackBarBehavior.floating,
+          action: SnackBarAction(label: 'Retry', onPressed: _submitForm),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      _showSubmitError('Network error. Please check your connection.');
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  void _showSubmitError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: AppTheme.dangerRed,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
@@ -595,15 +638,19 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text(
-                  'Camera permission is required to take photo evidence')),
+            content: Text(
+              'Camera permission is required to take photo evidence',
+            ),
+          ),
         );
         return;
       }
     }
 
     final photo = await _imagePicker.pickImage(
-        source: ImageSource.camera, imageQuality: 75);
+      source: ImageSource.camera,
+      imageQuality: 75,
+    );
     if (photo != null && mounted) {
       setState(() => _capturedPhotos.add(photo));
     }
@@ -621,8 +668,8 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-            content: Text(
-                path == null ? 'Recording stopped' : 'Audio captured')),
+          content: Text(path == null ? 'Recording stopped' : 'Audio captured'),
+        ),
       );
       return;
     }
@@ -636,7 +683,8 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
       return;
     }
 
-    String path = 'claim_audio_note_${DateTime.now().millisecondsSinceEpoch}.m4a';
+    String path =
+        'claim_audio_note_${DateTime.now().millisecondsSinceEpoch}.m4a';
     if (!kIsWeb) {
       path = '${Directory.systemTemp.path}/$path';
     }
@@ -644,9 +692,8 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
     await _audioRecorder.start(const RecordConfig(), path: path);
     if (!mounted) return;
     setState(() => _isRecording = true);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Recording started')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Recording started')));
   }
-
 }
