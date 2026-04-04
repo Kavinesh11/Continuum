@@ -41,6 +41,8 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.2"
+    version: "1.4.1"
+    version: "1.4.0"
   code_assets:
     dependency: transitive
     description:
@@ -408,6 +410,16 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.2"
+  logging:
+    dependency: transitive
+    description:
+      name: logging
+      sha256: c8245ada5f1717ed44271ed1c26b8ce85ca3228fd2ffdb75468ab01979309d61
+      url: "https://pub.dev"
+    source: hosted
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.2"
   logging:
     dependency: transitive
     description:
