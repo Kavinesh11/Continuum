@@ -259,29 +259,29 @@ Incremental build-out of the full Continuum backend and ML pipeline, replacing t
     - File: `services/kg_cache/tests/test_kg_cache_test.go` — gopter, ≥100 runs
     - Assert entries are not retrievable after 15 minutes from insertion timestamp
 
-- [ ] 13. RAG Orchestrator
-  - [ ] 13.1 Implement RAG Orchestrator pipeline with BGE-Large embeddings
+- [x] 13. RAG Orchestrator
+  - [x] 13.1 Implement RAG Orchestrator pipeline with BGE-Large embeddings
     - Implement LangChain/LlamaIndex pipeline: embed query with BGE-Large (768-dim) → cosine similarity search (top-5, threshold 0.6) → context assembly → LLM prompt (Gemini/Groq/GPT-4o)
     - Return fallback message directing to human support when no chunk scores above 0.6
     - _Requirements: 10.1, 10.3, 10.4, 10.5_
-  - [ ] 13.2 Write property tests for RAG retrieval count bound and similarity threshold fallback (Properties 27, 28)
+  - [x] 13.2 Write property tests for RAG retrieval count bound and similarity threshold fallback (Properties 27, 28)
     - **Property 27: RAG Retrieval Count Bound**
     - **Property 28: RAG Similarity Threshold Fallback**
     - **Validates: Requirements 10.3, 10.5**
     - File: `services/rag_orchestrator/tests/test_rag.py` — `@settings(max_examples=100)`
     - Assert at most 5 chunks returned; assert fallback triggered when all similarities < 0.6
-  - [ ] 13.3 Implement Vector Store update pipeline on oracle trigger
+  - [x] 13.3 Implement Vector Store update pipeline on oracle trigger
     - On confirmed oracle trigger event (Kafka consumer): scrape new disruption summaries → chunk → BGE-Large embed → upsert to MongoDB Atlas within 30 minutes
     - _Requirements: 10.6_
-  - [ ] 13.4 Write property test for policy document round-trip (Property 29)
+  - [x] 13.4 Write property test for policy document round-trip (Property 29)
     - **Property 29: Policy Document Round-Trip**
     - **Validates: Requirements 10.7**
     - File: `services/rag_orchestrator/tests/test_rag.py` — `@settings(max_examples=100)`
     - Parse arbitrary valid policy chunks into `PolicyDocument`; re-serialize; assert equivalence
-  - [ ] 13.5 Add Prometheus /metrics endpoint to RAG Orchestrator
+  - [x] 13.5 Add Prometheus /metrics endpoint to RAG Orchestrator
     - _Requirements: 16.1_
 
-- [ ] 14. Crew AI Multi-Agent Orchestrator
+- [~] 14. Crew AI Multi-Agent Orchestrator
   - [ ] 14.1 Implement four Crew AI agents and orchestration pipeline
     - Implement agents: `document_verification`, `oracle_cross_check`, `fraud_signal_aggregation`, `payout_authorization`
     - On FRAUD_QUEUE entry: assign to `fraud_signal_aggregation` within 60 seconds; complete secondary analysis within 5 minutes
