@@ -316,13 +316,13 @@ Incremental build-out of the full Continuum backend and ML pipeline, replacing t
 - [ ] 16. Checkpoint — Intelligence and AI layer complete
   - Ensure all tests pass, ask the user if questions arise.
 
-- [~] 17. Flutter App Integration
-  - [ ] 17.1 Replace MockApiService with live ApiService
+- [x] 17. Flutter App Integration
+  - [x] 17.1 Replace MockApiService with live ApiService
     - Create `lib/services/api_service.dart` implementing all methods currently in `lib/services/mock_api.dart`
     - Use `flutter_secure_storage` for JWT storage; implement automatic token refresh on expiry
     - Show offline indicator and last-cached data when Core_Backend returns network error; use Hive for local cache
     - _Requirements: 18.1, 18.2, 18.3_
-  - [ ] 17.2 Wire dashboard, claims, and profile screens to live endpoints
+  - [x] 17.2 Wire dashboard, claims, and profile screens to live endpoints
     - `dashboard.dart` → fetch Risk_Score + premium from FastAPI_Gateway `/onboard`
     - `claims.dart` → submit to FastAPI_Gateway `/claims/submit`; poll Core_Backend claim status every 30 seconds while in "Processing" state
     - `apply_form.dart` → POST to Core_Backend `POST /policies`
@@ -331,7 +331,7 @@ Incremental build-out of the full Continuum backend and ML pipeline, replacing t
     - `login.dart` → POST Core_Backend `POST /auth/login`; store JWT
     - Display claim status and decision within 500ms of API response
     - _Requirements: 18.4, 18.5, 1.13, 3.15_
-  - [ ] 17.3 Implement FCM token registration and HTTP 5xx error handling
+  - [x] 17.3 Implement FCM token registration and HTTP 5xx error handling
     - Send FCM device token to Core_Backend on every app launch
     - Display user-friendly error message with retry action on HTTP 5xx responses
     - _Requirements: 18.6, 18.7_
