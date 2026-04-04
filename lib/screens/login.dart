@@ -74,8 +74,9 @@ class _LoginScreenState extends State<LoginScreen>
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: AppTheme.primary
-                                  .withOpacity(_glowAnimation.value * 0.4),
+                              color: AppTheme.primary.withOpacity(
+                                _glowAnimation.value * 0.4,
+                              ),
                               blurRadius: 60,
                               spreadRadius: 20,
                             ),
@@ -250,8 +251,11 @@ class _LoginScreenState extends State<LoginScreen>
                     ),
                     child: OutlinedButton.icon(
                       onPressed: _login,
-                      icon: const Icon(Icons.motorcycle,
-                          color: Colors.white70, size: 20),
+                      icon: const Icon(
+                        Icons.motorcycle,
+                        color: Colors.white70,
+                        size: 20,
+                      ),
                       label: const Text(
                         'Login with Partner ID (Swiggy/Zomato)',
                         style: TextStyle(
@@ -266,6 +270,19 @@ class _LoginScreenState extends State<LoginScreen>
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
                         ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pushNamed(AppRoutes.register);
+                    },
+                    child: Text(
+                      'New here? Create insurance account',
+                      style: TextStyle(
+                        color: AppTheme.accent.withOpacity(0.95),
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
@@ -305,7 +322,11 @@ class _LoginScreenState extends State<LoginScreen>
             color: Colors.white.withOpacity(0.3),
             fontWeight: FontWeight.w400,
           ),
-          prefixIcon: Icon(icon, color: Colors.white.withOpacity(0.4), size: 20),
+          prefixIcon: Icon(
+            icon,
+            color: Colors.white.withOpacity(0.4),
+            size: 20,
+          ),
           filled: true,
           fillColor: Colors.transparent,
           border: OutlineInputBorder(
@@ -323,8 +344,10 @@ class _LoginScreenState extends State<LoginScreen>
               width: 1.5,
             ),
           ),
-          contentPadding:
-              const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+          contentPadding: const EdgeInsets.symmetric(
+            vertical: 16,
+            horizontal: 16,
+          ),
         ),
       ),
     );
