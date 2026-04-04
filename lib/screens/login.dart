@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../routes/app_routes.dart';
 import '../theme/app_theme.dart';
+import '../services/api_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -15,6 +16,7 @@ class _LoginScreenState extends State<LoginScreen>
   final _passwordController = TextEditingController();
   late AnimationController _glowController;
   late Animation<double> _glowAnimation;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -28,8 +30,60 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  void _login() {
-    Navigator.of(context).pushReplacementNamed(AppRoutes.sandboxSelect);
+  Future<void> _login() async {
+    final workerId = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    if (workerId.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Please enter your credentials'),
+          backgroundColor: AppTheme.dangerRed,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      final result = await ApiService().login(workerId, password);
+      if (!mounted) return;
+
+      if (result.containsKey('token')) {
+        await ApiService().saveToken(
+          result['token'] as String,
+          result['expires_at'] as String,
+        );
+        Navigator.of(context).pushReplacementNamed(AppRoutes.home);
+      } else {
+        _showError(result['error']?.toString() ?? 'Login failed');
+      }
+    } on ServerException catch (e) {
+      if (!mounted) return;
+      _showError('Service temporarily unavailable. Please try again.');
+      debugPrint('Login ServerException: $e');
+    } catch (e) {
+      if (!mounted) return;
+      // Network unavailable — fall back to sandbox
+      Navigator.of(context).pushReplacementNamed(AppRoutes.sandboxSelect);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: AppTheme.dangerRed,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
   }
 
   @override
@@ -74,8 +128,9 @@ class _LoginScreenState extends State<LoginScreen>
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: AppTheme.primary
-                                  .withOpacity(_glowAnimation.value * 0.4),
+                              color: AppTheme.primary.withOpacity(
+                                _glowAnimation.value * 0.4,
+                              ),
                               blurRadius: 60,
                               spreadRadius: 20,
                             ),
@@ -172,7 +227,7 @@ class _LoginScreenState extends State<LoginScreen>
                       ],
                     ),
                     child: ElevatedButton(
-                      onPressed: _login,
+                      onPressed: _isLoading ? null : _login,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.transparent,
                         shadowColor: Colors.transparent,
@@ -181,15 +236,24 @@ class _LoginScreenState extends State<LoginScreen>
                           borderRadius: BorderRadius.circular(14),
                         ),
                       ),
-                      child: const Text(
-                        'Sign In',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
+                      child: _isLoading
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text(
+                              'Sign In',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
                     ),
                   ),
                   const SizedBox(height: 28),
@@ -249,9 +313,12 @@ class _LoginScreenState extends State<LoginScreen>
                       ),
                     ),
                     child: OutlinedButton.icon(
-                      onPressed: _login,
-                      icon: const Icon(Icons.motorcycle,
-                          color: Colors.white70, size: 20),
+                      onPressed: _isLoading ? null : _login,
+                      icon: const Icon(
+                        Icons.motorcycle,
+                        color: Colors.white70,
+                        size: 20,
+                      ),
                       label: const Text(
                         'Login with Partner ID (Swiggy/Zomato)',
                         style: TextStyle(
@@ -305,7 +372,11 @@ class _LoginScreenState extends State<LoginScreen>
             color: Colors.white.withOpacity(0.3),
             fontWeight: FontWeight.w400,
           ),
-          prefixIcon: Icon(icon, color: Colors.white.withOpacity(0.4), size: 20),
+          prefixIcon: Icon(
+            icon,
+            color: Colors.white.withOpacity(0.4),
+            size: 20,
+          ),
           filled: true,
           fillColor: Colors.transparent,
           border: OutlineInputBorder(
@@ -323,8 +394,10 @@ class _LoginScreenState extends State<LoginScreen>
               width: 1.5,
             ),
           ),
-          contentPadding:
-              const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+          contentPadding: const EdgeInsets.symmetric(
+            vertical: 16,
+            horizontal: 16,
+          ),
         ),
       ),
     );

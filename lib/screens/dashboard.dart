@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import '../routes/app_routes.dart';
 import '../data/mock_data.dart';
 import '../theme/app_theme.dart';
-import '../sandbox/driver_provider.dart';
+import '../services/api_service.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({Key? key}) : super(key: key);
@@ -16,6 +16,57 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   String _selectedTrend = 'Monthly';
+  bool _isOffline = false;
+  double? _riskScore;
+  double? _weeklyPremium;
+  bool _loadingRisk = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchRiskProfile();
+  }
+
+  Future<void> _fetchRiskProfile() async {
+    try {
+      final result = await ApiService().fetchRiskProfile({
+        'worker_id': 'current_worker',
+        'zone_id': MockData.coverage['zone'] ?? 'default',
+        'platform': 'swiggy',
+        'tier': 'gold',
+        'gps_coordinates': [0.0, 0.0],
+        'activity_history': [],
+      });
+      if (!mounted) return;
+      setState(() {
+        _isOffline = result['_isOffline'] == true;
+        _riskScore = (result['risk_score'] as num?)?.toDouble();
+        _weeklyPremium = (result['weekly_premium'] as num?)?.toDouble();
+        _loadingRisk = false;
+      });
+    } on ServerException {
+      if (!mounted) return;
+      setState(() {
+        _isOffline = true;
+        _loadingRisk = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Service temporarily unavailable. Please try again.',
+          ),
+          behavior: SnackBarBehavior.floating,
+          action: SnackBarAction(label: 'Retry', onPressed: _fetchRiskProfile),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isOffline = true;
+        _loadingRisk = false;
+      });
+    }
+  }
 
   static const Map<String, _TrendSeries> _trendSeriesByRange = {
     'Yearly': _TrendSeries(
@@ -25,12 +76,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ),
     'Monthly': _TrendSeries(
       labels: [
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
       ],
       payout: [
-        980, 1180, 1510, 1780, 2010, 1880,
-        2320, 2480, 2690, 2790, 3110, 2850,
+        980,
+        1180,
+        1510,
+        1780,
+        2010,
+        1880,
+        2320,
+        2480,
+        2690,
+        2790,
+        3110,
+        2850,
       ],
       premium: [120, 132, 148, 138, 130, 166, 178, 170, 196, 220, 208, 170],
     ),
@@ -43,7 +114,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final driver = DriverProvider.of(context).driver;
     return Scaffold(
       appBar: AppBar(
         title: const Text('CONTINUUM'),
@@ -94,41 +164,67 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildGreeting(),
-              const SizedBox(height: 20),
-              _buildPlanStatusCard(),
-              const SizedBox(height: 16),
-              _buildTwoPillsRow(),
-              const SizedBox(height: 24),
-              Text(
-                'Quick Actions',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
+      body: Column(
+        children: [
+          if (_isOffline)
+            Container(
+              width: double.infinity,
+              color: Colors.amber.shade700,
+              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
+              child: const Row(
+                children: [
+                  Icon(Icons.wifi_off_rounded, color: Colors.white, size: 16),
+                  SizedBox(width: 8),
+                  Text(
+                    'Offline — showing cached data',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
                     ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 14),
-              _buildQuickActions(context),
-              const SizedBox(height: 24),
-              _buildEarningsTrendSection(),
-              const SizedBox(height: 24),
-              Text(
-                'Recent Activity',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
+            ),
+          Expanded(
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildGreeting(),
+                    const SizedBox(height: 20),
+                    _buildPlanStatusCard(),
+                    const SizedBox(height: 16),
+                    _buildTwoPillsRow(),
+                    const SizedBox(height: 24),
+                    Text(
+                      'Quick Actions',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
+                    const SizedBox(height: 14),
+                    _buildQuickActions(context),
+                    const SizedBox(height: 24),
+                    _buildEarningsTrendSection(),
+                    const SizedBox(height: 24),
+                    Text(
+                      'Recent Activity',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildRecentActivity(),
+                    const SizedBox(height: 32),
+                  ],
+                ),
               ),
-              const SizedBox(height: 12),
-              _buildRecentActivity(),
-              const SizedBox(height: 32),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -231,8 +327,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 shape: BoxShape.circle,
                                 boxShadow: [
                                   BoxShadow(
-                                    color:
-                                        AppTheme.successGreen.withOpacity(0.6),
+                                    color: AppTheme.successGreen.withOpacity(
+                                      0.6,
+                                    ),
                                     blurRadius: 6,
                                   ),
                                 ],
@@ -270,20 +367,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
                   child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.12),
-                      ),
+                      border: Border.all(color: Colors.white.withOpacity(0.12)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.calendar_today_rounded,
-                            color: Colors.white.withOpacity(0.7), size: 14),
+                        Icon(
+                          Icons.calendar_today_rounded,
+                          color: Colors.white.withOpacity(0.7),
+                          size: 14,
+                        ),
                         const SizedBox(width: 8),
                         Text(
                           'Next renewal on ${MockData.coverage['nextRenewal']}',
@@ -301,8 +401,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const SizedBox(height: 8),
               Row(
                 children: [
-                  Icon(Icons.location_on_outlined,
-                      color: Colors.white.withOpacity(0.7), size: 16),
+                  Icon(
+                    Icons.location_on_outlined,
+                    color: Colors.white.withOpacity(0.7),
+                    size: 16,
+                  ),
                   const SizedBox(width: 6),
                   Text(
                     'Zone: ${MockData.coverage['zone']}',
@@ -325,22 +428,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Row(
       children: [
         Expanded(
-            child: _buildInfoPill(
-          label: 'CURRENT CLAIM',
-          value: MockData.currentClaim['status'] as String,
-          subtitle: '2 days ago',
-          subtitleColor: AppTheme.warningOrange,
-          accentColor: AppTheme.warningOrange,
-        )),
+          child: _buildInfoPill(
+            label: 'CURRENT CLAIM',
+            value: MockData.currentClaim['status'] as String,
+            subtitle: _riskScore != null
+                ? 'Risk: ${(_riskScore! * 100).toStringAsFixed(0)}%'
+                : '2 days ago',
+            subtitleColor: AppTheme.warningOrange,
+            accentColor: AppTheme.warningOrange,
+          ),
+        ),
         const SizedBox(width: 12),
         Expanded(
-            child: _buildInfoPill(
-          label: 'WEEKLY PREMIUM',
-          value: '₹57',
-          subtitle: 'Paid via Autopay',
-          subtitleColor: AppTheme.textSecondaryOf(context),
-          accentColor: AppTheme.primary,
-        )),
+          child: _buildInfoPill(
+            label: 'WEEKLY PREMIUM',
+            value: _loadingRisk
+                ? '...'
+                : _weeklyPremium != null
+                ? '₹${_weeklyPremium!.toStringAsFixed(0)}'
+                : '₹57',
+            subtitle: 'Paid via Autopay',
+            subtitleColor: AppTheme.textSecondaryOf(context),
+            accentColor: AppTheme.primary,
+          ),
+        ),
       ],
     );
   }
@@ -629,9 +740,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 end: Alignment.bottomCenter,
               ),
               borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-              border: Border.all(
-                color: AppTheme.primary.withOpacity(0.08),
-              ),
+              border: Border.all(color: AppTheme.primary.withOpacity(0.08)),
             ),
             child: Column(
               children: [
@@ -766,90 +875,81 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ];
 
     return Column(
-      children: activity
-          .asMap()
-          .entries
-          .map(
-            (entry) {
-              final idx = entry.key;
-              final item = entry.value;
-              final color = colors[idx % colors.length];
-              final icon = icons[idx % icons.length];
-              return Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                decoration: BoxDecoration(
-                  color: AppTheme.cardOf(context),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                  boxShadow: AppTheme.softShadowOf(context),
+      children: activity.asMap().entries.map((entry) {
+        final idx = entry.key;
+        final item = entry.value;
+        final color = colors[idx % colors.length];
+        final icon = icons[idx % icons.length];
+        return Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          decoration: BoxDecoration(
+            color: AppTheme.cardOf(context),
+            borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+            boxShadow: AppTheme.softShadowOf(context),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+            child: Stack(
+              children: [
+                Positioned(
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  child: Container(width: 3.5, color: color),
                 ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                  child: Stack(
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
+                  child: Row(
                     children: [
-                      Positioned(
-                        left: 0,
-                        top: 0,
-                        bottom: 0,
-                        child: Container(width: 3.5, color: color),
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(icon, color: color, size: 18),
                       ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
-                        child: Row(
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Container(
-                              width: 36,
-                              height: 36,
-                              decoration: BoxDecoration(
-                                color: color.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Icon(icon, color: color, size: 18),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    item['title'] as String,
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppTheme.textPrimaryOf(
-                                          context),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    item['subtitle'] as String,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: AppTheme.textSecondaryOf(
-                                          context),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
                             Text(
-                              item['time'] as String,
+                              item['title'] as String,
                               style: TextStyle(
-                                fontSize: 11,
-                                color: AppTheme.textHintOf(context),
-                                fontWeight: FontWeight.w500,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.textPrimaryOf(context),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              item['subtitle'] as String,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppTheme.textSecondaryOf(context),
                               ),
                             ),
                           ],
                         ),
                       ),
+                      Text(
+                        item['time'] as String,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppTheme.textHintOf(context),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ],
                   ),
                 ),
-              );
-            },
-          )
-          .toList(),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 }
@@ -871,10 +971,7 @@ class _LegendDot extends StatelessWidget {
             color: color,
             shape: BoxShape.circle,
             boxShadow: [
-              BoxShadow(
-                color: color.withOpacity(0.4),
-                blurRadius: 4,
-              ),
+              BoxShadow(color: color.withOpacity(0.4), blurRadius: 4),
             ],
           ),
         ),

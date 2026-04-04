@@ -1,0 +1,5 @@
+scrapegraphai
+feedparser
+httpx
+pydantic
+python-dotenv

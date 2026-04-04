@@ -155,80 +155,80 @@ Incremental build-out of the full Continuum backend and ML pipeline, replacing t
     - _Requirements: 16.1, 16.3_
 
 - [ ] 8. Core Backend (Express.js)
-  - [ ] 8.1 Implement JWT authentication and RBAC middleware
+  - [x] 8.1 Implement JWT authentication and RBAC middleware
     - Implement `POST /auth/register` and `POST /auth/login` endpoints
     - Write JWT verification middleware (24-hour max lifetime); return HTTP 401 on expired/invalid token
     - Write role guard middleware for Worker / Admin / Insurer roles; return HTTP 403 on violation
     - _Requirements: 6.1, 6.2, 6.3, 6.4_
-  - [ ] 8.2 Write property tests for JWT expiry rejection and RBAC (Properties 18, 19)
+  - [x] 8.2 Write property tests for JWT expiry rejection and RBAC (Properties 18, 19)
     - **Property 18: JWT Expiry Rejection**
     - **Property 19: RBAC Access Control**
     - **Validates: Requirements 6.2, 6.3, 6.4**
     - File: `services/core_backend/tests/test_core_backend.js` — `fc.assert(..., { numRuns: 100 })`
     - Generate tokens with arbitrary ages; assert HTTP 401 for age > 24h; assert HTTP 403 for role violations
-  - [ ] 8.3 Implement policy management endpoints with business rule enforcement
+  - [x] 8.3 Implement policy management endpoints with business rule enforcement
     - Implement `POST /policies` (72-hour activation delay), `GET /policies/:id`, `DELETE /policies/:id` (defer to billing cycle end)
     - Implement tier upgrade waiting period (5-day delay on claim eligibility)
     - Enforce 1 successful payout per worker per 7-day cycle; return HTTP 409 on duplicate attempt
     - Publish `worker_onboarding` and policy lifecycle events to Kafka
     - _Requirements: 6.1, 6.5, 6.6, 6.7, 6.8, 6.9, 6.10_
-  - [ ] 8.4 Write property tests for policy activation delay, tier upgrade wait, payout cycle cap, and cancellation deferral (Properties 20, 21, 22, 23)
+  - [x] 8.4 Write property tests for policy activation delay, tier upgrade wait, payout cycle cap, and cancellation deferral (Properties 20, 21, 22, 23)
     - **Property 20: Policy Activation Delay**
     - **Property 21: Tier Upgrade Waiting Period**
     - **Property 22: Payout Cycle Cap**
     - **Property 23: Policy Cancellation Deferral**
     - **Validates: Requirements 6.5, 6.6, 6.9, 6.10**
     - File: `services/core_backend/tests/test_core_backend.js` — `fc.assert(..., { numRuns: 100 })`
-  - [ ] 8.5 Implement payout and claim status endpoints
+  - [x] 8.5 Implement payout and claim status endpoints
     - Implement `GET /payouts` (worker's own history), `GET /claims/:id/status`
     - Use optimistic concurrency control on CockroachDB payout writes to prevent double-disbursement
     - _Requirements: 6.1, 9.5_
-  - [ ] 8.6 Implement FCM device token registration and premium change notification
+  - [x] 8.6 Implement FCM device token registration and premium change notification
     - Implement FCM token upsert on app launch; send FCM notification ≥7 days before premium change
     - _Requirements: 2.5, 15.5_
-  - [ ] 8.7 Add Prometheus /metrics endpoint to Core Backend
+  - [x] 8.7 Add Prometheus /metrics endpoint to Core Backend
     - Emit: `active_policies_count`, `weekly_premiums_collected`, `payouts_disbursed_total`
     - _Requirements: 16.1, 16.4_
 
-- [ ] 9. Checkpoint — Core Backend complete
+- [x] 9. Checkpoint — Core Backend complete
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 10. BullMQ Workers and PayU/FCM integration
-  - [ ] 10.1 Implement BullMQ worker processors for all four queues
+  - [x] 10.1 Implement BullMQ worker processors for all four queues
     - Implement processors for: `premium_recalculation`, `payout_disbursement`, `notification_dispatch`, `fraud_review_escalation`
     - Configure exponential backoff delays `[1s, 2s, 4s, 8s, 16s]`, max 5 attempts, then DLQ
     - Schedule weekly `premium_recalculation` jobs for all active policies at billing cycle start; complete within 1-hour window
     - _Requirements: 2.1, 2.2, 8.1, 8.2, 8.5_
-  - [ ] 10.2 Write property tests for exponential backoff and DLQ escalation timeout (Properties 24, 25)
+  - [x] 10.2 Write property tests for exponential backoff and DLQ escalation timeout (Properties 24, 25)
     - **Property 24: BullMQ Exponential Backoff**
     - **Property 25: DLQ Escalation Timeout**
     - **Validates: Requirements 8.2, 8.4, 14.3**
     - File: `services/core_backend/tests/test_bullmq.js` — `fc.assert(..., { numRuns: 100 })`
     - Assert retry delays follow exponential sequence; assert DLQ entries >24h trigger `fraud_alert` Kafka event
-  - [ ] 10.3 Implement PayU UPI payout disbursement
+  - [x] 10.3 Implement PayU UPI payout disbursement
     - Implement PayU Gateway client; disburse within 60 seconds of job execution
     - Implement SIM change detection hold (6-hour window → require biometric re-confirmation before release)
     - Record disbursement status, PayU transaction ref, and timestamp to CockroachDB `payouts` table
     - _Requirements: 14.1, 14.2, 14.3, 14.4, 14.5_
-  - [ ] 10.4 Write property test for SIM change disbursement hold (Property 35)
+  - [x] 10.4 Write property test for SIM change disbursement hold (Property 35)
     - **Property 35: SIM Change Disbursement Hold**
     - **Validates: Requirements 14.4**
     - File: `services/core_backend/tests/test_payu.js` — `fc.assert(..., { numRuns: 100 })`
-  - [ ] 10.5 Implement FCM push notification dispatch
+  - [x] 10.5 Implement FCM push notification dispatch
     - Send `payout_credited` notification within 30 seconds of successful disbursement
     - Send zone-specific `disruption_alert` to all active-policy workers in affected zone within 60 seconds of oracle trigger
     - Handle delivery failure with Firebase built-in 24-hour retry
     - _Requirements: 15.1, 15.2, 15.3, 15.4_
-  - [ ] 10.6 Implement CockroachDB payout record completeness enforcement
+  - [x] 10.6 Implement CockroachDB payout record completeness enforcement
     - Enforce all required fields (`payout_id`, `worker_id`, `claim_id`, `amount`, `oracle_vote_breakdown`, `zone_id`, `tier`, `timestamp`) are non-null before commit
     - Enforce 90-day reserve balance constraint at application layer
     - _Requirements: 9.2, 9.3_
-  - [ ] 10.7 Write property test for payout record completeness (Property 26)
+  - [x] 10.7 Write property test for payout record completeness (Property 26)
     - **Property 26: Payout Record Completeness**
     - **Validates: Requirements 9.3**
     - File: `services/core_backend/tests/test_ledger.js` — `fc.assert(..., { numRuns: 100 })`
     - Generate arbitrary payout inputs; assert all required fields present and non-null in persisted record
-  - [ ] 10.8 Add Prometheus /metrics endpoint to BullMQ Worker
+  - [x] 10.8 Add Prometheus /metrics endpoint to BullMQ Worker
     - Emit: job completion rate, failure rate, queue depth per queue name
     - Alert rule: DLQ depth > 10 jobs
     - _Requirements: 8.3, 16.1, 16.3_
@@ -236,78 +236,78 @@ Incremental build-out of the full Continuum backend and ML pipeline, replacing t
 - [ ] 11. Checkpoint — BullMQ / PayU / FCM complete
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 12. Web Intelligence Service and Knowledge Graph Cache
-  - [ ] 12.1 Implement Web Intelligence Service with ScrapeGraph.AI
+- [x] 12. Web Intelligence Service and Knowledge Graph Cache
+  - [x] 12.1 Implement Web Intelligence Service with ScrapeGraph.AI
     - Implement Downdetector scraper (5-minute polling interval, configurable)
     - Implement IMD weather advisory RSS feed parser and municipal lockdown advisory feed parser
     - On malformed/unparseable content: log error and skip record without raising unhandled exception
     - _Requirements: 11.1, 11.2, 11.3_
-  - [ ] 12.2 Write property tests for malformed scrape resilience and advisory text round-trip (Properties 30, 31)
+  - [x] 12.2 Write property tests for malformed scrape resilience and advisory text round-trip (Properties 30, 31)
     - **Property 30: Advisory Text Round-Trip**
     - **Property 31: Malformed Scrape Resilience**
     - **Validates: Requirements 11.3, 11.7**
     - File: `services/web_intelligence/tests/test_web_intel.py` — `@settings(max_examples=100)`
     - Generate arbitrary malformed inputs; assert no unhandled exception; assert round-trip identity for valid inputs
-  - [ ] 12.3 Implement Knowledge Graph Cache (Go) with zone-keyed TTL
+  - [x] 12.3 Implement Knowledge Graph Cache (Go) with zone-keyed TTL
     - Implement in-memory cache keyed by `{zone_id}:{event_type}` with 15-minute TTL per entry
     - On TTL expiry: evict entry and trigger async re-scrape via Web_Intelligence_Service HTTP callback
     - Expose HTTP API for Oracle Consensus Engine and RAG Orchestrator lookups
     - _Requirements: 11.4, 11.5, 11.6_
-  - [ ] 12.4 Write property test for Knowledge Graph Cache TTL expiry (Property 32)
+  - [x] 12.4 Write property test for Knowledge Graph Cache TTL expiry (Property 32)
     - **Property 32: Knowledge Graph TTL Expiry**
     - **Validates: Requirements 11.4**
     - File: `services/kg_cache/tests/test_kg_cache_test.go` — gopter, ≥100 runs
     - Assert entries are not retrievable after 15 minutes from insertion timestamp
 
-- [ ] 13. RAG Orchestrator
-  - [ ] 13.1 Implement RAG Orchestrator pipeline with BGE-Large embeddings
+- [x] 13. RAG Orchestrator
+  - [x] 13.1 Implement RAG Orchestrator pipeline with BGE-Large embeddings
     - Implement LangChain/LlamaIndex pipeline: embed query with BGE-Large (768-dim) → cosine similarity search (top-5, threshold 0.6) → context assembly → LLM prompt (Gemini/Groq/GPT-4o)
     - Return fallback message directing to human support when no chunk scores above 0.6
     - _Requirements: 10.1, 10.3, 10.4, 10.5_
-  - [ ] 13.2 Write property tests for RAG retrieval count bound and similarity threshold fallback (Properties 27, 28)
+  - [x] 13.2 Write property tests for RAG retrieval count bound and similarity threshold fallback (Properties 27, 28)
     - **Property 27: RAG Retrieval Count Bound**
     - **Property 28: RAG Similarity Threshold Fallback**
     - **Validates: Requirements 10.3, 10.5**
     - File: `services/rag_orchestrator/tests/test_rag.py` — `@settings(max_examples=100)`
     - Assert at most 5 chunks returned; assert fallback triggered when all similarities < 0.6
-  - [ ] 13.3 Implement Vector Store update pipeline on oracle trigger
+  - [x] 13.3 Implement Vector Store update pipeline on oracle trigger
     - On confirmed oracle trigger event (Kafka consumer): scrape new disruption summaries → chunk → BGE-Large embed → upsert to MongoDB Atlas within 30 minutes
     - _Requirements: 10.6_
-  - [ ] 13.4 Write property test for policy document round-trip (Property 29)
+  - [x] 13.4 Write property test for policy document round-trip (Property 29)
     - **Property 29: Policy Document Round-Trip**
     - **Validates: Requirements 10.7**
     - File: `services/rag_orchestrator/tests/test_rag.py` — `@settings(max_examples=100)`
     - Parse arbitrary valid policy chunks into `PolicyDocument`; re-serialize; assert equivalence
-  - [ ] 13.5 Add Prometheus /metrics endpoint to RAG Orchestrator
+  - [x] 13.5 Add Prometheus /metrics endpoint to RAG Orchestrator
     - _Requirements: 16.1_
 
-- [ ] 14. Crew AI Multi-Agent Orchestrator
-  - [ ] 14.1 Implement four Crew AI agents and orchestration pipeline
+- [x] 14. Crew AI Multi-Agent Orchestrator
+  - [x] 14.1 Implement four Crew AI agents and orchestration pipeline
     - Implement agents: `document_verification`, `oracle_cross_check`, `fraud_signal_aggregation`, `payout_authorization`
     - On FRAUD_QUEUE entry: assign to `fraud_signal_aggregation` within 60 seconds; complete secondary analysis within 5 minutes
     - `fraud_signal_aggregation` queries Knowledge_Graph_Cache, Vector_Store, and PostgreSQL claim history to produce structured `fraud_analysis_report`
     - Log all agent actions, tool calls, and decisions to PostgreSQL `agent_audit_log`
     - _Requirements: 12.1, 12.2, 12.3, 12.5, 12.6_
-  - [ ] 14.2 Implement confidence-based human escalation
+  - [x] 14.2 Implement confidence-based human escalation
     - If `fraud_analysis_report.confidence > 0.85`: escalate to human adjuster with report attached
     - _Requirements: 12.4_
-  - [ ] 14.3 Write property test for Crew AI confidence escalation (Property 33)
+  - [x] 14.3 Write property test for Crew AI confidence escalation (Property 33)
     - **Property 33: Crew AI Confidence Escalation**
     - **Validates: Requirements 12.4**
     - File: `services/crew_ai/tests/test_crew_ai.py` — `@settings(max_examples=100)`
     - Generate reports with arbitrary confidence scores; assert escalation triggered iff confidence > 0.85
 
-- [ ] 15. RASA Conversational Assistant and IndicConformer NLP
-  - [ ] 15.1 Implement RASA Assistant with intent handlers
+- [x] 15. RASA Conversational Assistant and IndicConformer NLP
+  - [x] 15.1 Implement RASA Assistant with intent handlers
     - Define intents: `policy_inquiry`, `claim_status`, `payout_inquiry`, `disruption_alert`, `escalate_to_human`
     - Integrate Core_Backend REST calls (authenticated) for policy and claim context retrieval
     - Escalate to human support agent when intent confidence < 0.7; notify worker
     - _Requirements: 13.1, 13.4, 13.5_
-  - [ ] 15.2 Integrate IndicConformer for multilingual NLP (5 languages)
+  - [x] 15.2 Integrate IndicConformer for multilingual NLP (5 languages)
     - Integrate AI4Bharat IndicConformer for transliteration/translation: Hindi, Tamil, Telugu, Kannada, Bengali
     - Pre-process incoming regional language messages to English before RASA; back-translate English responses to worker's detected language
     - _Requirements: 13.2, 13.3, 13.6_
-  - [ ] 15.3 Write property test for RASA low-confidence escalation (Property 34)
+  - [x] 15.3 Write property test for RASA low-confidence escalation (Property 34)
     - **Property 34: RASA Low-Confidence Escalation**
     - **Validates: Requirements 13.4**
     - File: `services/rasa_assistant/tests/test_rasa.py` — `@settings(max_examples=100)`
@@ -316,13 +316,13 @@ Incremental build-out of the full Continuum backend and ML pipeline, replacing t
 - [ ] 16. Checkpoint — Intelligence and AI layer complete
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 17. Flutter App Integration
-  - [ ] 17.1 Replace MockApiService with live ApiService
+- [x] 17. Flutter App Integration
+  - [x] 17.1 Replace MockApiService with live ApiService
     - Create `lib/services/api_service.dart` implementing all methods currently in `lib/services/mock_api.dart`
     - Use `flutter_secure_storage` for JWT storage; implement automatic token refresh on expiry
     - Show offline indicator and last-cached data when Core_Backend returns network error; use Hive for local cache
     - _Requirements: 18.1, 18.2, 18.3_
-  - [ ] 17.2 Wire dashboard, claims, and profile screens to live endpoints
+  - [x] 17.2 Wire dashboard, claims, and profile screens to live endpoints
     - `dashboard.dart` → fetch Risk_Score + premium from FastAPI_Gateway `/onboard`
     - `claims.dart` → submit to FastAPI_Gateway `/claims/submit`; poll Core_Backend claim status every 30 seconds while in "Processing" state
     - `apply_form.dart` → POST to Core_Backend `POST /policies`
@@ -331,7 +331,7 @@ Incremental build-out of the full Continuum backend and ML pipeline, replacing t
     - `login.dart` → POST Core_Backend `POST /auth/login`; store JWT
     - Display claim status and decision within 500ms of API response
     - _Requirements: 18.4, 18.5, 1.13, 3.15_
-  - [ ] 17.3 Implement FCM token registration and HTTP 5xx error handling
+  - [x] 17.3 Implement FCM token registration and HTTP 5xx error handling
     - Send FCM device token to Core_Backend on every app launch
     - Display user-friendly error message with retry action on HTTP 5xx responses
     - _Requirements: 18.6, 18.7_

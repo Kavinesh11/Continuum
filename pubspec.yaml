@@ -10,6 +10,13 @@ dependencies:
   image_picker: ^1.0.7
   record: ^5.2.1
   google_fonts: ^6.1.0
+  http: ^1.2.0
+  flutter_secure_storage: ^9.0.0
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  firebase_core: ^3.0.0
+  firebase_messaging: ^15.0.0
+  uuid: ^4.3.3
   # No extra overlay package needed, will use OverlayEntry/Stack
 
 flutter:

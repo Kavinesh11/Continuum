@@ -1,0 +1,341 @@
+// Feature: continuum-ml-pipelines
+// Policy management endpoints with business rule enforcement
+// Requirements: 6.1, 6.5, 6.6, 6.7, 6.8, 6.9, 6.10
+
+'use strict';
+
+const express = require('express');
+const { v4: uuidv4 } = require('uuid');
+const { authenticate } = require('../middleware/auth');
+const { requireRole } = require('../middleware/rbac');
+const db = require('../db');
+const kafka = require('../services/kafka');
+const { incrementPremiumsCollected } = require('../services/metrics');
+
+const router = express.Router();
+
+// Business rule constants
+const ACTIVATION_DELAY_MS = 72 * 60 * 60 * 1000;       // 72 hours
+const TIER_UPGRADE_DELAY_MS = 5 * 24 * 60 * 60 * 1000; // 5 days
+const BILLING_CYCLE_MS = 7 * 24 * 60 * 60 * 1000;      // 7 days
+
+const VALID_TIERS = ['silver', 'gold', 'platinum'];
+
+/**
+ * POST /policies
+ * Create a new policy with 72-hour activation delay.
+ * Publishes worker_onboarding and policy_created events to Kafka.
+ * Requirements: 6.1, 6.5, 6.7, 6.8
+ */
+router.post('/', authenticate, requireRole('worker'), async (req, res, next) => {
+  try {
+    const { worker_id, tier, zone_id, coverage_cap, weekly_premium } = req.body;
+
+    if (!worker_id || !tier || !zone_id || coverage_cap == null || weekly_premium == null) {
+      return res.status(400).json({ error: 'missing_fields' });
+    }
+
+    if (!VALID_TIERS.includes(tier)) {
+      return res.status(400).json({ error: 'invalid_tier' });
+    }
+
+    // Worker in JWT must match the worker_id in the body
+    if (req.user.worker_id !== worker_id) {
+      return res.status(403).json({ error: 'insufficient_role' });
+    }
+
+    const now = new Date();
+    const effectiveDate = now;
+    const claimEligibleFrom = new Date(now.getTime() + ACTIVATION_DELAY_MS);
+    const billingCycleStart = now;
+    const billingCycleEnd = new Date(now.getTime() + BILLING_CYCLE_MS);
+    const policyId = uuidv4();
+
+    // Persist policy to CockroachDB (Requirements 6.7)
+    await db.query(
+      `INSERT INTO policies
+         (policy_id, worker_id, tier, coverage_cap, weekly_premium,
+          effective_date, claim_eligible_from, status,
+          billing_cycle_start, billing_cycle_end, cancelled_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', $8, $9, NULL)`,
+      [
+        policyId, worker_id, tier,
+        coverage_cap, weekly_premium,
+        effectiveDate, claimEligibleFrom,
+        billingCycleStart, billingCycleEnd,
+      ]
+    );
+
+    const policy = {
+      policy_id: policyId,
+      worker_id,
+      tier,
+      coverage_cap,
+      weekly_premium,
+      effective_date: effectiveDate.toISOString(),
+      claim_eligible_from: claimEligibleFrom.toISOString(),
+      status: 'pending',
+      billing_cycle_start: billingCycleStart.toISOString(),
+      billing_cycle_end: billingCycleEnd.toISOString(),
+      cancelled_at: null,
+    };
+
+    // Publish worker_onboarding event (Requirements 6.8)
+    try {
+      await kafka.publishEvent('worker_onboarding', {
+        worker_id,
+        zone_id,
+        platform: req.user.platform || null,
+        tier,
+        registered_at: now.toISOString(),
+      });
+    } catch (kafkaErr) {
+      // Non-fatal: log but don't fail the request
+      console.error('Kafka publish error (worker_onboarding):', kafkaErr.message);
+    }
+
+    // Publish policy lifecycle event (Requirements 6.8)
+    try {
+      await kafka.publishEvent('policy_lifecycle', {
+        event: 'policy_created',
+        policy_id: policyId,
+        worker_id,
+        tier,
+        effective_date: effectiveDate.toISOString(),
+        claim_eligible_from: claimEligibleFrom.toISOString(),
+        created_at: now.toISOString(),
+      });
+    } catch (kafkaErr) {
+      console.error('Kafka publish error (policy_lifecycle):', kafkaErr.message);
+    }
+
+    // Track weekly premium collected (Requirements 16.4)
+    incrementPremiumsCollected(parseFloat(weekly_premium));
+
+    return res.status(201).json(policy);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /policies/:id
+ * Retrieve a policy by ID. Worker can only access their own policy.
+ * Requirements: 6.1
+ */
+router.get('/:id', authenticate, requireRole('worker', 'admin', 'insurer'), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const result = await db.query(
+      `SELECT policy_id, worker_id, tier, coverage_cap, weekly_premium,
+              effective_date, claim_eligible_from, status,
+              billing_cycle_start, billing_cycle_end, cancelled_at
+       FROM policies
+       WHERE policy_id = $1`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'not_found' });
+    }
+
+    const policy = result.rows[0];
+
+    // Workers can only access their own policy (Requirements 6.1)
+    if (req.user.role === 'worker' && policy.worker_id !== req.user.worker_id) {
+      return res.status(403).json({ error: 'insufficient_role' });
+    }
+
+    return res.status(200).json({
+      policy_id: policy.policy_id,
+      worker_id: policy.worker_id,
+      tier: policy.tier,
+      coverage_cap: parseFloat(policy.coverage_cap),
+      weekly_premium: parseFloat(policy.weekly_premium),
+      effective_date: policy.effective_date instanceof Date
+        ? policy.effective_date.toISOString()
+        : policy.effective_date,
+      claim_eligible_from: policy.claim_eligible_from instanceof Date
+        ? policy.claim_eligible_from.toISOString()
+        : policy.claim_eligible_from,
+      status: policy.status,
+      billing_cycle_start: policy.billing_cycle_start instanceof Date
+        ? policy.billing_cycle_start.toISOString()
+        : policy.billing_cycle_start,
+      billing_cycle_end: policy.billing_cycle_end instanceof Date
+        ? policy.billing_cycle_end.toISOString()
+        : policy.billing_cycle_end,
+      cancelled_at: policy.cancelled_at
+        ? (policy.cancelled_at instanceof Date
+          ? policy.cancelled_at.toISOString()
+          : policy.cancelled_at)
+        : null,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * DELETE /policies/:id
+ * Cancel a policy — deferred to end of current billing cycle.
+ * Sets cancelled_at = now but policy stays active until billing_cycle_end.
+ * Requirements: 6.1, 6.10
+ */
+router.delete('/:id', authenticate, requireRole('worker'), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const result = await db.query(
+      `SELECT policy_id, worker_id, status, billing_cycle_end, cancelled_at
+       FROM policies
+       WHERE policy_id = $1`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'not_found' });
+    }
+
+    const policy = result.rows[0];
+
+    // Workers can only cancel their own policy
+    if (policy.worker_id !== req.user.worker_id) {
+      return res.status(403).json({ error: 'insufficient_role' });
+    }
+
+    if (policy.status === 'cancelled' || policy.cancelled_at) {
+      return res.status(409).json({ error: 'already_cancelled' });
+    }
+
+    const now = new Date();
+
+    // Set cancelled_at but keep status active until billing_cycle_end (Requirements 6.10)
+    await db.query(
+      `UPDATE policies SET cancelled_at = $1 WHERE policy_id = $2`,
+      [now, id]
+    );
+
+    const billingCycleEnd = policy.billing_cycle_end instanceof Date
+      ? policy.billing_cycle_end.toISOString()
+      : policy.billing_cycle_end;
+
+    // Publish policy cancellation event (Requirements 6.8)
+    try {
+      await kafka.publishEvent('policy_lifecycle', {
+        event: 'policy_cancelled',
+        policy_id: id,
+        worker_id: policy.worker_id,
+        cancelled_at: now.toISOString(),
+        effective_cancellation: billingCycleEnd,
+      });
+    } catch (kafkaErr) {
+      console.error('Kafka publish error (policy_lifecycle cancel):', kafkaErr.message);
+    }
+
+    return res.status(200).json({
+      cancelled_at: now.toISOString(),
+      effective_cancellation: billingCycleEnd,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * PUT /policies/:id/tier
+ * Upgrade policy tier with 5-day waiting period on claim eligibility.
+ * Requirements: 6.6
+ */
+router.put('/:id/tier', authenticate, requireRole('worker'), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { tier } = req.body;
+
+    if (!tier || !VALID_TIERS.includes(tier)) {
+      return res.status(400).json({ error: 'invalid_tier' });
+    }
+
+    const result = await db.query(
+      `SELECT policy_id, worker_id, tier, status FROM policies WHERE policy_id = $1`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'not_found' });
+    }
+
+    const policy = result.rows[0];
+
+    if (policy.worker_id !== req.user.worker_id) {
+      return res.status(403).json({ error: 'insufficient_role' });
+    }
+
+    const now = new Date();
+    // 5-day waiting period before upgraded tier applies to claim eligibility (Requirements 6.6)
+    const newClaimEligibleFrom = new Date(now.getTime() + TIER_UPGRADE_DELAY_MS);
+
+    await db.query(
+      `UPDATE policies SET tier = $1, claim_eligible_from = $2 WHERE policy_id = $3`,
+      [tier, newClaimEligibleFrom, id]
+    );
+
+    return res.status(200).json({
+      policy_id: id,
+      new_tier: tier,
+      claim_eligible_from: newClaimEligibleFrom.toISOString(),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /policies/payout-check
+ * Enforce 1 successful payout per worker per 7-day cycle.
+ * Returns HTTP 409 with {"error": "payout_cycle_cap_exceeded"} on duplicate.
+ * Requirements: 6.9
+ *
+ * Note: This endpoint is used internally by the payout flow to check the cap.
+ * The actual enforcement is done here as a dedicated check endpoint.
+ */
+router.post('/payout-check', authenticate, requireRole('worker', 'admin'), async (req, res, next) => {
+  try {
+    const { worker_id, policy_id } = req.body;
+
+    if (!worker_id || !policy_id) {
+      return res.status(400).json({ error: 'missing_fields' });
+    }
+
+    // Workers can only check their own payout cap
+    if (req.user.role === 'worker' && req.user.worker_id !== worker_id) {
+      return res.status(403).json({ error: 'insufficient_role' });
+    }
+
+    // Check if worker already has a successful payout in the current 7-day cycle
+    const sevenDaysAgo = new Date(Date.now() - BILLING_CYCLE_MS);
+
+    const result = await db.query(
+      `SELECT COUNT(*) as count
+       FROM payouts
+       WHERE worker_id = $1
+         AND policy_id = $2
+         AND status = 'disbursed'
+         AND created_at >= $3`,
+      [worker_id, policy_id, sevenDaysAgo]
+    );
+
+    const count = parseInt(result.rows[0].count, 10);
+
+    if (count >= 1) {
+      return res.status(409).json({ error: 'payout_cycle_cap_exceeded' });
+    }
+
+    return res.status(200).json({ eligible: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+module.exports = router;
