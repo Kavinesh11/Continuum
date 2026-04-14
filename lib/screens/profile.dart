@@ -46,12 +46,14 @@ class ProfileScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
                   _buildOrderSummary(
+                    context,
                     driver.weeklyOrderCount,
                     driver.weeklyEarnings,
                     driver.completionRate,
                   ),
                   const SizedBox(height: 24),
                   _buildLocationSection(
+                    context,
                     driver.currentLocation.address,
                     driver.currentLocation.zone,
                     driver.locationHistory.length,
@@ -375,16 +377,16 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildOrderSummary(int count, double earnings, double rate) {
+  Widget _buildOrderSummary(BuildContext context, int count, double earnings, double rate) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           "This Week's Orders",
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
-            color: Colors.black87,
+            color: AppTheme.textPrimaryOf(context),
           ),
         ),
         const SizedBox(height: 12),
@@ -396,16 +398,16 @@ class ProfileScreen extends StatelessWidget {
               icon: Icons.receipt_long_outlined,
               color: AppTheme.primary,
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 5),
             _StatCard(
               label: 'Earnings',
               value: '₹${earnings.toStringAsFixed(0)}',
               icon: Icons.account_balance_wallet_outlined,
               color: AppTheme.successGreen,
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 5),
             _StatCard(
-              label: 'Completion',
+              label: 'Completed',
               value: '${(rate * 100).toStringAsFixed(0)}%',
               icon: Icons.task_alt_outlined,
               color: AppTheme.primary,
@@ -416,26 +418,22 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildLocationSection(String address, String zone, int pingCount) {
+  Widget _buildLocationSection(BuildContext context, String address, String zone, int pingCount) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Current Location',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
-            color: Colors.black87,
+            color: AppTheme.textPrimaryOf(context),
           ),
         ),
         const SizedBox(height: 12),
         Container(
           padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.black.withOpacity(0.05)),
-          ),
+          decoration: AppTheme.cardDecorationOf(context),
           child: Row(
             children: [
               const Icon(Icons.location_on, color: AppTheme.primary, size: 20),
@@ -446,22 +444,22 @@ class ProfileScreen extends StatelessWidget {
                   children: [
                     Text(
                       address,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                        color: AppTheme.textPrimaryOf(context),
                       ),
                     ),
                     Text(
                       zone,
-                      style: const TextStyle(fontSize: 12, color: Colors.black54),
+                      style: TextStyle(fontSize: 12, color: AppTheme.textSecondaryOf(context)),
                     ),
                   ],
                 ),
               ),
               Text(
                 '$pingCount pings',
-                style: const TextStyle(fontSize: 12, color: Colors.black38),
+                style: TextStyle(fontSize: 12, color: AppTheme.textHintOf(context)),
               ),
             ],
           ),
@@ -544,6 +542,43 @@ class ProfileScreen extends StatelessWidget {
                 Expanded(
                   child: Text(
                     'Edit Profile',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textPrimaryOf(context),
+                    ),
+                  ),
+                ),
+                Icon(Icons.chevron_right_rounded,
+                    color: AppTheme.textHintOf(context), size: 22),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+
+        // ── My Policy row ──
+        GestureDetector(
+          onTap: () =>
+              Navigator.pushNamed(context, AppRoutes.planDetails),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: AppTheme.cardDecorationOf(context),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.description_outlined,
+                      color: AppTheme.primary, size: 18),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Policy Details',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,

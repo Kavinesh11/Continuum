@@ -11,6 +11,7 @@
   import 'screens/payments.dart';
   import 'screens/apply_form.dart';
   import 'screens/policy.dart';
+  import 'screens/plan_details.dart';
   import 'screens/status_tracker.dart';
   import 'sandbox/driver_provider.dart';
   import 'sandbox/sandbox_selector_screen.dart';
@@ -21,7 +22,7 @@
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(statusBarColor: Colors.transparent),
     );
-    runApp(const ContinuumApp());
+    runApp(const DriverProviderRoot(child: ContinuumApp()));
   }
 
   class ContinuumApp extends StatefulWidget {
@@ -59,6 +60,7 @@
               AppRoutes.claimStatus: (context) => const StatusTrackerScreen(),
               AppRoutes.profile: (context) => const ProfileScreen(),
               AppRoutes.policy: (context) => const PolicyScreen(),
+              AppRoutes.planDetails: (context) => const PlanDetailsScreen(),
               AppRoutes.editProfile: (context) => const EditProfileScreen(),
               AppRoutes.payments: (context) => const PaymentsScreen(),
             },

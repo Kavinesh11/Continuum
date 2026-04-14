@@ -8,8 +8,50 @@ class StatusTrackerScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final data = MockData.claimStatusDetail as Map<String, dynamic>;
-    final stages = data['stages'] as List<Map<String, dynamic>>;
+    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+
+    final claimId = args?['id'] as String? ?? MockData.claimStatusDetail['claimId'] as String;
+    final status = args?['status'] as String? ?? MockData.claimStatusDetail['status'] as String;
+    final amount = args?['amount']?.toString() ?? MockData.claimStatusDetail['expectedPayout'].toString();
+    
+    final isAuto = args?['isAuto'] == true;
+    final isApproved = isAuto || status == 'Approved' || status == 'Auto-Approved';
+    
+    final stages = args == null
+        ? MockData.claimStatusDetail['stages'] as List<Map<String, dynamic>>
+        : [
+            {'name': 'SUBMITTED', 'time': 'Completed', 'complete': true},
+            {
+              'name': 'REVIEW',
+              'time': isAuto ? 'Auto' : 'In Progress',
+              'complete': isApproved
+            },
+            {
+              'name': 'APPROVED',
+              'time': isAuto ? 'Auto' : (isApproved ? 'Done' : 'Pending'),
+              'complete': isApproved
+            },
+            {
+              'name': 'PAYOUT',
+              'time': isAuto ? 'Completed' : 'Pending',
+              'complete': isAuto
+            },
+          ];
+
+    final timelineText = isAuto ? 'Within 2 hours' : '2-3 business days';
+    final verificationMessage = isApproved
+        ? 'Verification complete'
+        : 'We are verifying your details';
+
+    final data = {
+      'claimId': claimId,
+      'status': status,
+      'isAuto': isAuto,
+      'isApproved': isApproved,
+      'expectedPayout': amount,
+      'timelineText': timelineText,
+      'verificationMessage': verificationMessage,
+    };
 
     return Scaffold(
       appBar: AppBar(
@@ -76,19 +118,37 @@ class StatusTrackerScreen extends StatelessWidget {
 
   Widget _buildStatusHeader(
       BuildContext context, Map<String, dynamic> data) {
+    final status = data['status'] as String;
+    final isAuto = data['isAuto'] as bool;
+    final isApproved = data['isApproved'] as bool;
+
+    List<Color> gradientColors;
+    Color shadowColor;
+
+    if (isAuto || status == 'Auto-Approved') {
+      gradientColors = const [Color(0xFF8B5CF6), Color(0xFF6366F1)];
+      shadowColor = const Color(0xFF8B5CF6);
+    } else if (isApproved || status == 'Approved') {
+      gradientColors = const [AppTheme.successGreen, Color(0xFF059669)];
+      shadowColor = AppTheme.successGreen;
+    } else {
+      gradientColors = const [AppTheme.warningOrange, Color(0xFFE67E22)];
+      shadowColor = AppTheme.warningOrange;
+    }
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFF59E0B), Color(0xFFE67E22)],
+        gradient: LinearGradient(
+          colors: gradientColors,
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(AppTheme.radiusLg),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFF59E0B).withOpacity(0.3),
+            color: shadowColor.withOpacity(0.3),
             blurRadius: 14,
             offset: const Offset(0, 6),
           ),

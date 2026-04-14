@@ -5,7 +5,7 @@ class MockData {
     'partnerId': 'SWG-9284-912',
     'fullName': 'Partha Sen',
     'role': 'Delivery Partner',
-    'city': 'Kolkata',
+    'city': 'Chennai',
     'platform': 'Swiggy + Zomato',
     'phone': '+91 98XXXXXX10',
     'emergencyContact': 'Anita Sen',
@@ -15,9 +15,9 @@ class MockData {
   static const coverage = {
     'status': 'Active',
     'plan': 'Comprehensive',
-    'nextRenewal': 'Oct 12',
-    'renewalDate': 'Oct 12, 2026',
-    'zone': 'Kolkata',
+    'nextRenewal': 'May 01',
+    'renewalDate': 'May 01, 2026',
+    'zone': 'Chennai',
     'premium': 20,
     'coverageType': 'SECURE',
   };
@@ -30,22 +30,27 @@ class MockData {
 
   static const claims = [
     {
-      'id': '#00-88291',
-      'title': 'Heavy Rain Disruption',
-      'date': 'Sep 10, 2024',
-      'amount': 2850,
-      'status': 'In Review',
-      'statusColor': Color(0xFFFF8C00),
-      'progressPct': 0.6,
-    },
-    {
-      'id': '#00-47156',
-      'title': 'Fog Visibility Drop',
-      'date': 'Aug 28, 2024',
-      'amount': 2150,
+      'id': 'CLM/261203/MAN-8291',
+      'title': 'Heavy Rain / Waterlogging',
+      'date': 'Yesterday',
+      'amount': 198,
       'status': 'Approved',
       'statusColor': Color(0xFF4CAF50),
       'progressPct': 1.0,
+      'isAuto': false,
+      'description': 'Heavy rain made delivery impossible',
+      'upiRef': 'UPI/294102919'
+    },
+    {
+      'id': 'CLM/261203/REV-4192',
+      'title': 'Strike',
+      'date': '2 days ago',
+      'amount': 0,
+      'status': 'Under Review',
+      'statusColor': Color(0xFFFF8C00),
+      'progressPct': 0.6,
+      'isAuto': false,
+      'description': 'Routes were blocked by municipal order',
     },
   ];
 
@@ -71,6 +76,11 @@ class MockData {
 
   static const previousChats = [
     {
+      'title': 'என் பிரீமியம் திட்டம் என்ன?',
+      'subtitle': 'உங்கள் பிரீமியம் திட்டம் Gold ஆகும்.',
+      'date': 'Today',
+    },
+    {
       'title': 'Claim stuck at review stage',
       'subtitle': 'Asked about expected timeline and next checks.',
       'date': 'Today',
@@ -92,8 +102,9 @@ class MockData {
       'Select a reason',
       'Heavy Rain / Waterlogging',
       'App Outage (Swiggy / Zomato)',
-      'Network Failure',
-      'Vehicle Breakdown',
+      'Road Block',
+      'Strike',
+      'Lockdown',
     ],
     'dateFormat': 'dd/MM/yyyy',
     'dateHint': 'dd/MM/yyyy',

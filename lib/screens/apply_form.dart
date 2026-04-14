@@ -7,9 +7,11 @@ import 'package:record/record.dart';
 import '../data/mock_data.dart';
 import '../routes/app_routes.dart';
 import '../theme/app_theme.dart';
+import '../widgets/claim_processing_dialog.dart';
 
 class ApplyFormScreen extends StatefulWidget {
-  const ApplyFormScreen({Key? key}) : super(key: key);
+  final Map<String, dynamic>? existingClaim;
+  const ApplyFormScreen({Key? key, this.existingClaim}) : super(key: key);
 
   @override
   State<ApplyFormScreen> createState() => _ApplyFormScreenState();
@@ -28,9 +30,16 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedReason = (MockData.applyDefaults['reasons'] as List)[0];
-    _dateController = TextEditingController();
-    _descriptionController = TextEditingController();
+    final defaultReasons = MockData.applyDefaults['reasons'] as List;
+    String presetReason = widget.existingClaim?['title'] ?? defaultReasons[0];
+    if (!defaultReasons.contains(presetReason)) {
+      presetReason = defaultReasons[0];
+    }
+    _selectedReason = presetReason;
+    
+    _dateController = TextEditingController(text: widget.existingClaim?['date'] ?? '');
+    // If the mock didn't specify description, initialize blank
+    _descriptionController = TextEditingController(text: widget.existingClaim?['description'] == 'Submitted via Apply Form' ? '' : (widget.existingClaim?['description'] ?? ''));
   }
 
   @override
@@ -44,7 +53,7 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('New Claim')),
+      appBar: AppBar(title: Text(widget.existingClaim != null ? 'Edit Claim' : 'New Claim')),
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
@@ -143,14 +152,14 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
                           BorderRadius.circular(AppTheme.radiusMd),
                     ),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.send_rounded,
+                      const Icon(Icons.send_rounded,
                           color: Colors.white, size: 18),
-                      SizedBox(width: 10),
+                      const SizedBox(width: 10),
                       Text(
-                        'Submit Claim',
+                        widget.existingClaim != null ? 'Update Claim' : 'Submit Claim',
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w700,
@@ -487,6 +496,22 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
                         ),
                       ),
                       GestureDetector(
+                        onTap: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Playing audio placeholder...')),
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.play_arrow_rounded, color: AppTheme.primary, size: 16),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      GestureDetector(
                         onTap: () => setState(() => _audioPaths.removeAt(i)),
                         child: Container(
                           padding: const EdgeInsets.all(4),
@@ -527,63 +552,10 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppTheme.radiusLg)),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppTheme.successGreen.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.check_circle_rounded,
-                  color: AppTheme.successGreen, size: 22),
-            ),
-            const SizedBox(width: 12),
-            const Text(
-              'Claim Submitted',
-              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
-            ),
-          ],
-        ),
-        content: Text(
-          'Your claim has been submitted successfully. Check the Status Tracker to monitor progress.',
-          style: TextStyle(
-            color: AppTheme.textSecondaryOf(context),
-            height: 1.4,
-          ),
-        ),
-        actions: [
-          Container(
-            decoration: BoxDecoration(
-              gradient: AppTheme.accentGradient,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.of(ctx).pop();
-                Navigator.pushReplacementNamed(
-                    context, AppRoutes.claimStatus);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                shadowColor: Colors.transparent,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-              ),
-              child: const Text(
-                'Done',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
-
-        ],
+      barrierDismissible: false,
+      builder: (ctx) => ClaimProcessingDialog(
+        selectedReason: _selectedReason,
+        existingClaimId: widget.existingClaim?['id'],
       ),
     );
   }

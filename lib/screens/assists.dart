@@ -28,6 +28,16 @@ class _AssistsScreenState extends State<AssistsScreen> {
       'isBot': true,
       'time': '10:01 AM',
     },
+    {
+      'text': 'என் பிரீமியம் திட்டம் என்ன?',
+      'isBot': false,
+      'time': '10:02 AM',
+    },
+    {
+      'text': 'உங்கள் பிரீமியம் திட்டம் Gold ஆகும்.',
+      'isBot': true,
+      'time': '10:02 AM',
+    },
   ];
 
   @override
