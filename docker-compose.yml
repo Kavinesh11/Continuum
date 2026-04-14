@@ -1,0 +1,142 @@
+version: '3.8'
+
+# Using a named volume for the Unix socket so claims_scoring and isolation_forest_sidecar can communicate
+volumes:
+  continuum_shared_temps:
+
+networks:
+  continuum_net:
+    driver: bridge
+
+services:
+  # ==========================================
+  # PYTHON APIs
+  # ==========================================
+  fastapi_gateway:
+    build:
+      context: ./services/fastapi_gateway
+    ports:
+      - "8000:8000"
+    networks:
+      - continuum_net
+    env_file:
+      - ./services/core_backend/.env.example # Provide actual .env in production
+    environment:
+      - CORE_BACKEND_URL=http://core_backend:3000
+
+  rag_orchestrator:
+    build:
+      context: ./services/rag_orchestrator
+    ports:
+      - "8001:8001"
+    networks:
+      - continuum_net
+    environment:
+      - PORT=8001
+
+  rasa_assistant:
+    build:
+      context: ./services/rasa_assistant
+    ports:
+      - "8002:8002"
+    networks:
+      - continuum_net
+    environment:
+      - PORT=8002
+      - CORE_BACKEND_URL=http://core_backend:3000
+
+  # ==========================================
+  # NODE.JS CORE
+  # ==========================================
+  core_backend:
+    build:
+      context: ./services/core_backend
+    ports:
+      - "3000:3000"
+    networks:
+      - continuum_net
+    env_file:
+      - ./services/core_backend/.env.example
+    environment:
+      - PORT=3000
+    depends_on:
+      - redis
+      # Postgres / Mongo / Kafka should be added externally or below
+
+  # ==========================================
+  # RUST & GO MICROSERVICES
+  # ==========================================
+  claims_scoring:
+    build:
+      context: ./services/claims_scoring
+    ports:
+      - "8080:8080" # Update based on actual Rust port
+    networks:
+      - continuum_net
+    volumes:
+      - continuum_shared_temps:/tmp
+    environment:
+      - ISOLATION_FOREST_SOCKET=/tmp/isolation_forest.sock
+
+  kg_cache:
+    build:
+      context: ./services/kg_cache
+    ports:
+      - "8004:8080"
+    networks:
+      - continuum_net
+    environment:
+      - PORT=8080
+      - WEB_INTEL_URL=http://web_intelligence:8003
+
+  # ==========================================
+  # PYTHON WORKERS & SIDECARS
+  # ==========================================
+  crew_ai:
+    build:
+      context: ./services/crew_ai
+    networks:
+      - continuum_net
+    environment:
+      - KAFKA_BROKER_URL=kafka:9092
+  
+  isolation_forest_sidecar:
+    build:
+      context: ./services/isolation_forest_sidecar
+    networks:
+      - continuum_net
+    volumes:
+      - continuum_shared_temps:/tmp
+    environment:
+      - SOCKET_PATH=/tmp/isolation_forest.sock
+
+  oracle_engine:
+    build:
+      context: ./services/oracle_engine
+    networks:
+      - continuum_net
+    environment:
+      - KAFKA_BROKER_URL=kafka:9092
+
+  web_intelligence:
+    build:
+      context: ./services/web_intelligence
+    ports:
+      - "8003:8003"
+    networks:
+      - continuum_net
+    environment:
+      - POLL_INTERVAL_SECONDS=300
+
+  # ==========================================
+  # INFRASTRUCTURE DATABASES (REDIS)
+  # ==========================================
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - continuum_net
+
+  # You can append Kafka, Zookeeper, PostgreSQL clusters here 
+  # by mapping them from the `infra/` folder configuration.
