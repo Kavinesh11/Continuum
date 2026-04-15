@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
-import '../data/mock_data.dart';
+import '../widgets/notification_action.dart';
 
 class AssistsScreen extends StatefulWidget {
   const AssistsScreen({Key? key}) : super(key: key);
@@ -24,15 +24,12 @@ class _AssistsScreenState extends State<AssistsScreen> {
       'time': '10:01 AM',
     },
     {
-      'text': 'Based on your latest shifts, your expected payout is ₹2,850. Would you like to view detailed earnings?',
+      'text':
+          'Based on your latest shifts, your expected payout is ₹2,850. Would you like to view detailed earnings?',
       'isBot': true,
       'time': '10:01 AM',
     },
-    {
-      'text': 'என் பிரீமியம் திட்டம் என்ன?',
-      'isBot': false,
-      'time': '10:02 AM',
-    },
+    {'text': 'என் பிரீமியம் திட்டம் என்ன?', 'isBot': false, 'time': '10:02 AM'},
     {
       'text': 'உங்கள் பிரீமியம் திட்டம் Gold ஆகும்.',
       'isBot': true,
@@ -73,20 +70,7 @@ class _AssistsScreenState extends State<AssistsScreen> {
             ),
           ),
         ),
-        actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 8),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Theme.of(context).scaffoldBackgroundColor,
-            ),
-            child: IconButton(
-              onPressed: () {},
-              icon: Icon(Icons.notifications_none_rounded,
-                  color: AppTheme.textSecondaryOf(context), size: 22),
-            ),
-          ),
-        ],
+        actions: [const NotificationAction()],
       ),
       body: Column(
         children: [
@@ -120,8 +104,9 @@ class _AssistsScreenState extends State<AssistsScreen> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
       child: Row(
-        mainAxisAlignment:
-            isBot ? MainAxisAlignment.start : MainAxisAlignment.end,
+        mainAxisAlignment: isBot
+            ? MainAxisAlignment.start
+            : MainAxisAlignment.end,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (isBot) ...[
@@ -133,8 +118,11 @@ class _AssistsScreenState extends State<AssistsScreen> {
                 shape: BoxShape.circle,
                 boxShadow: AppTheme.primaryGlow(0.2),
               ),
-              child: const Icon(Icons.smart_toy_rounded,
-                  size: 16, color: Colors.white),
+              child: const Icon(
+                Icons.smart_toy_rounded,
+                size: 16,
+                color: Colors.white,
+              ),
             ),
           ],
           Flexible(
@@ -153,14 +141,17 @@ class _AssistsScreenState extends State<AssistsScreen> {
                 boxShadow: AppTheme.softShadowOf(context),
               ),
               child: Column(
-                crossAxisAlignment:
-                    isBot ? CrossAxisAlignment.start : CrossAxisAlignment.end,
+                crossAxisAlignment: isBot
+                    ? CrossAxisAlignment.start
+                    : CrossAxisAlignment.end,
                 children: [
                   Text(
                     text,
                     style: TextStyle(
                       fontSize: 14,
-                      color: isBot ? AppTheme.textPrimaryOf(context) : Colors.white,
+                      color: isBot
+                          ? AppTheme.textPrimaryOf(context)
+                          : Colors.white,
                       height: 1.4,
                     ),
                   ),
@@ -204,9 +195,7 @@ class _AssistsScreenState extends State<AssistsScreen> {
               decoration: BoxDecoration(
                 color: AppTheme.cardOf(context),
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(
-                  color: AppTheme.dividerOf(context),
-                ),
+                border: Border.all(color: AppTheme.dividerOf(context)),
               ),
               child: TextField(
                 controller: _messageController,
@@ -216,9 +205,7 @@ class _AssistsScreenState extends State<AssistsScreen> {
                 ),
                 decoration: InputDecoration(
                   hintText: 'Ask Assist anything...',
-                  hintStyle: TextStyle(
-                    color: AppTheme.textHintOf(context),
-                  ),
+                  hintStyle: TextStyle(color: AppTheme.textHintOf(context)),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 20,

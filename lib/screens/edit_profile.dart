@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../data/mock_data.dart';
+import '../sandbox/driver_provider.dart';
 import '../theme/app_theme.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -15,17 +15,37 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late TextEditingController _cityController;
   late TextEditingController _platformController;
   late TextEditingController _emergencyController;
+  bool _isBoundToPersona = false;
+  String _partnerId = '';
+  String _tier = '';
+  String _memberSince = '';
 
   @override
   void initState() {
     super.initState();
-    final user = MockData.user;
-    _nameController = TextEditingController(text: user['fullName']);
-    _phoneController = TextEditingController(text: user['phone']);
-    _cityController = TextEditingController(text: user['city']);
-    _platformController = TextEditingController(text: user['platform']);
-    _emergencyController =
-        TextEditingController(text: user['emergencyContact']);
+    _nameController = TextEditingController();
+    _phoneController = TextEditingController();
+    _cityController = TextEditingController();
+    _platformController = TextEditingController();
+    _emergencyController = TextEditingController();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_isBoundToPersona) return;
+
+    final driver = DriverProvider.of(context).driver;
+    _nameController.text = driver.fullName;
+    _phoneController.text = driver.phone;
+    _cityController.text = driver.city;
+    _platformController.text = driver.platform;
+    _emergencyController.text = driver.emergencyContact;
+
+    _partnerId = driver.partnerId;
+    _tier = driver.tier;
+    _memberSince = driver.memberSince;
+    _isBoundToPersona = true;
   }
 
   @override
@@ -62,8 +82,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         gradient: AppTheme.accentGradient,
                         boxShadow: AppTheme.primaryGlow(0.25),
                       ),
-                      child: const Icon(Icons.person,
-                          color: Colors.white, size: 44),
+                      child: const Icon(
+                        Icons.person,
+                        color: Colors.white,
+                        size: 44,
+                      ),
                     ),
                     Positioned(
                       bottom: 0,
@@ -75,9 +98,31 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           shape: BoxShape.circle,
                           boxShadow: AppTheme.softShadowOf(context),
                         ),
-                        child: const Icon(Icons.camera_alt_rounded,
-                            color: AppTheme.primary, size: 16),
+                        child: const Icon(
+                          Icons.camera_alt_rounded,
+                          color: AppTheme.primary,
+                          size: 16,
+                        ),
                       ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Center(
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.center,
+                  children: [
+                    _buildMetaChip('ID $_partnerId', Icons.badge_outlined),
+                    _buildMetaChip(
+                      '$_tier tier',
+                      Icons.workspace_premium_outlined,
+                    ),
+                    _buildMetaChip(
+                      'Since $_memberSince',
+                      Icons.calendar_today_outlined,
                     ),
                   ],
                 ),
@@ -91,13 +136,23 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 context: context,
                 isDark: isDark,
                 children: [
-                  _buildField('Full Name', _nameController, Icons.badge_outlined),
+                  _buildField(
+                    'Full Name',
+                    _nameController,
+                    Icons.badge_outlined,
+                  ),
                   const SizedBox(height: 14),
-                  _buildField('Phone Number', _phoneController,
-                      Icons.phone_outlined),
+                  _buildField(
+                    'Phone Number',
+                    _phoneController,
+                    Icons.phone_outlined,
+                  ),
                   const SizedBox(height: 14),
-                  _buildField('City', _cityController,
-                      Icons.location_on_outlined),
+                  _buildField(
+                    'City',
+                    _cityController,
+                    Icons.location_on_outlined,
+                  ),
                 ],
               ),
               const SizedBox(height: 22),
@@ -108,8 +163,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 context: context,
                 isDark: isDark,
                 children: [
-                  _buildField('Platform (e.g. Swiggy, Zomato)',
-                      _platformController, Icons.delivery_dining_outlined),
+                  _buildField(
+                    'Platform (e.g. Swiggy, Zomato)',
+                    _platformController,
+                    Icons.delivery_dining_outlined,
+                  ),
                 ],
               ),
               const SizedBox(height: 22),
@@ -120,8 +178,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 context: context,
                 isDark: isDark,
                 children: [
-                  _buildField('Emergency Contact', _emergencyController,
-                      Icons.contact_phone_outlined),
+                  _buildField(
+                    'Emergency Contact',
+                    _emergencyController,
+                    Icons.contact_phone_outlined,
+                  ),
                 ],
               ),
               const SizedBox(height: 32),
@@ -141,8 +202,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     shadowColor: Colors.transparent,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(AppTheme.radiusMd),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                     ),
                   ),
                   child: const Row(
@@ -200,7 +260,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Widget _buildField(
-      String label, TextEditingController controller, IconData icon) {
+    String label,
+    TextEditingController controller,
+    IconData icon,
+  ) {
     return TextField(
       controller: controller,
       style: TextStyle(
@@ -214,8 +277,32 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           color: AppTheme.textSecondaryOf(context),
           fontWeight: FontWeight.w500,
         ),
-        prefixIcon:
-            Icon(icon, color: AppTheme.primary, size: 20),
+        prefixIcon: Icon(icon, color: AppTheme.primary, size: 20),
+      ),
+    );
+  }
+
+  Widget _buildMetaChip(String text, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppTheme.primary.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: AppTheme.primary, size: 14),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.primary,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -225,17 +312,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       SnackBar(
         content: const Row(
           children: [
-            Icon(Icons.check_circle_rounded,
-                color: Colors.white, size: 18),
+            Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
             SizedBox(width: 10),
-            Text('Profile updated successfully',
-                style: TextStyle(fontWeight: FontWeight.w600)),
+            Text(
+              'Profile updated successfully',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
           ],
         ),
         backgroundColor: AppTheme.successGreen,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         margin: const EdgeInsets.all(16),
       ),
     );

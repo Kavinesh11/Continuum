@@ -5,7 +5,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
 import '../data/mock_data.dart';
-import '../routes/app_routes.dart';
 import '../theme/app_theme.dart';
 import '../widgets/claim_processing_dialog.dart';
 
@@ -60,7 +59,6 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildStepIndicator(),
               const SizedBox(height: 20),
               Container(
                 padding: const EdgeInsets.all(18),
@@ -175,26 +173,6 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildStepIndicator() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(3, (i) {
-        final isActive = i == 0;
-        return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 4),
-          width: isActive ? 28 : 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: isActive
-                ? AppTheme.primary
-                : AppTheme.primary.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(4),
-          ),
-        );
-      }),
     );
   }
 

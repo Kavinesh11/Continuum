@@ -916,37 +916,37 @@ class _StatCard extends StatelessWidget {
 }
 
 
-class _DataRow extends StatelessWidget {
-  final String label;
-  final String value;
-  const _DataRow({required this.label, required this.value});
+// class _DataRow extends StatelessWidget {
+//   final String label;
+//   final String value;
+//   const _DataRow({required this.label, required this.value});
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.black.withOpacity(0.05)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(fontSize: 13, color: Colors.black54),
-          ),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+//   @override
+//   Widget build(BuildContext context) {
+//     return Container(
+//       padding: const EdgeInsets.all(14),
+//       decoration: BoxDecoration(
+//         color: Colors.white,
+//         borderRadius: BorderRadius.circular(12),
+//         border: Border.all(color: Colors.black.withOpacity(0.05)),
+//       ),
+//       child: Row(
+//         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+//         children: [
+//           Text(
+//             label,
+//             style: const TextStyle(fontSize: 13, color: Colors.black54),
+//           ),
+//           Text(
+//             value,
+//             style: const TextStyle(
+//               fontSize: 13,
+//               fontWeight: FontWeight.bold,
+//               color: Colors.black87,
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }

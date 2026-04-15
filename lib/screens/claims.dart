@@ -3,6 +3,7 @@ import '../routes/app_routes.dart';
 import '../data/mock_data.dart';
 import '../theme/app_theme.dart';
 import '../state/demo_state.dart';
+import '../widgets/notification_action.dart';
 import 'claim_detail_sheet.dart';
 
 class ClaimsScreen extends StatefulWidget {
@@ -40,17 +41,19 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
     return [
       ...DemoState.instance.autoClaims,
       ...DemoState.instance.manualClaims,
-      ...base
+      ...base,
     ];
   }
 
   int get _totalClaimsCount => _allClaims.length;
 
-  int get _autoApprovedCount =>
-      _allClaims.where((c) => c['isAuto'] == true || c['status'] == 'Auto-Approved').length;
+  int get _autoApprovedCount => _allClaims
+      .where((c) => c['isAuto'] == true || c['status'] == 'Auto-Approved')
+      .length;
 
-  int get _pendingCount =>
-      _allClaims.where((c) => c['status'] == 'Under Review' || c['status'] == 'In Review').length;
+  int get _pendingCount => _allClaims
+      .where((c) => c['status'] == 'Under Review' || c['status'] == 'In Review')
+      .length;
 
   // ── Build ──────────────────────────────────────────────────────────────────
   @override
@@ -80,20 +83,7 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
             ),
           ),
         ),
-        actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 8),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Theme.of(context).scaffoldBackgroundColor,
-            ),
-            child: IconButton(
-              onPressed: () {},
-              icon: Icon(Icons.notifications_none_rounded,
-                  color: AppTheme.textSecondaryOf(context), size: 22),
-            ),
-          ),
-        ],
+        actions: [const NotificationAction()],
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -101,11 +91,15 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('My Claims',
-                  style: Theme.of(context).textTheme.displayLarge),
+              Text(
+                'My Claims',
+                style: Theme.of(context).textTheme.displayLarge,
+              ),
               const SizedBox(height: 4),
-              Text('Track and manage your claims',
-                  style: Theme.of(context).textTheme.bodyMedium),
+              Text(
+                'Track and manage your claims',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
               const SizedBox(height: 18),
               _buildSummaryPills(),
               const SizedBox(height: 20),
@@ -249,42 +243,46 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
       scrollDirection: Axis.horizontal,
       child: Row(
         children: filters
-            .map((filter) => Padding(
-                  padding: const EdgeInsets.only(right: 8.0),
-                  child: GestureDetector(
-                    onTap: () => setState(() => _selectedFilter = filter),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 18, vertical: 10),
-                      decoration: BoxDecoration(
+            .map(
+              (filter) => Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: GestureDetector(
+                  onTap: () => setState(() => _selectedFilter = filter),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _selectedFilter == filter
+                          ? AppTheme.primary
+                          : AppTheme.cardOf(context),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
                         color: _selectedFilter == filter
                             ? AppTheme.primary
-                            : AppTheme.cardOf(context),
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(
-                          color: _selectedFilter == filter
-                              ? AppTheme.primary
-                              : AppTheme.dividerOf(context),
-                          width: 1.5,
-                        ),
-                        boxShadow: _selectedFilter == filter
-                            ? AppTheme.primaryGlow(0.15)
-                            : null,
+                            : AppTheme.dividerOf(context),
+                        width: 1.5,
                       ),
-                      child: Text(
-                        filter,
-                        style: TextStyle(
-                          color: _selectedFilter == filter
-                              ? Colors.white
-                              : AppTheme.textSecondaryOf(context),
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
-                        ),
+                      boxShadow: _selectedFilter == filter
+                          ? AppTheme.primaryGlow(0.15)
+                          : null,
+                    ),
+                    child: Text(
+                      filter,
+                      style: TextStyle(
+                        color: _selectedFilter == filter
+                            ? Colors.white
+                            : AppTheme.textSecondaryOf(context),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
                       ),
                     ),
                   ),
-                ))
+                ),
+              ),
+            )
             .toList(),
       ),
     );
@@ -339,7 +337,9 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
 
   // ── Regular claim card (existing style) ───────────────────────────────────
   Widget _buildRegularClaimCard(
-      Map<String, dynamic> claim, BuildContext context) {
+    Map<String, dynamic> claim,
+    BuildContext context,
+  ) {
     final statusColor = claim['statusColor'] as Color;
     return GestureDetector(
       onTap: () => ClaimDetailSheet.show(context, claim),
@@ -377,7 +377,9 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
                         ),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 4),
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: statusColor.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(20),
@@ -408,9 +410,11 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
                       children: [
                         Row(
                           children: [
-                            Icon(Icons.calendar_today_rounded,
-                                size: 13,
-                                color: AppTheme.textHintOf(context)),
+                            Icon(
+                              Icons.calendar_today_rounded,
+                              size: 13,
+                              color: AppTheme.textHintOf(context),
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               claim['date'] as String,
@@ -438,8 +442,7 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
                         value: claim['progressPct'] as double,
                         minHeight: 4,
                         backgroundColor: statusColor.withOpacity(0.1),
-                        valueColor:
-                            AlwaysStoppedAnimation<Color>(statusColor),
+                        valueColor: AlwaysStoppedAnimation<Color>(statusColor),
                       ),
                     ),
                   ],
@@ -453,9 +456,10 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
   }
 
   // ── Auto-approved claim card (distinct style) ──────────────────────────────
-  Widget _buildAutoClaimCard(
-      Map<String, dynamic> claim, BuildContext context) {
-    const badgeColor = Color(0xFF6366F1); // indigo/purple — distinct from others
+  Widget _buildAutoClaimCard(Map<String, dynamic> claim, BuildContext context) {
+    const badgeColor = Color(
+      0xFF6366F1,
+    ); // indigo/purple — distinct from others
     return GestureDetector(
       onTap: () => ClaimDetailSheet.show(context, claim),
       child: Container(
@@ -463,10 +467,7 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
           color: AppTheme.cardOf(context),
           borderRadius: BorderRadius.circular(AppTheme.radiusMd),
           boxShadow: AppTheme.softShadowOf(context),
-          border: Border.all(
-            color: badgeColor.withOpacity(0.2),
-            width: 1.5,
-          ),
+          border: Border.all(color: badgeColor.withOpacity(0.2), width: 1.5),
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(AppTheme.radiusMd),
@@ -498,7 +499,9 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
                         // Auto-Approved badge with lightning bolt
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 4),
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: badgeColor.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(20),
@@ -506,8 +509,11 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
                           child: const Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.bolt_rounded,
-                                  color: badgeColor, size: 13),
+                              Icon(
+                                Icons.bolt_rounded,
+                                color: badgeColor,
+                                size: 13,
+                              ),
                               SizedBox(width: 3),
                               Text(
                                 'Auto-Approved',
@@ -535,9 +541,11 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
                     // Zero-touch tag
                     Row(
                       children: [
-                        Icon(Icons.touch_app_rounded,
-                            size: 13,
-                            color: badgeColor.withOpacity(0.7)),
+                        Icon(
+                          Icons.touch_app_rounded,
+                          size: 13,
+                          color: badgeColor.withOpacity(0.7),
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           'Zero-touch — no action required',
@@ -555,9 +563,11 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
                       children: [
                         Row(
                           children: [
-                            Icon(Icons.access_time_rounded,
-                                size: 13,
-                                color: AppTheme.textHintOf(context)),
+                            Icon(
+                              Icons.access_time_rounded,
+                              size: 13,
+                              color: AppTheme.textHintOf(context),
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               claim['date'] as String,
@@ -583,16 +593,20 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
                     if (claim['upiRef'] != null)
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 6),
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
                           color: badgeColor.withOpacity(0.05),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
                           children: [
-                            Icon(Icons.account_balance_wallet_outlined,
-                                size: 12,
-                                color: badgeColor.withOpacity(0.7)),
+                            Icon(
+                              Icons.account_balance_wallet_outlined,
+                              size: 12,
+                              color: badgeColor.withOpacity(0.7),
+                            ),
                             const SizedBox(width: 6),
                             Text(
                               claim['upiRef'] as String,

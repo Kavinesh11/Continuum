@@ -8,6 +8,7 @@ import '../data/mock_data.dart';
 import '../theme/app_theme.dart';
 import '../sandbox/driver_provider.dart';
 import '../state/demo_state.dart';
+import '../widgets/notification_action.dart';
 import 'claim_flow.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -30,12 +31,32 @@ class _DashboardScreenState extends State<DashboardScreen>
     ),
     'Monthly': _TrendSeries(
       labels: [
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
       ],
       payout: [
-        980, 1180, 1510, 1780, 2010, 1880,
-        2320, 2480, 2690, 2790, 3110, 2850,
+        980,
+        1180,
+        1510,
+        1780,
+        2010,
+        1880,
+        2320,
+        2480,
+        2690,
+        2790,
+        3110,
+        2850,
       ],
       premium: [120, 132, 148, 138, 130, 166, 178, 170, 196, 220, 208, 170],
     ),
@@ -76,8 +97,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     {
       'title': 'Road Closure',
       'source': 'Traffic API',
-      'alertMsg':
-          'Anna Salai, GST Road blocked — 3 major routes inaccessible',
+      'alertMsg': 'Anna Salai, GST Road blocked — 3 major routes inaccessible',
       'icon': Icons.block_outlined,
     },
   ];
@@ -236,23 +256,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             ),
           ),
         ),
-        actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 8),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Theme.of(context).scaffoldBackgroundColor,
-            ),
-            child: IconButton(
-              icon: Icon(
-                Icons.notifications_outlined,
-                color: AppTheme.textSecondaryOf(context),
-                size: 22,
-              ),
-              onPressed: () {},
-            ),
-          ),
-        ],
+        actions: [const NotificationAction()],
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -268,9 +272,9 @@ class _DashboardScreenState extends State<DashboardScreen>
               const SizedBox(height: 24),
               Text(
                 'Quick Actions',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 14),
               _buildQuickActions(context),
@@ -282,9 +286,9 @@ class _DashboardScreenState extends State<DashboardScreen>
               const SizedBox(height: 24),
               Text(
                 'Recent Activity',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 12),
               _buildRecentActivity(),
@@ -313,10 +317,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                 children: [
                   Text(
                     'Live Triggers',
-                    style:
-                        Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -333,8 +336,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             // Status pill
             AnimatedContainer(
               duration: const Duration(milliseconds: 400),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
                 color: hasAlerts
                     ? AppTheme.dangerRed.withOpacity(0.1)
@@ -358,14 +360,17 @@ class _DashboardScreenState extends State<DashboardScreen>
                         shape: BoxShape.circle,
                         color: hasAlerts
                             ? AppTheme.dangerRed
-                            : AppTheme.successGreen
-                                .withOpacity(_pulseAnim.value),
+                            : AppTheme.successGreen.withOpacity(
+                                _pulseAnim.value,
+                              ),
                       ),
                     ),
                   ),
                   const SizedBox(width: 5),
                   Text(
-                    hasAlerts ? '$alertCount Alert${alertCount > 1 ? 's' : ''}' : 'All Clear',
+                    hasAlerts
+                        ? '$alertCount Alert${alertCount > 1 ? 's' : ''}'
+                        : 'All Clear',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
@@ -452,13 +457,15 @@ class _DashboardScreenState extends State<DashboardScreen>
                                   height: 8,
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
-                                    color: AppTheme.successGreen
-                                        .withOpacity(_pulseAnim.value),
+                                    color: AppTheme.successGreen.withOpacity(
+                                      _pulseAnim.value,
+                                    ),
                                     boxShadow: [
                                       BoxShadow(
                                         color: AppTheme.successGreen
                                             .withOpacity(
-                                                _pulseAnim.value * 0.4),
+                                              _pulseAnim.value * 0.4,
+                                            ),
                                         blurRadius: 5,
                                       ),
                                     ],
@@ -474,8 +481,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                                   color: AppTheme.dangerRed,
                                   boxShadow: [
                                     BoxShadow(
-                                      color: AppTheme.dangerRed
-                                          .withOpacity(0.5),
+                                      color: AppTheme.dangerRed.withOpacity(
+                                        0.5,
+                                      ),
                                       blurRadius: 6,
                                     ),
                                   ],
@@ -543,13 +551,17 @@ class _DashboardScreenState extends State<DashboardScreen>
                         // Alert message (animated reveal)
                         AnimatedCrossFade(
                           firstChild: const SizedBox(
-                              width: double.infinity, height: 0),
+                            width: double.infinity,
+                            height: 0,
+                          ),
                           secondChild: Padding(
                             padding: const EdgeInsets.only(top: 10),
                             child: Container(
                               width: double.infinity,
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 11, vertical: 8),
+                                horizontal: 11,
+                                vertical: 8,
+                              ),
                               decoration: BoxDecoration(
                                 color: AppTheme.dangerRed.withOpacity(0.07),
                                 borderRadius: BorderRadius.circular(8),
@@ -594,7 +606,6 @@ class _DashboardScreenState extends State<DashboardScreen>
               'Hello, ${driver.fullName} ',
               style: Theme.of(context).textTheme.headlineMedium,
             ),
-            const Text('👋', style: TextStyle(fontSize: 22)),
           ],
         ),
         const SizedBox(height: 4),
@@ -682,8 +693,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                                 shape: BoxShape.circle,
                                 boxShadow: [
                                   BoxShadow(
-                                    color: AppTheme.successGreen
-                                        .withOpacity(0.6),
+                                    color: AppTheme.successGreen.withOpacity(
+                                      0.6,
+                                    ),
                                     blurRadius: 6,
                                   ),
                                 ],
@@ -722,19 +734,22 @@ class _DashboardScreenState extends State<DashboardScreen>
                   filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 8),
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.12),
-                      ),
+                      border: Border.all(color: Colors.white.withOpacity(0.12)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.calendar_today_rounded,
-                            color: Colors.white.withOpacity(0.7), size: 14),
+                        Icon(
+                          Icons.calendar_today_rounded,
+                          color: Colors.white.withOpacity(0.7),
+                          size: 14,
+                        ),
                         const SizedBox(width: 8),
                         Text(
                           'Next renewal on ${MockData.coverage['nextRenewal']}',
@@ -752,8 +767,11 @@ class _DashboardScreenState extends State<DashboardScreen>
               const SizedBox(height: 8),
               Row(
                 children: [
-                  Icon(Icons.location_on_outlined,
-                      color: Colors.white.withOpacity(0.7), size: 16),
+                  Icon(
+                    Icons.location_on_outlined,
+                    color: Colors.white.withOpacity(0.7),
+                    size: 16,
+                  ),
                   const SizedBox(width: 6),
                   Text(
                     'Zone: ${MockData.coverage['zone']}',
@@ -776,22 +794,24 @@ class _DashboardScreenState extends State<DashboardScreen>
     return Row(
       children: [
         Expanded(
-            child: _buildInfoPill(
-          label: 'CURRENT CLAIM',
-          value: MockData.currentClaim['status'] as String,
-          subtitle: '2 days ago',
-          subtitleColor: AppTheme.warningOrange,
-          accentColor: AppTheme.warningOrange,
-        )),
+          child: _buildInfoPill(
+            label: 'CURRENT CLAIM',
+            value: MockData.currentClaim['status'] as String,
+            subtitle: '2 days ago',
+            subtitleColor: AppTheme.warningOrange,
+            accentColor: AppTheme.warningOrange,
+          ),
+        ),
         const SizedBox(width: 12),
         Expanded(
-            child: _buildInfoPill(
-          label: 'WEEKLY PREMIUM',
-          value: '₹99',
-          subtitle: 'Paid via Razorpay',
-          subtitleColor: AppTheme.textSecondaryOf(context),
-          accentColor: AppTheme.primary,
-        )),
+          child: _buildInfoPill(
+            label: 'WEEKLY PREMIUM',
+            value: '₹99',
+            subtitle: 'Paid via Razorpay',
+            subtitleColor: AppTheme.textSecondaryOf(context),
+            accentColor: AppTheme.primary,
+          ),
+        ),
       ],
     );
   }
@@ -1080,9 +1100,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                 end: Alignment.bottomCenter,
               ),
               borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-              border: Border.all(
-                color: AppTheme.primary.withOpacity(0.08),
-              ),
+              border: Border.all(color: AppTheme.primary.withOpacity(0.08)),
             ),
             child: Column(
               children: [
@@ -1120,7 +1138,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             children: [
               Expanded(
                 child: _buildMetricCard(
-                  title: 'LATEST PAYOUT',
+                  title: 'LATEST \n PAYOUT',
                   value: 'INR ${_formatNumber(latestPayout)}',
                   icon: Icons.trending_up_rounded,
                   color: const Color(0xFF2FA7B1),
@@ -1129,7 +1147,7 @@ class _DashboardScreenState extends State<DashboardScreen>
               const SizedBox(width: 12),
               Expanded(
                 child: _buildMetricCard(
-                  title: 'LATEST PREMIUM',
+                  title: 'LATEST \n PREMIUM',
                   value: 'INR ${_formatNumber(latestPremium)}',
                   icon: Icons.account_balance_wallet_outlined,
                   color: const Color(0xFF35929B),
@@ -1217,89 +1235,81 @@ class _DashboardScreenState extends State<DashboardScreen>
     ];
 
     return Column(
-      children: activity
-          .asMap()
-          .entries
-          .map(
-            (entry) {
-              final idx = entry.key;
-              final item = entry.value;
-              final color = colors[idx % colors.length];
-              final icon = icons[idx % icons.length];
-              return Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                decoration: BoxDecoration(
-                  color: AppTheme.cardOf(context),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                  boxShadow: AppTheme.softShadowOf(context),
+      children: activity.asMap().entries.map((entry) {
+        final idx = entry.key;
+        final item = entry.value;
+        final color = colors[idx % colors.length];
+        final icon = icons[idx % icons.length];
+        return Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          decoration: BoxDecoration(
+            color: AppTheme.cardOf(context),
+            borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+            boxShadow: AppTheme.softShadowOf(context),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+            child: Stack(
+              children: [
+                Positioned(
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  child: Container(width: 3.5, color: color),
                 ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                  child: Stack(
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
+                  child: Row(
                     children: [
-                      Positioned(
-                        left: 0,
-                        top: 0,
-                        bottom: 0,
-                        child: Container(width: 3.5, color: color),
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(icon, color: color, size: 18),
                       ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
-                        child: Row(
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Container(
-                              width: 36,
-                              height: 36,
-                              decoration: BoxDecoration(
-                                color: color.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Icon(icon, color: color, size: 18),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    item['title'] as String,
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                      color:
-                                          AppTheme.textPrimaryOf(context),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    item['subtitle'] as String,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color:
-                                          AppTheme.textSecondaryOf(context),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
                             Text(
-                              item['time'] as String,
+                              item['title'] as String,
                               style: TextStyle(
-                                fontSize: 11,
-                                color: AppTheme.textHintOf(context),
-                                fontWeight: FontWeight.w500,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.textPrimaryOf(context),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              item['subtitle'] as String,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppTheme.textSecondaryOf(context),
                               ),
                             ),
                           ],
                         ),
                       ),
+                      Text(
+                        item['time'] as String,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppTheme.textHintOf(context),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ],
                   ),
                 ),
-              );
-            },
-          )
-          .toList(),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 }
@@ -1323,10 +1333,7 @@ class _LegendDot extends StatelessWidget {
             color: color,
             shape: BoxShape.circle,
             boxShadow: [
-              BoxShadow(
-                color: color.withOpacity(0.4),
-                blurRadius: 4,
-              ),
+              BoxShadow(color: color.withOpacity(0.4), blurRadius: 4),
             ],
           ),
         ),
@@ -1376,10 +1383,13 @@ class _EarningsTrendPainter extends CustomPainter {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
     }
 
-    final payoutPoints =
-        _createPoints(series.payout, size, maxValue, minValue);
-    final premiumPoints =
-        _createPoints(series.premium, size, maxValue, minValue);
+    final payoutPoints = _createPoints(series.payout, size, maxValue, minValue);
+    final premiumPoints = _createPoints(
+      series.premium,
+      size,
+      maxValue,
+      minValue,
+    );
 
     final fillPaint = Paint()
       ..shader = LinearGradient(
@@ -1428,8 +1438,7 @@ class _EarningsTrendPainter extends CustomPainter {
     }
 
     final usableHeight = size.height - 10;
-    final denominator =
-        (maxValue - minValue) == 0 ? 1 : (maxValue - minValue);
+    final denominator = (maxValue - minValue) == 0 ? 1 : (maxValue - minValue);
 
     return List<Offset>.generate(values.length, (index) {
       final x = size.width * (index / (values.length - 1));
@@ -1465,8 +1474,7 @@ class _EarningsTrendPainter extends CustomPainter {
     canvas.drawPath(path, paint);
   }
 
-  void _drawDashedLine(
-      Canvas canvas, Offset start, Offset end, Paint paint) {
+  void _drawDashedLine(Canvas canvas, Offset start, Offset end, Paint paint) {
     const dashWidth = 8.0;
     const dashSpace = 6.0;
     final dx = end.dx - start.dx;
