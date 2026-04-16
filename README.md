@@ -426,6 +426,32 @@ For convenience, see exclusion clauses in `terms_and_conditions.md` under `## 9)
 
 ---
 
+## 🚀 Live Azure Deployment
+
+The Continuum microservice architecture is fully containerized and currently hosted on an Azure B-Series Virtual Machine at **IP `4.186.27.77`**.
+
+A total of 11 core microservices (+3 infrastructure containers) are actively running and communicating via Docker Compose.
+
+### Port Mappings & Services
+
+| Service | Technology | Port Map | IP Link |
+|---|---|---|---|
+| **FastAPI Gateway** | Python / FastAPI | `8000` | [http://4.186.27.77:8000/docs](http://4.186.27.77:8000/docs) |
+| **RAG Orchestrator** | Python / LlamaIndex| `8001` | http://4.186.27.77:8001 |
+| **Rasa / Gemini Assistant**| Python / Gemini API| `8002` | http://4.186.27.77:8002 |
+| **Web Intelligence** | Python / ScrapeGraph| `8003` | http://4.186.27.77:8003 |
+| **KG Cache** | Go | `8004 -> 8080`| http://4.186.27.77:8004 |
+| **Core Backend** | Express.js | `3000` | http://4.186.27.77:3000 |
+| **Claims Scoring** | Rust | `8080` | (Internal API) |
+| **Isolation Forest** | Python | Unix Socket | (Sidecar communication) |
+| **Crew AI Agent** | Python | Background | (Kafka Worker) |
+| **Oracle Engine** | Python | Background | (Kafka Worker) |
+| **PostgreSQL** | Postgres 15 | `5432` | (Infra Database) |
+| **Redis** | Redis Alpine | `6379` | (Infra Cache) |
+| **Kafka & Zookeeper** | Confluent | `9092 / 2181` | (Message Broker) |
+
+---
+
 ## Getting Started
 
 The following sets up the full Continuum stack locally.

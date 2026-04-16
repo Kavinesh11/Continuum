@@ -44,6 +44,7 @@ services:
     environment:
       - PORT=8002
       - CORE_BACKEND_URL=http://core_backend:3000
+      - GEMINI_API_KEY=AIzaSyDp1IsNlJBlRioXhIr7T3Ha8CkbxAZ166o
 
   # ==========================================
   # NODE.JS CORE
@@ -59,9 +60,13 @@ services:
       - ./services/core_backend/.env.example
     environment:
       - PORT=3000
+      - DB_HOST=postgres
+      - DB_PASSWORD=password
+      - KAFKA_BROKERS=kafka:9092
     depends_on:
       - redis
-      # Postgres / Mongo / Kafka should be added externally or below
+      - postgres
+      - kafka
 
   # ==========================================
   # RUST & GO MICROSERVICES
@@ -77,6 +82,9 @@ services:
       - continuum_shared_temps:/tmp
     environment:
       - ISOLATION_FOREST_SOCKET=/tmp/isolation_forest.sock
+      - DATABASE_URL=postgres://postgres:password@postgres:5432/continuum
+    depends_on:
+      - postgres
 
   kg_cache:
     build:
@@ -98,7 +106,7 @@ services:
     networks:
       - continuum_net
     environment:
-      - KAFKA_BROKER_URL=kafka:9092
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
   
   isolation_forest_sidecar:
     build:
@@ -116,7 +124,7 @@ services:
     networks:
       - continuum_net
     environment:
-      - KAFKA_BROKER_URL=kafka:9092
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
 
   web_intelligence:
     build:
@@ -129,7 +137,7 @@ services:
       - POLL_INTERVAL_SECONDS=300
 
   # ==========================================
-  # INFRASTRUCTURE DATABASES (REDIS)
+  # INFRASTRUCTURE DATABASES & MESSAGE BROKERS
   # ==========================================
   redis:
     image: redis:alpine
@@ -138,5 +146,35 @@ services:
     networks:
       - continuum_net
 
-  # You can append Kafka, Zookeeper, PostgreSQL clusters here 
-  # by mapping them from the `infra/` folder configuration.
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: continuum
+    ports:
+      - "5432:5432"
+    networks:
+      - continuum_net
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - continuum_net
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - continuum_net
