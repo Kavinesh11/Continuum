@@ -36,36 +36,6 @@ cd services/isolation_forest_sidecar
 SOCKET_PATH=/tmp/isolation_forest.sock python sidecar.py
 ```
 
-## Running Tests
-
-```bash
-# Node.js (core_backend)
-cd services/core_backend && npm test
-npx jest tests/test_ledger.test.js --runInBand   # single test file
-
-
-
-
-# Python services (pytest)
-cd services/oracle_engine && pytest tests/
-cd services/fastapi_gateway && pip install -r requirements-test.txt && pytest tests/
-cd services/crew_ai && pytest tests/
-
-# Rust (claims_scoring)
-cd services/claims_scoring && cargo test
-cargo test scoring::tests    # single module
-
-# Go (kg_cache)
-cd services/kg_cache && go test ./...
-
-# Flutter
-flutter test
-
-# Actuarial CI gate (requires live DB DSNs; exits 1 if loss ratio > 100% or reserve < 90 days)
-python -m services.actuarial_lab.ci_gate \
-  --ts-dsn "postgresql://..." \
-  --crdb-dsn "postgresql://..."
-```
 
 
 ## Architecture Overview
