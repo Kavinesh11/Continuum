@@ -34,7 +34,7 @@ def _vote_to_dict(vote: OracleVote) -> dict:
 
 class KafkaPublisher:
     def __init__(self, bootstrap_servers: str | None = None) -> None:
-        self._bootstrap = bootstrap_servers or os.environ.get(
+        self._bootstrap = bootstrap_servers or os.environ.get("KAFKA_BROKERS") or os.environ.get(
             "KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"
         )
         self._producer: AIOKafkaProducer | None = None

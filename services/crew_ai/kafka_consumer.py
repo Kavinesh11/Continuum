@@ -46,7 +46,7 @@ async def _handle_message(message_value: dict) -> None:
 
 async def run_consumer() -> None:
     """Start the Kafka consumer loop. Runs indefinitely."""
-    bootstrap_servers = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
+    bootstrap_servers = os.environ.get("KAFKA_BROKERS") or os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
     consumer = AIOKafkaConsumer(
         TOPIC,
         bootstrap_servers=bootstrap_servers,

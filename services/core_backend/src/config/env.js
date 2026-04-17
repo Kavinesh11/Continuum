@@ -14,7 +14,9 @@ function validateEnv() {
     DB_PASSWORD: str({ default: '' }),
     DB_SSL: bool({ default: false }),
 
-    KAFKA_BROKERS: str({ default: 'localhost:9092' }),
+    KAFKA_BROKERS: str({ 
+      default: process.env.KAFKA_BOOTSTRAP_SERVERS || 'localhost:9092' 
+    }),
 
     NODE_ENV: str({ choices: ['development', 'test', 'production'], default: 'development' }),
   });
