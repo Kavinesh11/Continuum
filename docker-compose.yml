@@ -1,0 +1,180 @@
+version: '3.8'
+
+# Using a named volume for the Unix socket so claims_scoring and isolation_forest_sidecar can communicate
+volumes:
+  continuum_shared_temps:
+
+networks:
+  continuum_net:
+    driver: bridge
+
+services:
+  # ==========================================
+  # PYTHON APIs
+  # ==========================================
+  fastapi_gateway:
+    build:
+      context: ./services/fastapi_gateway
+    ports:
+      - "8000:8000"
+    networks:
+      - continuum_net
+    env_file:
+      - ./services/core_backend/.env.example # Provide actual .env in production
+    environment:
+      - CORE_BACKEND_URL=http://core_backend:3000
+
+  rag_orchestrator:
+    build:
+      context: ./services/rag_orchestrator
+    ports:
+      - "8001:8001"
+    networks:
+      - continuum_net
+    environment:
+      - PORT=8001
+
+  rasa_assistant:
+    build:
+      context: ./services/rasa_assistant
+    ports:
+      - "8002:8002"
+    networks:
+      - continuum_net
+    environment:
+      - PORT=8002
+      - CORE_BACKEND_URL=http://core_backend:3000
+      - GEMINI_API_KEY=AIzaSyDp1IsNlJBlRioXhIr7T3Ha8CkbxAZ166o
+
+  # ==========================================
+  # NODE.JS CORE
+  # ==========================================
+  core_backend:
+    build:
+      context: ./services/core_backend
+    ports:
+      - "3000:3000"
+    networks:
+      - continuum_net
+    env_file:
+      - ./services/core_backend/.env.example
+    environment:
+      - PORT=3000
+      - DB_HOST=postgres
+      - DB_PASSWORD=password
+      - KAFKA_BROKERS=kafka:9092
+    depends_on:
+      - redis
+      - postgres
+      - kafka
+
+  # ==========================================
+  # RUST & GO MICROSERVICES
+  # ==========================================
+  claims_scoring:
+    build:
+      context: ./services/claims_scoring
+    ports:
+      - "8080:8080" # Update based on actual Rust port
+    networks:
+      - continuum_net
+    volumes:
+      - continuum_shared_temps:/tmp
+    environment:
+      - ISOLATION_FOREST_SOCKET=/tmp/isolation_forest.sock
+      - DATABASE_URL=postgres://postgres:password@postgres:5432/continuum
+    depends_on:
+      - postgres
+
+  kg_cache:
+    build:
+      context: ./services/kg_cache
+    ports:
+      - "8004:8080"
+    networks:
+      - continuum_net
+    environment:
+      - PORT=8080
+      - WEB_INTEL_URL=http://web_intelligence:8003
+
+  # ==========================================
+  # PYTHON WORKERS & SIDECARS
+  # ==========================================
+  crew_ai:
+    build:
+      context: ./services/crew_ai
+    networks:
+      - continuum_net
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+  
+  isolation_forest_sidecar:
+    build:
+      context: ./services/isolation_forest_sidecar
+    networks:
+      - continuum_net
+    volumes:
+      - continuum_shared_temps:/tmp
+    environment:
+      - SOCKET_PATH=/tmp/isolation_forest.sock
+
+  oracle_engine:
+    build:
+      context: ./services/oracle_engine
+    networks:
+      - continuum_net
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+
+  web_intelligence:
+    build:
+      context: ./services/web_intelligence
+    ports:
+      - "8003:8003"
+    networks:
+      - continuum_net
+    environment:
+      - POLL_INTERVAL_SECONDS=300
+
+  # ==========================================
+  # INFRASTRUCTURE DATABASES & MESSAGE BROKERS
+  # ==========================================
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - continuum_net
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: continuum
+    ports:
+      - "5432:5432"
+    networks:
+      - continuum_net
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - continuum_net
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - continuum_net
