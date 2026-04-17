@@ -7,7 +7,7 @@ import json
 import os
 import uuid
 from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import structlog
 from aiokafka import AIOKafkaProducer
@@ -19,6 +19,7 @@ logger = structlog.get_logger(__name__)
 
 ORACLE_TRIGGER_TOPIC = "oracle_trigger"
 PAYOUT_AUTHORIZED_TOPIC = "payout_authorized"
+ENROLLMENT_LOCK_TOPIC = "adverse_selection_lock"
 
 
 def _vote_to_dict(vote: OracleVote) -> dict:
@@ -113,3 +114,26 @@ class KafkaPublisher:
             zone_id=zone_id,
             payout_cap=result.payout_cap,
         )
+
+    async def publish_enrollment_lock(
+        self,
+        zone_id: str,
+        event_type: str,
+        forecast_data: dict | None = None,
+    ) -> None:
+        """Publish adverse_selection_lock event when forecast triggers enrollment freeze."""
+        if self._producer is None:
+            raise RuntimeError("KafkaPublisher not started")
+
+        event = {
+            "event_id": str(uuid.uuid4()),
+            "zone_id": zone_id,
+            "event_type": event_type,
+            "forecast_data": forecast_data or {},
+            "locked_at": datetime.now(timezone.utc).isoformat(),
+            "expires_at": (
+                datetime.now(timezone.utc) + timedelta(hours=72)
+            ).isoformat(),
+        }
+        await self._producer.send_and_wait(ENROLLMENT_LOCK_TOPIC, event)
+        logger.info("enrollment_lock_published", zone_id=zone_id, event_type=event_type)

@@ -64,9 +64,46 @@ logger = logging.getLogger("isolation_forest_sidecar")
 # ---------------------------------------------------------------------------
 
 
+MODEL_CARD_PATH = os.environ.get(
+    "MODEL_CARD_PATH",
+    str(Path(__file__).parent / "model" / "model_card.json"),
+)
+
+
+def _verify_model_hash(model_path: str) -> None:
+    """Verify model file SHA-256 against model_card.json if hash is set."""
+    import hashlib
+    card_file = Path(MODEL_CARD_PATH)
+    if not card_file.exists():
+        logger.warning("Model card not found at '%s' — skipping hash check", MODEL_CARD_PATH)
+        return
+
+    with open(card_file) as f:
+        card = json.load(f)
+
+    expected = card.get("integrity", {}).get("model_sha256")
+    if not expected:
+        logger.warning("model_sha256 not set in model_card.json — skipping hash check")
+        return
+
+    sha = hashlib.sha256()
+    with open(model_path, "rb") as mf:
+        for chunk in iter(lambda: mf.read(8192), b""):
+            sha.update(chunk)
+    actual = sha.hexdigest()
+
+    if actual != expected:
+        raise RuntimeError(
+            f"Model hash mismatch: expected {expected}, got {actual}. "
+            "Refusing to start with unverified model."
+        )
+    logger.info("Model hash verified: %s", actual)
+
+
 def load_model(path: str):
     """Load the serialized Isolation Forest model from *path*.
 
+    Validates model hash against model_card.json before loading.
     Logs a substitution warning and raises RuntimeError on failure so the
     caller can decide whether to abort startup.
     """
@@ -78,6 +115,9 @@ def load_model(path: str):
             path,
         )
         raise RuntimeError(f"Model file not found: {path}")
+
+    _verify_model_hash(path)
+
     try:
         model = joblib.load(model_file)
         logger.info("Isolation Forest model loaded from '%s'.", path)

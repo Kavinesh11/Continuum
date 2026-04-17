@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "payout_authorized.v1",
+  "title": "Payout Authorized Event",
+  "description": "Published by oracle_engine when consensus authorizes a parametric payout for a zone.",
+  "type": "object",
+  "required": ["payout_id", "zone_id", "oracle_votes", "authorized_at", "payout_cap"],
+  "properties": {
+    "payout_id": { "type": "string", "format": "uuid" },
+    "claim_id": { "type": ["string", "null"] },
+    "worker_id": { "type": ["string", "null"] },
+    "amount": { "type": ["number", "null"] },
+    "zone_id": { "type": "string", "minLength": 1 },
+    "oracle_votes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["oracle_name", "vote"],
+        "properties": {
+          "oracle_name": { "type": "string" },
+          "vote": { "type": "string", "enum": ["affirm", "deny", "abstain"] },
+          "data_timestamp": { "type": ["string", "null"] },
+          "polled_at": { "type": "string" },
+          "tls_valid": { "type": "boolean" }
+        }
+      }
+    },
+    "authorized_at": { "type": "string", "format": "date-time" },
+    "payout_cap": { "type": "number", "minimum": 0, "maximum": 1 },
+    "benefit_of_doubt": { "type": "boolean" }
+  },
+  "additionalProperties": false
+}

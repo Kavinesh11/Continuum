@@ -10,7 +10,7 @@ from typing import Literal
 
 import structlog
 
-from .oracles import ALL_ORACLE_CLIENTS, OracleClient, OracleVote
+from .oracles import ALL_ORACLE_CLIENTS, ORACLE_SETS, OracleClient, OracleVote
 
 try:
     from .metrics import (
@@ -210,9 +210,90 @@ class OracleConsensusEngine:
             benefit_of_doubt=benefit_of_doubt,
         )
 
+    def _resolve_clients(self, event_type: str) -> list[OracleClient]:
+        """Select oracle set based on event type, falling back to all clients."""
+        return ORACLE_SETS.get(event_type, self._clients)
+
+    def _resolve_threshold(self, event_type: str) -> int:
+        """Minimum affirm votes needed — majority of the oracle set for that event type."""
+        clients = self._resolve_clients(event_type)
+        return max(2, (len(clients) // 2) + 1)
+
     async def run_cycle(self, zone_id: str, event_type: str) -> VoteResult:
-        """Full poll → staleness → evaluate pipeline for one cycle."""
-        raw_votes = await self.poll_all_oracles(zone_id, event_type)
+        """Full poll → staleness → evaluate pipeline for one cycle.
+
+        Uses event-type-aware oracle set and dynamic threshold (majority of set).
+        """
+        clients = self._resolve_clients(event_type)
+        tasks = [client.poll(zone_id, event_type) for client in clients]
+        raw_votes: list[OracleVote] = list(await asyncio.gather(*tasks))
+
+        if _METRICS_AVAILABLE:
+            for vote in raw_votes:
+                name = vote.oracle_name
+                oracle_polls_total.labels(oracle_name=name).inc()
+                self._poll_counts[name] = self._poll_counts.get(name, 0) + 1
+                if vote.vote in ("abstain", "nullified"):
+                    oracle_failures_total.labels(oracle_name=name, reason=vote.vote).inc()
+                    self._failure_counts[name] = self._failure_counts.get(name, 0) + 1
+                total = self._poll_counts[name]
+                failures = self._failure_counts.get(name, 0)
+                oracle_failure_rate.labels(oracle_name=name).set(failures / total)
+
         fresh_votes = self.apply_staleness_rule(raw_votes)
-        result = self.evaluate_votes(fresh_votes)
+
+        # Use event-type-specific threshold
+        threshold = self._resolve_threshold(event_type)
+        old_threshold = AFFIRMATIVE_THRESHOLD
+        # Temporarily override for evaluate_votes
+        result = self._evaluate_with_threshold(fresh_votes, threshold)
         return result
+
+    def _evaluate_with_threshold(self, votes: list[OracleVote], threshold: int) -> VoteResult:
+        """evaluate_votes variant accepting a custom threshold."""
+        affirmative = sum(1 for v in votes if v.vote == "affirm")
+        deny = sum(1 for v in votes if v.vote == "deny")
+        abstain = sum(1 for v in votes if v.vote == "abstain")
+        nullified = sum(1 for v in votes if v.vote == "nullified")
+
+        for v in votes:
+            if v.vote == "nullified":
+                logger.warning(
+                    "oracle_tls_nullification",
+                    oracle=v.oracle_name,
+                    polled_at=v.polled_at.isoformat(),
+                )
+
+        authorized = affirmative >= threshold
+        benefit_of_doubt = False
+        payout_cap = 1.0
+
+        if not authorized:
+            benefit_of_doubt = self.check_benefit_of_doubt(votes)
+            if benefit_of_doubt:
+                authorized = True
+                payout_cap = 0.5
+                logger.info(
+                    "benefit_of_doubt_applied",
+                    affirmative=affirmative,
+                    offline=abstain + nullified,
+                )
+
+        if _METRICS_AVAILABLE:
+            if authorized:
+                oracle_trigger_authorized_total.inc()
+            else:
+                oracle_trigger_denied_total.inc()
+            if benefit_of_doubt:
+                benefit_of_doubt_applied_total.inc()
+
+        return VoteResult(
+            authorized=authorized,
+            affirmative_count=affirmative,
+            abstain_count=abstain,
+            deny_count=deny,
+            nullified_count=nullified,
+            payout_cap=payout_cap,
+            votes=votes,
+            benefit_of_doubt=benefit_of_doubt,
+        )

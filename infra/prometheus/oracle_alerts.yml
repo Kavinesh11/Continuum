@@ -1,0 +1,170 @@
+groups:
+  - name: oracle_health
+    rules:
+      # Alert when any single oracle has > 40% failure rate in the last hour
+      - alert: OracleHighAbstentionRate
+        expr: oracle_failure_rate > 0.4
+        for: 15m
+        labels:
+          severity: critical
+          component: oracle_engine
+        annotations:
+          summary: "Oracle {{ $labels.oracle_name }} abstention rate exceeds 40%"
+          description: >
+            Oracle {{ $labels.oracle_name }} has a failure/abstention rate of
+            {{ $value | humanizePercentage }} over the last hour.
+            Trigger evaluation should be frozen until the oracle recovers.
+          runbook: "Check oracle API health, certificate expiry, and network connectivity."
+
+      # Alert when payout SLA is breached
+      - alert: PayoutSLABreach
+        expr: increase(payout_sla_breach_total[1h]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          component: payout_pipeline
+        annotations:
+          summary: "Payout SLA breach detected — disbursement exceeded 2-hour target"
+          description: >
+            {{ $value }} payout(s) in the last hour exceeded the 2-hour SLA
+            from trigger to UPI credit. Investigate payout pipeline delays.
+
+      # Alert when reserve balance is critically low
+      - alert: ReserveLow
+        expr: reserve_balance_inr < 100000
+        for: 5m
+        labels:
+          severity: warning
+          component: actuarial
+        annotations:
+          summary: "Reserve balance below critical threshold"
+          description: "Reserve balance is ₹{{ $value }}. Top-up required."
+
+  - name: slo_burn_rates
+    rules:
+      # Payout latency SLO burn-rate alerts (target: p95 < 7200s over 30d)
+      - alert: PayoutLatencyBurnRate1h
+        expr: >
+          1 - (
+            rate(continuum_trigger_to_payout_seconds_bucket{le="7200"}[1h])
+            / rate(continuum_trigger_to_payout_seconds_count[1h])
+          ) > (14.4 * (1 - 0.95))
+        for: 2m
+        labels:
+          severity: critical
+          slo: payout_latency
+          window: 1h
+        annotations:
+          summary: "Payout latency SLO — 1h burn rate critical"
+          description: "Error budget is being consumed at 14.4x the allowed rate."
+          runbook: "docs/runbooks/payout_latency_breach.md"
+
+      - alert: PayoutLatencyBurnRate6h
+        expr: >
+          1 - (
+            rate(continuum_trigger_to_payout_seconds_bucket{le="7200"}[6h])
+            / rate(continuum_trigger_to_payout_seconds_count[6h])
+          ) > (6.0 * (1 - 0.95))
+        for: 5m
+        labels:
+          severity: warning
+          slo: payout_latency
+          window: 6h
+        annotations:
+          summary: "Payout latency SLO — 6h burn rate elevated"
+          runbook: "docs/runbooks/payout_latency_breach.md"
+
+      # Oracle freshness SLO burn-rate (target: ratio > 0.85 over 7d)
+      - alert: OracleFreshnessBurnRate1h
+        expr: (1 - avg_over_time(oracle_poll_fresh_ratio[1h])) > (14.4 * (1 - 0.85))
+        for: 2m
+        labels:
+          severity: critical
+          slo: oracle_freshness
+          window: 1h
+        annotations:
+          summary: "Oracle freshness SLO — 1h burn rate critical"
+          runbook: "docs/runbooks/oracle_freshness_degraded.md"
+
+      # Kafka consumer lag SLO burn-rate (target: p95 < 60s over 7d)
+      - alert: KafkaConsumerLagBurnRate1h
+        expr: >
+          1 - (
+            rate(continuum_kafka_consumer_lag_seconds_bucket{le="60"}[1h])
+            / rate(continuum_kafka_consumer_lag_seconds_count[1h])
+          ) > (14.4 * (1 - 0.95))
+        for: 2m
+        labels:
+          severity: critical
+          slo: kafka_consumer_lag
+          window: 1h
+        annotations:
+          summary: "Kafka consumer lag SLO — 1h burn rate critical"
+          runbook: "docs/runbooks/kafka_consumer_lag.md"
+
+      # Reserve floor breach counter
+      - alert: ReserveFloorBreach
+        expr: increase(continuum_reserve_floor_breach_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          component: financial
+        annotations:
+          summary: "Reserve floor breach — automated payouts may be blocked"
+          runbook: "docs/runbooks/reserve_floor_breach.md"
+
+  - name: operational_health
+    rules:
+      - alert: DlqDepthHigh
+        expr: continuum_dlq_depth > 10
+        for: 5m
+        labels:
+          severity: warning
+          component: kafka
+        annotations:
+          summary: "Dead-letter queue {{ $labels.queue }} has {{ $value }} messages"
+          runbook: "docs/runbooks/kafka_consumer_lag.md"
+
+      - alert: DlqDepthCritical
+        expr: continuum_dlq_depth > 50
+        for: 2m
+        labels:
+          severity: critical
+          component: kafka
+        annotations:
+          summary: "Dead-letter queue {{ $labels.queue }} has {{ $value }} messages — immediate attention required"
+          runbook: "docs/runbooks/kafka_consumer_lag.md"
+
+      - alert: EnrollmentLockCountHigh
+        expr: continuum_enrollment_lock_active_count > 5
+        for: 10m
+        labels:
+          severity: warning
+          component: enrollment
+        annotations:
+          summary: "{{ $value }} zone enrollment locks are active"
+          description: >
+            A high number of enrollment locks may indicate an extreme weather
+            event or misconfigured lock TTLs. Review zone_enrollment_locks table.
+
+      - alert: KillSwitchActive
+        expr: continuum_zone_kill_switch_active > 0
+        for: 0m
+        labels:
+          severity: info
+          component: payout_pipeline
+        annotations:
+          summary: "Kill switch active for zone {{ $labels.zone_id }}"
+          runbook: "docs/runbooks/kill_switch_activation.md"
+
+      - alert: CircuitBreakerOpen
+        expr: continuum_circuit_breaker_state == 2
+        for: 1m
+        labels:
+          severity: critical
+          component: adapters
+        annotations:
+          summary: "Circuit breaker OPEN for {{ $labels.adapter }}"
+          description: >
+            Adapter {{ $labels.adapter }} has tripped its circuit breaker.
+            All calls will fail-fast until reset timeout expires.

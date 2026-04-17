@@ -11,6 +11,7 @@ const {
   hasSIMChangedRecently,
   recordDisbursementStatus,
 } = require('../../services/payu');
+const { recordPayoutLatency } = require('../../services/metrics');
 
 /**
  * Process a payout_disbursement job.
@@ -76,6 +77,13 @@ async function processPayoutDisbursement(job) {
 
   // Record successful disbursement (Req 14.5, 9.3)
   await recordDisbursementStatus(payout_id, 'disbursed', payuResult.transaction_ref);
+
+  // Record payout latency — trigger_fired_at is set by the oracle engine (G4)
+  const triggerFiredAt = job.data.trigger_fired_at;
+  if (triggerFiredAt) {
+    const latencySeconds = (Date.now() - new Date(triggerFiredAt).getTime()) / 1000;
+    recordPayoutLatency(latencySeconds);
+  }
 
   // Send FCM notification within 30 seconds of successful disbursement (Req 15.2, 14.6)
   if (worker.fcm_token) {

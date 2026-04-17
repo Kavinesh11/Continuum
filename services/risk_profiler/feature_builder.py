@@ -26,6 +26,10 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 _SOURCE_TIMEOUT = 0.5  # 500 ms
 
+# Minimum local history before proxy-zone fallback is used
+MINIMUM_ZONE_HISTORY_DAYS = 90
+SPARSE_ZONE_UNCERTAINTY_MULTIPLIER = 1.25
+
 
 # ---------------------------------------------------------------------------
 # Typed result containers returned by each async client
@@ -43,6 +47,7 @@ class TimescaleData:
     weather_event_freq_30d: float
     flood_event_count_30d: float
     cyclone_event_count_30d: float
+    aqi_event_count_30d: float = 0.0
 
 
 @dataclass
@@ -64,6 +69,7 @@ class ZoneMedians:
     weather_event_freq_30d: float = 0.0
     flood_event_count_30d: float = 0.0
     cyclone_event_count_30d: float = 0.0
+    aqi_event_count_30d: float = 0.0
     active_days_last_30: float = 15.0
     avg_daily_orders: float = 8.0
     zone_risk_index: float = 0.5
@@ -92,6 +98,14 @@ class PostgresClient(Protocol):
 
     async def fetch_zone_medians(
         self, zone_id: str
+    ) -> ZoneMedians: ...
+
+    async def fetch_zone_history_days(
+        self, zone_id: str
+    ) -> int: ...
+
+    async def fetch_proxy_zone_medians(
+        self, zone_id: str, k: int = 3
     ) -> ZoneMedians: ...
 
 
@@ -128,7 +142,7 @@ class FeatureBuilder:
         lon: float,
     ) -> list[float]:
         """
-        Return a 15-dimensional feature vector.
+        Return a 16-dimensional feature vector.
 
         Dimensions (0-indexed):
           0  rainfall_mm_hr_current
@@ -137,19 +151,39 @@ class FeatureBuilder:
           3  weather_event_freq_30d
           4  flood_event_count_30d
           5  cyclone_event_count_30d
-          6  active_days_last_30
-          7  avg_daily_orders
-          8  platform_encoded
-          9  tier_encoded
-          10 zone_risk_index
-          11 hour_of_day
-          12 day_of_week
-          13 month
-          14 claim_velocity_90d
+          6  aqi_event_count_30d
+          7  active_days_last_30
+          8  avg_daily_orders
+          9  platform_encoded
+          10 tier_encoded
+          11 zone_risk_index
+          12 hour_of_day
+          13 day_of_week
+          14 month
+          15 claim_velocity_90d
         """
-        # Fetch zone medians first (fast, local DB, not subject to the
-        # 500 ms budget — used only as fallback values).
-        medians = await self._pg.fetch_zone_medians(zone_id)
+        # Check zone data maturity; use proxy-zone KNN if < 90 days of history
+        history_days = 0
+        try:
+            history_days = await self._pg.fetch_zone_history_days(zone_id)
+        except Exception:
+            pass
+
+        if history_days < MINIMUM_ZONE_HISTORY_DAYS:
+            logger.warning(
+                "Sparse zone — using proxy-zone KNN bootstrap",
+                extra={
+                    "zone_id": zone_id,
+                    "history_days": history_days,
+                    "minimum": MINIMUM_ZONE_HISTORY_DAYS,
+                },
+            )
+            try:
+                medians = await self._pg.fetch_proxy_zone_medians(zone_id, k=3)
+            except Exception:
+                medians = await self._pg.fetch_zone_medians(zone_id)
+        else:
+            medians = await self._pg.fetch_zone_medians(zone_id)
 
         # Run all three source queries concurrently.
         ts_result, wx_result, pg_result = await asyncio.gather(
@@ -169,15 +203,16 @@ class FeatureBuilder:
             ts_result.weather_event_freq_30d,    # 3
             ts_result.flood_event_count_30d,     # 4
             ts_result.cyclone_event_count_30d,   # 5
-            pg_result.active_days_last_30,       # 6
-            pg_result.avg_daily_orders,          # 7
-            pg_result.platform_encoded,          # 8
-            pg_result.tier_encoded,              # 9
-            pg_result.zone_risk_index,           # 10
-            float(now.hour),                     # 11
-            float(now.weekday()),                # 12
-            float(now.month),                    # 13
-            pg_result.claim_velocity_90d,        # 14
+            ts_result.aqi_event_count_30d,       # 6
+            pg_result.active_days_last_30,       # 7
+            pg_result.avg_daily_orders,          # 8
+            pg_result.platform_encoded,          # 9
+            pg_result.tier_encoded,              # 10
+            pg_result.zone_risk_index,           # 11
+            float(now.hour),                     # 12
+            float(now.weekday()),                # 13
+            float(now.month),                    # 14
+            pg_result.claim_velocity_90d,        # 15
         ]
 
     # ------------------------------------------------------------------
@@ -194,7 +229,7 @@ class FeatureBuilder:
             )
         except (asyncio.TimeoutError, Exception) as exc:
             reason = "timeout" if isinstance(exc, asyncio.TimeoutError) else f"error: {exc}"
-            substituted = ["weather_event_freq_30d", "flood_event_count_30d", "cyclone_event_count_30d"]
+            substituted = ["weather_event_freq_30d", "flood_event_count_30d", "cyclone_event_count_30d", "aqi_event_count_30d"]
             logger.warning(
                 "Feature substitution",
                 extra={
@@ -208,6 +243,7 @@ class FeatureBuilder:
                 weather_event_freq_30d=medians.weather_event_freq_30d,
                 flood_event_count_30d=medians.flood_event_count_30d,
                 cyclone_event_count_30d=medians.cyclone_event_count_30d,
+                aqi_event_count_30d=medians.aqi_event_count_30d,
             )
 
     async def _fetch_weather(
