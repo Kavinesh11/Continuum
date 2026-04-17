@@ -238,7 +238,6 @@ npx jest --testNamePattern "reserve" # tests matching pattern
 Test files in `services/core_backend/tests/`:
 - `test_auth_middleware.test.js` — JWT auth + RBAC middleware
 - `test_bullmq.test.js` — BullMQ queue and worker behavior
-- `test_core_backend.test.js` — integration tests
 - `test_fcm.test.js` — Firebase Cloud Messaging dispatch
 - `test_ledger.test.js` — double-entry ledger, overdraw prevention
 - `test_notification_dispatch.test.js` — notification pipeline

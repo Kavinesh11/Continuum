@@ -43,10 +43,8 @@ SOCKET_PATH=/tmp/isolation_forest.sock python sidecar.py
 cd services/core_backend && npm test
 npx jest tests/test_ledger.test.js --runInBand   # single test file
 
-# Integration tests — needs TEST_PG_DSN (default: postgresql://test:test@localhost:15432/continuum_test)
-# and TEST_CRDB_DSN (default: postgresql://root@localhost:16257/defaultdb?sslmode=disable)
-# Run docker-compose.test.yml first to get those ports, then seed zone polygons and weather data
-cd tests/integration && npm install && npm test
+
+
 
 # Python services (pytest)
 cd services/oracle_engine && pytest tests/
@@ -69,7 +67,6 @@ python -m services.actuarial_lab.ci_gate \
   --crdb-dsn "postgresql://..."
 ```
 
-`docker compose -f docker-compose.test.yml up` spins up ephemeral PostgreSQL + CockroachDB + Kafka for integration tests.
 
 ## Architecture Overview
 
@@ -138,7 +135,7 @@ bash infra/kafka/create_topics.sh
 **One-shot data loader scripts** in `scripts/`:
 - `seed_synthetic_ledger.py` — seeds 24 months of synthetic premiums + payouts into CockroachDB, resets `reserve_balance` to ₹500,000. Usage: `python scripts/seed_synthetic_ledger.py --crdb-dsn "postgresql://root@localhost:26257/continuum"`
 - `load_weather_historical.py` — backfills the TimescaleDB `weather_events` hypertable. Supports `--provider synthetic` (3 zones × 24 months) or `--provider imd` (requires `--imd-data-dir`). Usage: `python scripts/load_weather_historical.py --provider synthetic --pg-dsn "postgresql://..."`
-- `load_zone_polygons.py` — upserts zone WGS84 polygons and risk indices. Supports `--provider fixture` (3 Mumbai zones hardcoded) or `--provider geojson`. Required before integration tests pass. Usage: `python scripts/load_zone_polygons.py --provider fixture --pg-dsn "postgresql://..."`
+- `load_zone_polygons.py` — upserts zone WGS84 polygons and risk indices. Supports `--provider fixture` (3 Mumbai zones hardcoded) or `--provider geojson`. Usage: `python scripts/load_zone_polygons.py --provider fixture --pg-dsn "postgresql://..."`
 
 **Architecture decisions** are documented in `docs/adr/`: ledger-first financial model (ADR-0001), Kafka consumer topology (ADR-0002), external adapter pattern (ADR-0003), PII envelope encryption (ADR-0004). Read these before changing the corresponding systems.
 
