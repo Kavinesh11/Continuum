@@ -457,11 +457,11 @@ A total of 11 core microservices (+3 infrastructure containers) are actively run
 | Service | Technology | Port Map | IP Link |
 |---|---|---|---|
 | **FastAPI Gateway** | Python / FastAPI | `8000` | [http://4.186.27.77:8000/docs](http://4.186.27.77:8000/docs) |
-| **RAG Orchestrator** | Python / LlamaIndex| `8001` | http://4.186.27.77:8001 |
-| **Rasa / Gemini Assistant**| Python / Gemini API| `8002` | http://4.186.27.77:8002 |
-| **Web Intelligence** | Python / ScrapeGraph| `8003` | http://4.186.27.77:8003 |
-| **KG Cache** | Go | `8004 -> 8080`| http://4.186.27.77:8004 |
-| **Core Backend** | Express.js | `3000` | http://4.186.27.77:3000 |
+| **RAG Orchestrator** | Python / LlamaIndex| `8001` | http://4.186.27.77:8001/docs |
+| **Rasa / Gemini Assistant**| Python / Gemini API| `8002` | http://4.186.27.77:8002/docs |
+| **Web Intelligence** | Python / ScrapeGraph| `8003` | http://4.186.27.77:8003/docs |
+| **KG Cache** | Go | `8004 -> 8080`| http://4.186.27.77:8004/docs |
+| **Core Backend** | Express.js | `3000` | http://4.186.27.77:3000/docs |
 | **Claims Scoring** | Rust | `8080` | (Internal API) |
 | **Isolation Forest** | Python | Unix Socket | (Sidecar communication) |
 | **Crew AI Agent** | Python | Background | (Kafka Worker) |
