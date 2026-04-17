@@ -33,6 +33,7 @@ const QUEUE_NAMES = {
   PAYOUT_DISBURSEMENT: 'payout_disbursement',
   NOTIFICATION_DISPATCH: 'notification_dispatch',
   FRAUD_REVIEW_ESCALATION: 'fraud_review_escalation',
+  WEEKLY_PREMIUM_DEBIT: 'weekly_premium_debit',
 };
 
 // Lazily-created queue instances

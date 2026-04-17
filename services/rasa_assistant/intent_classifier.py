@@ -8,7 +8,9 @@ without a trained model.
 """
 from __future__ import annotations
 
+import json
 import logging
+import os
 
 from .models import Intent
 
@@ -44,7 +46,15 @@ class IntentClassifier:
                 )
                 self._model = None
         else:
-            logger.info("rasa_classifier_stub_mode")
+            self._gemini_api_key = os.environ.get("GEMINI_API_KEY")
+            if self._gemini_api_key:
+                logger.info("gemini_api_mode_enabled")
+                import google.generativeai as genai
+                genai.configure(api_key=self._gemini_api_key)
+                # Use gemini-1.5-flash for fast intent classification
+                self._gemini_model = genai.GenerativeModel("gemini-1.5-flash")
+            else:
+                logger.info("rasa_classifier_stub_mode")
 
     def classify(self, message: str) -> Intent:
         """
@@ -68,9 +78,33 @@ class IntentClassifier:
                 logger.error("rasa_classify_error", extra={"error": str(exc)})
                 return Intent(name="policy_inquiry", confidence=0.5)
 
+        if hasattr(self, "_gemini_model") and self._gemini_api_key:
+            try:
+                prompt = f"""
+Classify the following message from a gig worker into exactly ONE of these intents: 
+{", ".join(SUPPORTED_INTENTS)}
+
+Message: "{message}"
+
+Respond ONLY with a valid JSON strictly following this schema:
+{{"intent": "<intent_name>", "confidence": <float_between_0_and_1>}}
+"""
+                response = self._gemini_model.generate_content(
+                    prompt,
+                    generation_config={"response_mime_type": "application/json"}
+                )
+                data = json.loads(response.text)
+                name = data.get("intent", "policy_inquiry")
+                confidence = float(data.get("confidence", 0.0))
+                if name not in SUPPORTED_INTENTS:
+                    name = "policy_inquiry"
+                return Intent(name=name, confidence=max(0.0, min(1.0, confidence)))
+            except Exception as exc:
+                logger.error("gemini_classify_error", extra={"error": str(exc)})
+                return Intent(name="policy_inquiry", confidence=0.5)
+
         # Stub implementation for testing
         return Intent(name="policy_inquiry", confidence=0.5)
-
 
 def should_escalate(intent: Intent) -> bool:
     """Return True if the intent confidence is below the escalation threshold."""

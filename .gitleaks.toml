@@ -1,0 +1,30 @@
+title = "Continuum gitleaks config"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "google-api-key"
+description = "Google API Key"
+regex = '''AIza[0-9A-Za-z\-_]{35}'''
+tags = ["key", "google"]
+
+[[rules]]
+id = "payu-key"
+description = "PayU API Key"
+regex = '''(?i)payu[_-]?(?:api[_-]?)?key\s*[=:]\s*["']?[A-Za-z0-9]{16,}'''
+tags = ["key", "payu"]
+
+[[rules]]
+id = "jwt-secret-inline"
+description = "JWT secret inlined in code"
+regex = '''(?i)jwt[_-]?secret\s*[=:]\s*["'][A-Za-z0-9+/=]{16,}["']'''
+tags = ["secret", "jwt"]
+
+[allowlist]
+paths = [
+  '''\.env\.example$''',
+  '''docker-compose\.test\.yml$''',
+  '''irdai_compliance_audit\.md$''',
+  '''tests/.*fixtures.*''',
+]

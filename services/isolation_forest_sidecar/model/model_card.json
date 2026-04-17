@@ -1,0 +1,38 @@
+{
+  "model_name": "isolation_forest_fraud_detector",
+  "version": "1.0.0",
+  "framework": "scikit-learn",
+  "algorithm": "IsolationForest",
+  "feature_dimensions": 6,
+  "features": [
+    "event_type_encoded",
+    "zone_id_encoded",
+    "hour_of_day",
+    "day_of_week",
+    "claim_velocity_7d",
+    "zone_claim_density_1h"
+  ],
+  "training_data": {
+    "description": "Historical claims data with labeled fraud outcomes",
+    "min_samples": 10000,
+    "date_range_required": "24 months minimum"
+  },
+  "hyperparameters": {
+    "n_estimators": 200,
+    "contamination": 0.05,
+    "max_samples": "auto",
+    "random_state": 42
+  },
+  "score_normalization": "fraud_score = clip(1 - (raw_anomaly_score + 0.5), 0, 1)",
+  "integrity": {
+    "hash_algorithm": "sha256",
+    "hash_field": "model_sha256",
+    "model_sha256": null,
+    "note": "Populate model_sha256 after training by running: sha256sum model/isolation_forest.joblib"
+  },
+  "governance": {
+    "auto_approve_threshold": 0.7,
+    "fraud_queue_threshold": "<0.7",
+    "retrain_cadence": "quarterly or when false-positive rate > 5%"
+  }
+}

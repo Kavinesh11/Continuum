@@ -172,6 +172,12 @@ async fn process_claim(pool: &PgPool, req: ScoreRequest) -> anyhow::Result<Score
     let isolation_forest_score = if_score?;
 
     // ── Step 4: Compute composite score and routing decision ──
+    let coverage_cap = req.coverage_cap.unwrap_or(0.0);
+    let payout_cap = req.payout_cap.unwrap_or(1.0);
+    let adjacency_factor = req.adjacency_factor.unwrap_or(
+        if spatial.zone_mismatch { 0.5 } else { 1.0 }
+    );
+
     let inputs = ScoringInputs {
         claim_id: req.claim_id,
         spatial,
@@ -181,6 +187,9 @@ async fn process_claim(pool: &PgPool, req: ScoreRequest) -> anyhow::Result<Score
         spatial_penalty,
         soak_period_failed,
         platform_activity_veto,
+        coverage_cap,
+        payout_cap,
+        adjacency_factor,
     };
 
     let mut response = scoring::compute_score(inputs);
@@ -222,7 +231,24 @@ async fn process_claim(pool: &PgPool, req: ScoreRequest) -> anyhow::Result<Score
         );
     }
 
-    // ── Step 6: Emit Prometheus metrics (after final status is determined) ──
+    // ── Step 6: DB fallback for estimated_payout when coverage_cap not in request ──
+    if response.status == ClaimStatus::AutoApproved && response.estimated_payout == 0.0 {
+        if let Some(policy_id) = req.policy_id {
+            let policy_result = sqlx::query!(
+                "SELECT coverage_cap FROM policies WHERE policy_id = $1",
+                policy_id
+            )
+            .fetch_optional(pool)
+            .await;
+
+            if let Ok(Some(policy)) = policy_result {
+                let db_cap: f64 = policy.coverage_cap.to_string().parse().unwrap_or(0.0);
+                response.estimated_payout = db_cap * payout_cap * adjacency_factor;
+            }
+        }
+    }
+
+    // ── Step 7: Emit Prometheus metrics (after final status is determined) ──
     metrics::FRAUD_SCORE_HISTOGRAM.observe(response.fraud_score);
     match response.status {
         ClaimStatus::AutoApproved => metrics::CLAIMS_AUTO_APPROVED_TOTAL.inc(),

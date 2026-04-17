@@ -46,13 +46,15 @@ Important: This is a policy terms draft derived from Continuum's adversarial ris
 
 ## 5) Premiums, Taxes, and Pricing
 
-5.1 Premiums are charged weekly unless otherwise disclosed.
+5.1 Premiums are charged weekly via UPI eNACH mandate (autopay) unless otherwise disclosed. By enrolling, the Partner authorizes Continuum to create a recurring debit mandate on their registered UPI account.
 
-5.2 Continuum may use dynamic risk pricing by zone, tier, and historical loss trends.
+5.2 Continuum may use dynamic risk pricing by zone, tier, and historical loss trends. Pricing is computed from a multi-dimensional feature vector that includes weather history, AQI event frequency, zone loss ratio, and partner activity profile.
 
 5.3 Premium changes apply prospectively and do not retroactively alter an already active paid cycle.
 
 5.4 Taxes are applied as required by law. Premium presentation may be tax-inclusive where applicable.
+
+5.5 Data-sparse zones (with fewer than 90 days of local history) may carry a conservative uncertainty loading on the risk margin until sufficient local data has been collected.
 
 ## 6) Trigger Events and Oracle Determination
 
@@ -60,11 +62,13 @@ Important: This is a policy terms draft derived from Continuum's adversarial ris
 
 6.2 No single data source can unilaterally authorize payout.
 
-6.3 Continuum may use weighted multi-oracle consensus, stale-data abstention rules, and source reliability weighting.
+6.3 Continuum uses event-type-weighted multi-oracle consensus, stale-data abstention rules, and source reliability weighting. Different trigger categories (weather, AQI, technology outage) consult distinct oracle sets and require majority consensus within their respective set.
 
 6.4 Trigger logic parameters may be adjusted to protect solvency, prevent abuse, and reflect risk changes.
 
 6.5 Public rumors, social media posts, and unverified community reports are not accepted trigger evidence.
+
+6.6 Continuum may use forecast-based enrollment freezes to prevent adverse selection. When a high-confidence forecast predicts a qualifying event within 72 hours, new enrollments and tier upgrades in the affected zone may be temporarily suspended until the risk period passes.
 
 ## 7) Claim Eligibility and Verification
 
@@ -129,9 +133,9 @@ Important: This is a policy terms draft derived from Continuum's adversarial ris
 
 ## 12) Payout SLA and Payment Handling
 
-12.1 Valid claims are targeted for rapid settlement as disclosed in-app or in policy schedules.
+12.1 Valid claims are targeted for settlement within 2 hours of trigger confirmation (oracle trigger to UPI disbursement). This SLA is continuously monitored and enforced.
 
-12.2 Where Continuum expressly commits to a payout SLA and misses it, compensation credits may apply according to published SLA terms.
+12.2 Where Continuum expressly commits to a payout SLA and misses it, compensation credits may apply according to published SLA terms. SLA breaches are tracked and alerted in real time.
 
 12.3 Payouts are made only to verified payout credentials linked to the Partner account.
 
@@ -144,6 +148,10 @@ Important: This is a policy terms draft derived from Continuum's adversarial ris
 13.3 Continuum may minimize, hash, aggregate, or delete high-granularity location data after retention windows as required by policy and law.
 
 13.4 Partners who disable required telemetry may retain enrollment status but may become ineligible for claims.
+
+13.5 Bluetooth and Wi-Fi proximity data used for population-level fraud detection requires explicit, separate consent in compliance with the Digital Personal Data Protection Act 2023. Partners may grant or withdraw proximity consent at any time. Proximity logs are automatically purged after 30 days.
+
+13.6 National identity data (Aadhaar) is stored only as a one-way cryptographic hash for uniqueness enforcement and is never stored or transmitted in plaintext.
 
 ## 14) Appeals and Dispute Resolution
 
@@ -193,13 +201,19 @@ Important: This is a policy terms draft derived from Continuum's adversarial ris
 
 ## Appendix A - Contract Design Controls Mapped from Adversarial Scenarios
 
-- Multi-oracle consensus and anti-stale handling
-- Multi-signal location corroboration (not GPS-only)
-- Identity-perimeter controls (KYC, liveness, device binding)
-- Population-level anomaly detection and ring suppression
+- Event-type-weighted multi-oracle consensus and anti-stale handling
+- Multi-signal location corroboration (not GPS-only) with PostGIS adjacency grace
+- Identity-perimeter controls (KYC with Aadhaar hash uniqueness, liveness, device fingerprint binding)
+- Population-level anomaly detection and ring suppression with DPDP-compliant proximity logging
 - Claim velocity and cycle-limit controls
 - Waiting periods and anti-opportunistic timing safeguards
+- Forecast-driven enrollment lockout for active adverse selection prevention
 - Infrastructure fallback logic for outages and payment rail failures
-- Reserve, reinsurance, and solvency protection controls
+- Double-entry ledger reserve management with serialized debit transactions
+- Reinsurance and solvency protection controls
+- UPI eNACH mandate-based premium collection
+- Model provenance verification (SHA-256 hash checking at service startup)
+- Prometheus-based alerting for oracle health, payout SLA, and reserve levels
+- Actuarial backtesting and stress testing CI/CD gates
 
 This appendix is explanatory and does not override the binding clauses above.

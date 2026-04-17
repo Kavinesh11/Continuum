@@ -1,0 +1,49 @@
+# Continuum Service Level Objectives
+# These are burn-rate based SLOs monitored via Prometheus + Grafana.
+
+slos:
+  - name: payout_latency
+    description: >
+      Time from oracle trigger_fired_at to UPI credit confirmation.
+      T&C §12.1 commits to a 2-hour SLA.
+    indicator:
+      metric: continuum_trigger_to_payout_seconds
+      type: histogram
+      threshold: 7200  # 2 hours in seconds
+    objective:
+      target: 0.95     # 95th percentile within SLA
+      window: 30d
+    alerts:
+      burn_rate_1h: 14.4   # 1h burn rate fires if 14.4x error budget consumed
+      burn_rate_6h: 6.0
+      burn_rate_24h: 3.0
+      burn_rate_72h: 1.0
+
+  - name: oracle_freshness
+    description: >
+      Ratio of oracle poll cycles that return data fresher than 15-minute TTL.
+      Stale data is treated as abstention, degrading consensus quorum.
+    indicator:
+      metric: oracle_poll_fresh_ratio
+      type: gauge
+    objective:
+      target: 0.85
+      window: 7d
+    alerts:
+      burn_rate_1h: 14.4
+      burn_rate_6h: 6.0
+
+  - name: kafka_consumer_lag
+    description: >
+      Consumer lag for all Kafka topic consumers.
+      High lag means delayed payouts or enrollment lock propagation.
+    indicator:
+      metric: continuum_kafka_consumer_lag_seconds
+      type: histogram
+      threshold: 60  # 60 seconds
+    objective:
+      target: 0.95
+      window: 7d
+    alerts:
+      burn_rate_1h: 14.4
+      burn_rate_6h: 6.0

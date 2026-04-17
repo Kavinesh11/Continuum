@@ -20,6 +20,7 @@ def compute_final_premium(
     fraud_load: Decimal,
     reinsurance_load: Decimal,
     risk_margin: Decimal,
+    sparse_zone: bool = False,
 ) -> Decimal:
     """Compute the final weekly premium for a worker.
 
@@ -30,6 +31,8 @@ def compute_final_premium(
         If zone_loss_ratio > ESCALATION_THRESHOLD:
             EscalationMultiplier = 1 + (zone_loss_ratio - 0.80) × 2.5
             TechnicalPremium    *= EscalationMultiplier
+        If sparse_zone:
+            RiskMargin *= 1.25  (uncertainty buffer for data-sparse zones)
         FinalPremium = max(affordability_anchor, TechnicalPremium)
 
     Args:
@@ -41,6 +44,7 @@ def compute_final_premium(
         fraud_load:          Fixed fraud load in INR.
         reinsurance_load:    Fixed reinsurance load in INR.
         risk_margin:         Fixed risk margin in INR.
+        sparse_zone:         True if zone has < 90 days of history (applies 1.25x risk margin).
 
     Returns:
         FinalPremium rounded to 2 decimal places (ROUND_HALF_UP).
@@ -50,12 +54,18 @@ def compute_final_premium(
 
     expected_loss = rs * coverage_cap * zlr
 
+    effective_risk_margin = risk_margin
+    if sparse_zone:
+        effective_risk_margin = (risk_margin * Decimal("1.25")).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP
+        )
+
     technical_premium = (
         expected_loss
         + expense_load
         + fraud_load
         + reinsurance_load
-        + risk_margin
+        + effective_risk_margin
     )
 
     if zlr > ESCALATION_THRESHOLD:
