@@ -56,10 +56,8 @@ pub fn compute_score(inputs: ScoringInputs) -> ScoreResponse {
     let mut flags = inputs.flags;
 
     // Add zone_mismatch flag if applicable
-    if inputs.spatial.zone_mismatch {
-        if !flags.contains(&"ZONE_MISMATCH".to_string()) {
-            flags.push("ZONE_MISMATCH".to_string());
-        }
+    if inputs.spatial.zone_mismatch && !flags.contains(&"ZONE_MISMATCH".to_string()) {
+        flags.push("ZONE_MISMATCH".to_string());
     }
 
     // Determine routing status
