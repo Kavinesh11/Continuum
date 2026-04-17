@@ -44,6 +44,23 @@ router.post('/', authenticate, requireRole('worker'), async (req, res, next) => 
       return res.status(403).json({ error: 'insufficient_role' });
     }
 
+    // Adverse selection control: reject enrollment if zone is forecast-locked (G3)
+    const lockResult = await db.query(
+      `SELECT zone_id, event_type, expires_at FROM zone_enrollment_locks
+       WHERE zone_id = $1 AND expires_at > NOW()
+       LIMIT 1`,
+      [zone_id]
+    );
+    if (lockResult.rows.length > 0) {
+      const lock = lockResult.rows[0];
+      return res.status(423).json({
+        error: 'enrollment_locked',
+        zone_id: lock.zone_id,
+        reason: `Zone is under forecast-driven enrollment freeze until ${lock.expires_at}`,
+        expires_at: lock.expires_at instanceof Date ? lock.expires_at.toISOString() : lock.expires_at,
+      });
+    }
+
     const now = new Date();
     const effectiveDate = now;
     const claimEligibleFrom = new Date(now.getTime() + ACTIVATION_DELAY_MS);

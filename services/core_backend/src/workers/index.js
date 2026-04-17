@@ -12,6 +12,7 @@ const { processPremiumRecalculation } = require('./processors/premiumRecalculati
 const { processPayoutDisbursement } = require('./processors/payoutDisbursement');
 const { processNotificationDispatch } = require('./processors/notificationDispatch');
 const { processFraudReviewEscalation } = require('./processors/fraudReviewEscalation');
+const { processWeeklyPremiumDebit, scheduleWeeklyDebits } = require('./processors/weeklyPremiumDebit');
 const kafka = require('../services/kafka');
 const { recordJobEvent } = require('./metrics');
 const { startMetricsServer } = require('./metricsServer');
@@ -236,6 +237,7 @@ function startWorkers() {
     createWorker(QUEUE_NAMES.PAYOUT_DISBURSEMENT, processPayoutDisbursement),
     createWorker(QUEUE_NAMES.NOTIFICATION_DISPATCH, processNotificationDispatch),
     createWorker(QUEUE_NAMES.FRAUD_REVIEW_ESCALATION, processFraudReviewEscalation),
+    createWorker(QUEUE_NAMES.WEEKLY_PREMIUM_DEBIT, processWeeklyPremiumDebit),
   ];
 
   console.log(`[workers] Started ${workers.length} workers: ${Object.values(QUEUE_NAMES).join(', ')}`);

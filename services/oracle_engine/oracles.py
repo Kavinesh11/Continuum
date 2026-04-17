@@ -30,9 +30,20 @@ class OracleVote:
     raw_payload: dict[str, Any] = field(default_factory=dict)
 
 
-def _get_pinned_fingerprint(env_var: str) -> str | None:
-    """Return the expected SHA-256 fingerprint from an env var, or None if not set."""
-    return os.environ.get(env_var)
+def _get_pinned_fingerprints(env_var: str) -> list[str]:
+    """Return expected SHA-256 fingerprints (current + rotation slot) from env vars.
+
+    Supports dual-pin rotation: checks both ENV_VAR and ENV_VAR_NEXT.
+    Returns empty list if neither is set (pinning disabled).
+    """
+    fps = []
+    current = os.environ.get(env_var)
+    if current:
+        fps.append(current.lower())
+    next_fp = os.environ.get(f"{env_var}_NEXT")
+    if next_fp:
+        fps.append(next_fp.lower())
+    return fps
 
 
 def _build_ssl_context() -> ssl.SSLContext:
@@ -41,12 +52,12 @@ def _build_ssl_context() -> ssl.SSLContext:
     return ctx
 
 
-def _verify_fingerprint(cert_der: bytes, expected_fp: str | None) -> bool:
-    """Return True if cert fingerprint matches expected, or if no pin is configured."""
-    if expected_fp is None:
+def _verify_fingerprint(cert_der: bytes, expected_fps: list[str]) -> bool:
+    """Return True if cert fingerprint matches any expected pin, or if no pins are configured."""
+    if not expected_fps:
         return True
-    actual_fp = hashlib.sha256(cert_der).hexdigest()
-    return actual_fp.lower() == expected_fp.lower()
+    actual_fp = hashlib.sha256(cert_der).hexdigest().lower()
+    return actual_fp in expected_fps
 
 
 async def _poll_with_pinning(
@@ -62,7 +73,7 @@ async def _poll_with_pinning(
     On TLS mismatch: logs anomaly, returns (None, False).
     On timeout/connection error: returns (None, True) — tls_valid is irrelevant but True to distinguish.
     """
-    expected_fp = _get_pinned_fingerprint(fingerprint_env)
+    expected_fps = _get_pinned_fingerprints(fingerprint_env)
     ssl_ctx = _build_ssl_context()
 
     try:
@@ -70,19 +81,19 @@ async def _poll_with_pinning(
             response = await client.get(url)
             response.raise_for_status()
 
-            # Verify fingerprint via the underlying socket if a pin is configured
-            if expected_fp is not None:
+            # Verify fingerprint via the underlying socket if pins are configured
+            if expected_fps:
                 # httpx exposes the SSL object via the transport stream
                 try:
                     raw_stream = response.stream  # type: ignore[attr-defined]
                     ssl_obj = getattr(raw_stream, "_stream", None)
                     if ssl_obj is not None:
                         cert_der = ssl_obj.getpeercert(binary_form=True)
-                        if cert_der and not _verify_fingerprint(cert_der, expected_fp):
+                        if cert_der and not _verify_fingerprint(cert_der, expected_fps):
                             logger.warning(
                                 "tls_fingerprint_mismatch",
                                 oracle=oracle_name,
-                                expected=expected_fp,
+                                expected=expected_fps,
                             )
                             return None, False
                 except Exception:
@@ -327,10 +338,124 @@ class GroundSensorOracleClient(OracleClient):
         )
 
 
-# All four oracle clients
+class CPCBOracleClient(OracleClient):
+    """Central Pollution Control Board — CAAQMS AQI oracle."""
+
+    name = "cpcb"
+    base_url_env = "CPCB_API_BASE_URL"
+    fingerprint_env = "CPCB_CERT_FINGERPRINT"
+
+    def _build_url(self, zone_id: str, event_type: str) -> str:
+        base = os.environ.get(self.base_url_env, "")
+        return f"{base}/aqi?zone_id={zone_id}"
+
+    def _is_affirmative(self, payload: dict[str, Any]) -> bool:
+        aqi = float(payload.get("aqi", 0))
+        threshold = float(os.environ.get("CPCB_AQI_THRESHOLD", "300"))
+        return aqi >= threshold
+
+    async def poll(self, zone_id: str, event_type: str) -> OracleVote:
+        polled_at = datetime.now(timezone.utc)
+        url = self._build_url(zone_id, event_type)
+        payload, tls_valid = await _poll_with_pinning(url, self.fingerprint_env, self.name)
+
+        if not tls_valid:
+            logger.warning("oracle_vote_nullified", oracle=self.name, reason="tls_mismatch")
+            return OracleVote(
+                oracle_name=self.name,
+                vote="nullified",
+                data_timestamp=None,
+                polled_at=polled_at,
+                tls_valid=False,
+            )
+        if payload is None:
+            return OracleVote(
+                oracle_name=self.name,
+                vote="abstain",
+                data_timestamp=None,
+                polled_at=polled_at,
+                tls_valid=True,
+            )
+
+        data_ts = self._extract_data_timestamp(payload)
+        vote: VoteType = "affirm" if self._is_affirmative(payload) else "deny"
+        return OracleVote(
+            oracle_name=self.name,
+            vote=vote,
+            data_timestamp=data_ts,
+            polled_at=polled_at,
+            tls_valid=True,
+            raw_payload=payload,
+        )
+
+
+class ForecastOracleClient(OracleClient):
+    """IMD 72-hour forecast oracle for adverse-selection enrollment lockout."""
+
+    name = "imd_forecast"
+    base_url_env = "IMD_FORECAST_API_BASE_URL"
+    fingerprint_env = "IMD_FORECAST_CERT_FINGERPRINT"
+
+    def _build_url(self, zone_id: str, event_type: str) -> str:
+        base = os.environ.get(self.base_url_env, "")
+        return f"{base}/forecast?zone_id={zone_id}&hours_ahead=72"
+
+    def _is_affirmative(self, payload: dict[str, Any]) -> bool:
+        """Returns True when the 72-hour forecast exceeds the high-risk threshold."""
+        severity = payload.get("forecast_severity", "")
+        probability = float(payload.get("event_probability", 0.0))
+        threshold = float(os.environ.get("FORECAST_LOCKOUT_PROBABILITY", "0.70"))
+        return severity in ("red", "orange") or probability >= threshold
+
+    async def poll(self, zone_id: str, event_type: str) -> OracleVote:
+        polled_at = datetime.now(timezone.utc)
+        url = self._build_url(zone_id, event_type)
+        payload, tls_valid = await _poll_with_pinning(url, self.fingerprint_env, self.name)
+
+        if not tls_valid:
+            logger.warning("oracle_vote_nullified", oracle=self.name, reason="tls_mismatch")
+            return OracleVote(
+                oracle_name=self.name,
+                vote="nullified",
+                data_timestamp=None,
+                polled_at=polled_at,
+                tls_valid=False,
+            )
+        if payload is None:
+            return OracleVote(
+                oracle_name=self.name,
+                vote="abstain",
+                data_timestamp=None,
+                polled_at=polled_at,
+                tls_valid=True,
+            )
+
+        data_ts = self._extract_data_timestamp(payload)
+        vote: VoteType = "affirm" if self._is_affirmative(payload) else "deny"
+        return OracleVote(
+            oracle_name=self.name,
+            vote=vote,
+            data_timestamp=data_ts,
+            polled_at=polled_at,
+            tls_valid=True,
+            raw_payload=payload,
+        )
+
+
+# Core oracle clients — weather triggers use all 5, AQI uses CPCB + subset
 ALL_ORACLE_CLIENTS: list[OracleClient] = [
     IMDOracleClient(),
     AccuWeatherOracleClient(),
     NASAGPMOracleClient(),
     GroundSensorOracleClient(),
+    CPCBOracleClient(),
 ]
+
+# Event-type → oracle mapping for weighted consensus
+ORACLE_SETS: dict[str, list[OracleClient]] = {
+    "heavy_rainfall": [IMDOracleClient(), AccuWeatherOracleClient(), NASAGPMOracleClient(), GroundSensorOracleClient()],
+    "cyclone": [IMDOracleClient(), AccuWeatherOracleClient(), NASAGPMOracleClient(), GroundSensorOracleClient()],
+    "aqi": [CPCBOracleClient(), GroundSensorOracleClient(), IMDOracleClient()],
+}
+
+FORECAST_ORACLE_CLIENT = ForecastOracleClient()

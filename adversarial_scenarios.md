@@ -155,11 +155,11 @@ These scenarios have been converted into contractual policy language in:
 
 ## Synthesized Defense Architecture
 
-From the 100-scenario simulation, six meta-principles emerge:
+From the 100-scenario simulation, six meta-principles emerge — each now backed by concrete implementation:
 
-1. **Multi-Oracle Consensus**: No single data source can unilaterally trigger a payout. A weighted 3-of-4 oracle consensus is the minimum standard.
-2. **GPS is Necessary, Not Sufficient**: GPS coordinates must be corroborated by Cell-ID, device attestation, platform order data, and temporal soak periods.
-3. **Identity is the First Perimeter**: National KYC (Aadhaar/PAN), 1:1 device binding, and biometric liveness checks form the identity layer that all fraud attempts must breach first.
-4. **Statistical Abnormality > Individual Investigation**: The most powerful anti-fraud signal is population-level analytics — 500 claims from the same polygon in 5 minutes is a signature no individual fraudster can hide.
-5. **Incentive Realignment**: Waiting periods, velocity limits, and zone-locking are not bureaucratic friction — they destroy the economic model of fraud rings.
-6. **Reserve Architecture is Existential**: Isolated tier-based reserves, mandatory reinsurance for correlated events, and IRDAI-mandated solvency margins are non-negotiable for a parametric insurance product.
+1. **Event-Type-Weighted Oracle Consensus**: No single data source can unilaterally trigger a payout. Oracle sets are selected per event type (weather: 3-of-4, AQI: 2-of-3, tech outage: 2-of-3). Certificate pinning uses dual-pin rotation slots for seamless cert changes. Oracle abstention rates are monitored by Prometheus with alerts at >40%.
+2. **GPS is Necessary, Not Sufficient**: GPS coordinates must be corroborated by Cell-ID, device attestation, platform order data, and temporal soak periods. PostGIS `ST_Touches` adjacency grace handles boundary cases with 50% pro-rated payouts and audit flags.
+3. **Identity is the First Perimeter**: National KYC (Aadhaar/PAN), 1:1 device binding, and biometric liveness checks form the identity layer. Database-level `UNIQUE` partial indexes on `aadhaar_hash` and `device_fingerprint` prevent duplicate accounts regardless of application-layer bypass.
+4. **Statistical Abnormality > Individual Investigation**: Population-level analytics including Bluetooth/Wi-Fi proximity clustering with DPDP Act 2023-compliant consent capture and 30-day auto-purge retention policy.
+5. **Incentive Realignment**: Waiting periods, velocity limits, zone-locking, and **forecast-driven enrollment lockout** (72-hour IMD forecast triggers zone enrollment freeze via Kafka `enrollment_lock` events and HTTP 423 on `POST /policies`) destroy the economic model of both passive and active adverse selection.
+6. **Reserve Architecture is Existential**: A double-entry financial ledger (CockroachDB `ledger_accounts` + `ledger_entries`) with `SELECT ... FOR UPDATE` serialized transactions replaces the single-row reserve counter. Mandatory reinsurance for correlated events, IRDAI-mandated solvency margins, and Prometheus `ReserveLow` alerts at < Rs. 100K protect capital integrity. Actuarial backtesting and stress testing run as CI/CD gates.

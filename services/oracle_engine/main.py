@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 from .engine import OracleConsensusEngine
 from .kafka_publisher import KafkaPublisher
 from .metrics import start_metrics_server
+from .oracles import FORECAST_ORACLE_CLIENT
 
 load_dotenv()
 
@@ -87,6 +88,27 @@ async def polling_loop() -> None:
                 except Exception as exc:
                     logger.error(
                         "poll_cycle_error",
+                        zone_id=zone_cfg["zone_id"],
+                        error=str(exc),
+                    )
+
+            # Forecast oracle poll — publish enrollment locks for high-risk zones
+            for zone_cfg in POLL_ZONES:
+                try:
+                    forecast_vote = await FORECAST_ORACLE_CLIENT.poll(
+                        zone_cfg["zone_id"], zone_cfg["event_type"]
+                    )
+                    if forecast_vote.vote == "affirm":
+                        await publisher.publish_enrollment_lock(
+                            zone_cfg["zone_id"], zone_cfg["event_type"], forecast_vote.raw_payload
+                        )
+                        logger.info(
+                            "enrollment_lock_published",
+                            zone_id=zone_cfg["zone_id"],
+                        )
+                except Exception as exc:
+                    logger.error(
+                        "forecast_poll_error",
                         zone_id=zone_cfg["zone_id"],
                         error=str(exc),
                     )

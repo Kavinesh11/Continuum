@@ -9,6 +9,7 @@ const policiesRoutes = require('./routes/policies');
 const payoutsRoutes = require('./routes/payouts');
 const claimsRoutes = require('./routes/claims');
 const workersRoutes = require('./routes/workers');
+const mandatesRoutes = require('./routes/mandates');
 const { createMetricsHandler } = require('./services/metrics');
 const db = require('./db');
 
@@ -31,6 +32,9 @@ app.use('/claims', claimsRoutes);
 
 // Mount workers routes
 app.use('/workers', workersRoutes);
+
+// Mount mandates routes
+app.use('/mandates', mandatesRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

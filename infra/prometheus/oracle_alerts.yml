@@ -1,0 +1,41 @@
+groups:
+  - name: oracle_health
+    rules:
+      # Alert when any single oracle has > 40% failure rate in the last hour
+      - alert: OracleHighAbstentionRate
+        expr: oracle_failure_rate > 0.4
+        for: 15m
+        labels:
+          severity: critical
+          component: oracle_engine
+        annotations:
+          summary: "Oracle {{ $labels.oracle_name }} abstention rate exceeds 40%"
+          description: >
+            Oracle {{ $labels.oracle_name }} has a failure/abstention rate of
+            {{ $value | humanizePercentage }} over the last hour.
+            Trigger evaluation should be frozen until the oracle recovers.
+          runbook: "Check oracle API health, certificate expiry, and network connectivity."
+
+      # Alert when payout SLA is breached
+      - alert: PayoutSLABreach
+        expr: increase(payout_sla_breach_total[1h]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          component: payout_pipeline
+        annotations:
+          summary: "Payout SLA breach detected — disbursement exceeded 2-hour target"
+          description: >
+            {{ $value }} payout(s) in the last hour exceeded the 2-hour SLA
+            from trigger to UPI credit. Investigate payout pipeline delays.
+
+      # Alert when reserve balance is critically low
+      - alert: ReserveLow
+        expr: reserve_balance_inr < 100000
+        for: 5m
+        labels:
+          severity: warning
+          component: actuarial
+        annotations:
+          summary: "Reserve balance below critical threshold"
+          description: "Reserve balance is ₹{{ $value }}. Top-up required."

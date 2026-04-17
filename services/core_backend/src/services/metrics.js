@@ -41,6 +41,27 @@ const payoutsDisbursedTotal = new client.Counter({
   registers: [registry],
 });
 
+/**
+ * Histogram: end-to-end payout latency from trigger firing to UPI credit.
+ * Buckets span from 30s to 3h (10800s) to capture SLA breaches.
+ * Requirements: G4 — IRDAI-publishable 2-hour SLA
+ */
+const payoutLatencySeconds = new client.Histogram({
+  name: 'payout_latency_seconds',
+  help: 'End-to-end latency from oracle trigger to UPI disbursement (seconds)',
+  buckets: [30, 60, 120, 300, 600, 1200, 1800, 3600, 5400, 7200, 10800],
+  registers: [registry],
+});
+
+/**
+ * Counter: payout SLA breaches (latency > 2 hours = 7200 seconds).
+ */
+const payoutSlaBreachTotal = new client.Counter({
+  name: 'payout_sla_breach_total',
+  help: 'Number of payouts that breached the 2-hour SLA',
+  registers: [registry],
+});
+
 // ─── Helper functions ─────────────────────────────────────────────────────────
 
 /**
@@ -56,6 +77,19 @@ function incrementPremiumsCollected(amount) {
  */
 function incrementPayoutsDisbursed() {
   payoutsDisbursedTotal.inc(1);
+}
+
+const PAYOUT_SLA_SECONDS = 7200; // 2 hours
+
+/**
+ * Record payout latency and flag SLA breaches.
+ * @param {number} latencySeconds — seconds from trigger to disbursement
+ */
+function recordPayoutLatency(latencySeconds) {
+  payoutLatencySeconds.observe(latencySeconds);
+  if (latencySeconds > PAYOUT_SLA_SECONDS) {
+    payoutSlaBreachTotal.inc(1);
+  }
 }
 
 /**
@@ -89,7 +123,11 @@ module.exports = {
   activePoliciesCount,
   weeklyPremiumsCollected,
   payoutsDisbursedTotal,
+  payoutLatencySeconds,
+  payoutSlaBreachTotal,
   incrementPremiumsCollected,
   incrementPayoutsDisbursed,
+  recordPayoutLatency,
+  PAYOUT_SLA_SECONDS,
   createMetricsHandler,
 };
