@@ -4,6 +4,10 @@
 require('dotenv').config();
 
 const express = require('express');
+const helmet = require('helmet');
+const cors = require('cors');
+const rateLimit = require('express-rate-limit');
+const { v4: uuidv4 } = require('uuid');
 const authRoutes = require('./routes/auth');
 const policiesRoutes = require('./routes/policies');
 const payoutsRoutes = require('./routes/payouts');
@@ -19,55 +23,81 @@ const db = require('./db');
 
 const app = express();
 
-// Start Kafka consumers asynchronously in the background
-// Note: Errors are handled within the consumer manager
+app.use(helmet());
+
+const allowedOrigins = process.env.CORS_ALLOWED_ORIGINS
+  ? process.env.CORS_ALLOWED_ORIGINS.split(',').map(s => s.trim())
+  : [];
+app.use(cors({
+  origin: allowedOrigins.length > 0 ? allowedOrigins : false,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  maxAge: 86400,
+}));
+
+const globalLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'too_many_requests' },
+});
+app.use(globalLimiter);
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'too_many_requests' },
+  keyGenerator: (req) => req.ip,
+});
+
+app.use((req, _res, next) => {
+  req.requestId = req.headers['x-request-id'] || uuidv4();
+  next();
+});
+
 startAllConsumers().catch(err => {
   console.error('[app] Failed to start Kafka consumers:', err.message);
 });
 
-// JSON body parser
 app.use(express.json());
 
-// Mount auth routes
-app.use('/auth', authRoutes);
-
-// Mount policies routes
+app.use('/auth', authLimiter, authRoutes);
 app.use('/policies', policiesRoutes);
-
-// Mount payouts routes
 app.use('/payouts', payoutsRoutes);
-
-// Mount claims routes
 app.use('/claims', claimsRoutes);
-
-// Mount workers routes
 app.use('/workers', workersRoutes);
-
-// Mount mandates routes
 app.use('/mandates', mandatesRoutes);
-
-// Mount reserves API
 app.use('/reserves', reservesRoutes);
-
-// Mount DPDP consent routes
 app.use('/consent', consentRoutes);
-
-// Mount admin routes (breach notification, etc.)
 app.use('/admin', adminRoutes);
 
-// Health check
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
 
 // Prometheus metrics — Requirements 16.1, 16.4
 app.get('/metrics', createMetricsHandler(db));
 
-// Global error handler
-app.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
-  console.error(err);
+app.use((err, req, res, _next) => { // eslint-disable-line no-unused-vars
   const status = err.status || 500;
-  res.status(status).json({ error: err.message || 'internal_server_error' });
+  const requestId = req.requestId || 'unknown';
+
+  const logger = require('./utils/logger');
+  logger.error(err.message, {
+    requestId,
+    method: req.method,
+    path: req.originalUrl,
+    status,
+    stack: err.stack,
+  });
+
+  if (status >= 500) {
+    return res.status(status).json({ error: 'internal_server_error', requestId });
+  }
+  return res.status(status).json({ error: err.message || 'request_error', requestId });
 });
 
 module.exports = app;

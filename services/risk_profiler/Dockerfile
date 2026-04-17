@@ -1,13 +1,12 @@
-FROM python:3.11-slim
-
+FROM python:3.11-slim AS builder
 WORKDIR /app
-
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
+FROM python:3.11-slim
+RUN groupadd -r appgroup && useradd -r -g appgroup appuser
+WORKDIR /app
+COPY --from=builder /install /usr/local
 COPY . .
-
-# Since Risk Profiler acts primarily as a library/worker and 
-# lacks a persistent Web API like main.py in this folder,
-# we run a keep-alive tail process so the container stays up in AWS.
+USER appuser
 CMD ["tail", "-f", "/dev/null"]
