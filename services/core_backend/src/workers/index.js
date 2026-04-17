@@ -13,6 +13,7 @@ const { processPayoutDisbursement } = require('./processors/payoutDisbursement')
 const { processNotificationDispatch } = require('./processors/notificationDispatch');
 const { processFraudReviewEscalation } = require('./processors/fraudReviewEscalation');
 const { processWeeklyPremiumDebit, scheduleWeeklyDebits } = require('./processors/weeklyPremiumDebit');
+const { processGpsRetentionSweep } = require('./processors/gpsRetentionSweep');
 const kafka = require('../services/kafka');
 const { recordJobEvent } = require('./metrics');
 const { startMetricsServer } = require('./metricsServer');
@@ -238,6 +239,7 @@ function startWorkers() {
     createWorker(QUEUE_NAMES.NOTIFICATION_DISPATCH, processNotificationDispatch),
     createWorker(QUEUE_NAMES.FRAUD_REVIEW_ESCALATION, processFraudReviewEscalation),
     createWorker(QUEUE_NAMES.WEEKLY_PREMIUM_DEBIT, processWeeklyPremiumDebit),
+    createWorker('gps_retention_sweep', processGpsRetentionSweep),
   ];
 
   console.log(`[workers] Started ${workers.length} workers: ${Object.values(QUEUE_NAMES).join(', ')}`);
@@ -250,6 +252,14 @@ function startWorkers() {
 
   // Start weekly premium recalculation scheduler (Requirements 2.1, 8.5)
   schedulerIntervalId = startWeeklyScheduler();
+
+  // Schedule daily GPS retention sweep (DPDP compliance — 60-day TTL)
+  const sweepQueue = getQueue('gps_retention_sweep');
+  sweepQueue.add('daily_sweep', {}, {
+    repeat: { pattern: '0 4 * * *' },
+    removeOnComplete: 100,
+    removeOnFail: 50,
+  }).catch(err => console.error('[workers] Failed to schedule GPS retention sweep:', err.message));
 
   async function stop() {
     console.log('[workers] Shutting down...');

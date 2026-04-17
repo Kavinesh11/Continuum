@@ -62,6 +62,35 @@ const payoutSlaBreachTotal = new client.Counter({
   registers: [registry],
 });
 
+/**
+ * Histogram: end-to-end trigger-to-payout latency (matching SLO definition).
+ */
+const triggerToPayoutSeconds = new client.Histogram({
+  name: 'continuum_trigger_to_payout_seconds',
+  help: 'End-to-end latency from oracle trigger_fired_at to payout disbursement',
+  buckets: [30, 60, 120, 300, 600, 1200, 1800, 3600, 5400, 7200, 10800],
+  registers: [registry],
+});
+
+const dlqDepth = new client.Gauge({
+  name: 'continuum_dlq_depth',
+  help: 'Number of messages in dead-letter queues',
+  labelNames: ['queue'],
+  registers: [registry],
+});
+
+const reserveFloorBreachTotal = new client.Counter({
+  name: 'continuum_reserve_floor_breach_total',
+  help: 'Number of times payout was blocked due to reserve floor',
+  registers: [registry],
+});
+
+const enrollmentLockActiveCount = new client.Gauge({
+  name: 'continuum_enrollment_lock_active_count',
+  help: 'Number of active zone enrollment locks',
+  registers: [registry],
+});
+
 // ─── Helper functions ─────────────────────────────────────────────────────────
 
 /**
@@ -125,6 +154,10 @@ module.exports = {
   payoutsDisbursedTotal,
   payoutLatencySeconds,
   payoutSlaBreachTotal,
+  triggerToPayoutSeconds,
+  dlqDepth,
+  reserveFloorBreachTotal,
+  enrollmentLockActiveCount,
   incrementPremiumsCollected,
   incrementPayoutsDisbursed,
   recordPayoutLatency,

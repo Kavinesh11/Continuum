@@ -442,6 +442,12 @@ class ForecastOracleClient(OracleClient):
         )
 
 
+# Platform outage oracle clients (lazy import to avoid circular deps)
+from .platform_outage import (
+    DOWNDETECTOR_ORACLE_CLIENT,
+    SYNTHETIC_PING_ORACLE_CLIENT,
+)
+
 # Core oracle clients — weather triggers use all 5, AQI uses CPCB + subset
 ALL_ORACLE_CLIENTS: list[OracleClient] = [
     IMDOracleClient(),
@@ -456,6 +462,7 @@ ORACLE_SETS: dict[str, list[OracleClient]] = {
     "heavy_rainfall": [IMDOracleClient(), AccuWeatherOracleClient(), NASAGPMOracleClient(), GroundSensorOracleClient()],
     "cyclone": [IMDOracleClient(), AccuWeatherOracleClient(), NASAGPMOracleClient(), GroundSensorOracleClient()],
     "aqi": [CPCBOracleClient(), GroundSensorOracleClient(), IMDOracleClient()],
+    "platform_outage": [DOWNDETECTOR_ORACLE_CLIENT, SYNTHETIC_PING_ORACLE_CLIENT, GroundSensorOracleClient()],
 }
 
 FORECAST_ORACLE_CLIENT = ForecastOracleClient()

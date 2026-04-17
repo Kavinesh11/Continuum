@@ -25,6 +25,12 @@ pub struct ScoringInputs {
     pub soak_period_failed: bool,
     /// True if platform API vetoed the claim (forces PLATFORM_ACTIVITY_VETO)
     pub platform_activity_veto: bool,
+    /// Policy tier coverage cap (INR). Used to compute estimated_payout.
+    pub coverage_cap: f64,
+    /// Oracle consensus payout cap factor (0.0–1.0).
+    pub payout_cap: f64,
+    /// Adjacency factor: 1.0 exact, 0.7 buffer, 0.5 touch.
+    pub adjacency_factor: f64,
 }
 
 /// Computes the composite Fraud_Score and routing decision.
@@ -67,8 +73,12 @@ pub fn compute_score(inputs: ScoringInputs) -> ScoreResponse {
         ClaimStatus::FraudQueue
     };
 
-    // Estimated payout placeholder — real value comes from policy tier lookup
-    // For now, return 0.0; the caller (main handler) can enrich this.
+    let estimated_payout = if status == ClaimStatus::AutoApproved {
+        inputs.coverage_cap * inputs.payout_cap * inputs.adjacency_factor
+    } else {
+        0.0
+    };
+
     ScoreResponse {
         claim_id: inputs.claim_id,
         status,
@@ -77,7 +87,7 @@ pub fn compute_score(inputs: ScoringInputs) -> ScoreResponse {
         frequency_score: inputs.frequency.score,
         isolation_forest_score: inputs.isolation_forest_score,
         flags,
-        estimated_payout: 0.0,
+        estimated_payout,
         decided_at: Utc::now(),
     }
 }
@@ -104,6 +114,9 @@ mod tests {
             spatial_penalty: 0.0,
             soak_period_failed: false,
             platform_activity_veto: false,
+            coverage_cap: 1000.0,
+            payout_cap: 0.75,
+            adjacency_factor: 1.0,
         }
     }
 

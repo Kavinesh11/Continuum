@@ -10,10 +10,20 @@ const payoutsRoutes = require('./routes/payouts');
 const claimsRoutes = require('./routes/claims');
 const workersRoutes = require('./routes/workers');
 const mandatesRoutes = require('./routes/mandates');
+const reservesRoutes = require('./routes/reserves');
+const consentRoutes = require('./routes/consent');
+const adminRoutes = require('./routes/admin');
 const { createMetricsHandler } = require('./services/metrics');
+const { startAllConsumers } = require('./consumers/index');
 const db = require('./db');
 
 const app = express();
+
+// Start Kafka consumers asynchronously in the background
+// Note: Errors are handled within the consumer manager
+startAllConsumers().catch(err => {
+  console.error('[app] Failed to start Kafka consumers:', err.message);
+});
 
 // JSON body parser
 app.use(express.json());
@@ -35,6 +45,15 @@ app.use('/workers', workersRoutes);
 
 // Mount mandates routes
 app.use('/mandates', mandatesRoutes);
+
+// Mount reserves API
+app.use('/reserves', reservesRoutes);
+
+// Mount DPDP consent routes
+app.use('/consent', consentRoutes);
+
+// Mount admin routes (breach notification, etc.)
+app.use('/admin', adminRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

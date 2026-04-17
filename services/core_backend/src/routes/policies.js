@@ -29,9 +29,11 @@ const VALID_TIERS = ['silver', 'gold', 'platinum'];
  */
 router.post('/', authenticate, requireRole('worker'), async (req, res, next) => {
   try {
-    const { worker_id, tier, zone_id, coverage_cap, weekly_premium } = req.body;
+    const { worker_id, tier, zone_id, coverage_cap, weekly_premium, aadhaar_hash, device_fingerprint } = req.body;
 
-    if (!worker_id || !tier || !zone_id || coverage_cap == null || weekly_premium == null) {
+    const device_attestation_token = req.body.device_attestation_token;
+
+    if (!worker_id || !tier || !zone_id || coverage_cap == null || weekly_premium == null || !aadhaar_hash || !device_fingerprint) {
       return res.status(400).json({ error: 'missing_fields' });
     }
 
@@ -42,6 +44,28 @@ router.post('/', authenticate, requireRole('worker'), async (req, res, next) => 
     // Worker in JWT must match the worker_id in the body
     if (req.user.worker_id !== worker_id) {
       return res.status(403).json({ error: 'insufficient_role' });
+    }
+
+    // Play Integrity attestation check (calls the Rust claims_scoring /attest endpoint)
+    if (device_attestation_token) {
+      try {
+        const CLAIMS_SCORING_URL = process.env.CLAIMS_SCORING_URL || 'http://claims_scoring:8080';
+        const fetch = require('node-fetch');
+        const attestResp = await fetch(`${CLAIMS_SCORING_URL}/attest`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: device_attestation_token }),
+          timeout: 10000,
+        });
+        if (attestResp.ok) {
+          const attestResult = await attestResp.json();
+          if (!attestResult.valid) {
+            return res.status(403).json({ error: 'device_attestation_failed', reason: attestResult.reason });
+          }
+        }
+      } catch (attestErr) {
+        console.warn('Play Integrity check unavailable, proceeding:', attestErr.message);
+      }
     }
 
     // Adverse selection control: reject enrollment if zone is forecast-locked (G3)
@@ -68,20 +92,50 @@ router.post('/', authenticate, requireRole('worker'), async (req, res, next) => 
     const billingCycleEnd = new Date(now.getTime() + BILLING_CYCLE_MS);
     const policyId = uuidv4();
 
-    // Persist policy to CockroachDB (Requirements 6.7)
-    await db.query(
-      `INSERT INTO policies
-         (policy_id, worker_id, tier, coverage_cap, weekly_premium,
-          effective_date, claim_eligible_from, status,
-          billing_cycle_start, billing_cycle_end, cancelled_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', $8, $9, NULL)`,
-      [
-        policyId, worker_id, tier,
-        coverage_cap, weekly_premium,
-        effectiveDate, claimEligibleFrom,
-        billingCycleStart, billingCycleEnd,
-      ]
-    );
+    const client = await db.connect();
+    try {
+      await client.query('BEGIN');
+
+      // 1. Enforce Identity + Device uniqueness directly via DB update/upsert (Requirements G5)
+      // Attempt to update the worker with the provided hashes.
+      // If the hash already belongs to another worker, this will throw a UNIQUE violation.
+      try {
+         await client.query(
+          `UPDATE workers 
+           SET aadhaar_hash = $1, device_fingerprint = $2
+           WHERE worker_id = $3`,
+          [aadhaar_hash, device_fingerprint, worker_id]
+         );
+      } catch (dbErr) {
+        if (dbErr.code === '23505') { // unique violation
+           await client.query('ROLLBACK');
+           return res.status(409).json({ error: 'identity_or_device_already_registered' });
+        }
+        throw dbErr;
+      }
+
+      // 2. Persist policy (Requirements 6.7) - Include zone_id
+      await client.query(
+        `INSERT INTO policies
+           (policy_id, worker_id, tier, zone_id, coverage_cap, weekly_premium,
+            effective_date, claim_eligible_from, status,
+            billing_cycle_start, billing_cycle_end, cancelled_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', $9, $10, NULL)`,
+        [
+          policyId, worker_id, tier, zone_id,
+          coverage_cap, weekly_premium,
+          effectiveDate, claimEligibleFrom,
+          billingCycleStart, billingCycleEnd,
+        ]
+      );
+
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
 
     const policy = {
       policy_id: policyId,

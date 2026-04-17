@@ -30,12 +30,25 @@ logger = structlog.get_logger(__name__)
 async def _run(ts_dsn: str, crdb_dsn: str) -> bool:
     failures: list[str] = []
 
+    BCR_FLOOR = 1.05
+    BRIER_CEILING = 0.2
+    RESERVE_FLOOR_DAYS = 90
+
     backtest = await run_backtest(ts_dsn, crdb_dsn)
     if not backtest.passed:
         failures.append(
             f"Backtest FAILED: rolling 13-week loss ratio breached 100% "
             f"in {sum(1 for w in backtest.rolling_13w_loss_ratios if w['loss_ratio'] > 1.0)} windows"
         )
+    if backtest.portfolio_bcr < BCR_FLOOR and backtest.portfolio_bcr != float("inf"):
+        failures.append(
+            f"Backtest FAILED: portfolio BCR {backtest.portfolio_bcr} < floor {BCR_FLOOR}"
+        )
+    for zr in backtest.zone_results:
+        if zr.brier_score > BRIER_CEILING:
+            failures.append(
+                f"Backtest WARNING: zone {zr.zone_id} Brier score {zr.brier_score} > ceiling {BRIER_CEILING}"
+            )
     if backtest.zones_below_24m:
         logger.warning(
             "zones_below_minimum_history",
@@ -48,7 +61,7 @@ async def _run(ts_dsn: str, crdb_dsn: str) -> bool:
             failures.append(
                 f"Stress scenario '{scenario.scenario_name}' FAILED: "
                 f"reserve depletion in {scenario.reserve_depletion_days} days "
-                f"(minimum {90})"
+                f"(minimum {RESERVE_FLOOR_DAYS})"
             )
 
     if failures:

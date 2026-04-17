@@ -48,6 +48,10 @@ class StressTestReport:
 
 
 async def _get_reserve_balance(crdb_pool: asyncpg.Pool) -> float:
+    # Prefer ledger-first view (ADR 0001); fall back to legacy single-row table
+    row = await crdb_pool.fetchrow("SELECT balance FROM v_reserve_balance")
+    if row:
+        return float(row["balance"])
     row = await crdb_pool.fetchrow("SELECT balance FROM reserve_balance WHERE id = 1")
     return float(row["balance"]) if row else 0.0
 

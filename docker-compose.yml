@@ -44,7 +44,7 @@ services:
     environment:
       - PORT=8002
       - CORE_BACKEND_URL=http://core_backend:3000
-      - GEMINI_API_KEY=AIzaSyDp1IsNlJBlRioXhIr7T3Ha8CkbxAZ166o
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
 
   # ==========================================
   # NODE.JS CORE
