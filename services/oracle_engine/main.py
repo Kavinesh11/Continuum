@@ -1,6 +1,7 @@
 """
 Oracle Consensus Engine entry point.
 Runs an async polling loop with randomized ±8-minute jitter around the base interval.
+Schedules are loaded from the poll_schedules DB table (see 005_poll_schedules.sql).
 """
 from __future__ import annotations
 
@@ -14,6 +15,8 @@ from dotenv import load_dotenv
 from .engine import OracleConsensusEngine
 from .kafka_publisher import KafkaPublisher
 from .metrics import start_metrics_server
+from .oracles import FORECAST_ORACLE_CLIENT
+from .schedule_loader import load_schedules, FALLBACK_SCHEDULES, REFRESH_INTERVAL_SECONDS
 
 load_dotenv()
 
@@ -22,10 +25,32 @@ logger = structlog.get_logger(__name__)
 BASE_INTERVAL_SECONDS = int(os.environ.get("ORACLE_POLL_INTERVAL_SECONDS", "3600"))
 JITTER_SECONDS = 480  # ±8 minutes
 
-# Zone/event configuration — in production these would come from a config service or DB
-POLL_ZONES: list[dict] = [
-    {"zone_id": os.environ.get("DEFAULT_ZONE_ID", "MUM_ANDHERI_W"), "event_type": "heavy_rainfall"},
-]
+_cached_schedules: list[dict] = []
+_cycles_since_refresh = 0
+_REFRESH_EVERY_N_CYCLES = max(1, REFRESH_INTERVAL_SECONDS // max(BASE_INTERVAL_SECONDS, 1))
+
+
+async def _get_poll_zones() -> list[dict]:
+    """Load schedules from DB; refresh every N cycles; fall back to defaults."""
+    global _cached_schedules, _cycles_since_refresh
+
+    if not _cached_schedules or _cycles_since_refresh >= _REFRESH_EVERY_N_CYCLES:
+        schedules = await load_schedules()
+        if schedules:
+            _cached_schedules = [
+                {"zone_id": s.zone_id, "event_type": s.event_type}
+                for s in schedules
+            ]
+        elif not _cached_schedules:
+            _cached_schedules = [
+                {"zone_id": s.zone_id, "event_type": s.event_type}
+                for s in FALLBACK_SCHEDULES
+            ]
+        _cycles_since_refresh = 0
+    else:
+        _cycles_since_refresh += 1
+
+    return _cached_schedules
 
 
 async def run_poll_cycle(
@@ -76,7 +101,8 @@ async def polling_loop() -> None:
 
     try:
         while True:
-            for zone_cfg in POLL_ZONES:
+            poll_zones = await _get_poll_zones()
+            for zone_cfg in poll_zones:
                 try:
                     await run_poll_cycle(
                         engine,
@@ -87,6 +113,27 @@ async def polling_loop() -> None:
                 except Exception as exc:
                     logger.error(
                         "poll_cycle_error",
+                        zone_id=zone_cfg["zone_id"],
+                        error=str(exc),
+                    )
+
+            # Forecast oracle poll — publish enrollment locks for high-risk zones
+            for zone_cfg in poll_zones:
+                try:
+                    forecast_vote = await FORECAST_ORACLE_CLIENT.poll(
+                        zone_cfg["zone_id"], zone_cfg["event_type"]
+                    )
+                    if forecast_vote.vote == "affirm":
+                        await publisher.publish_enrollment_lock(
+                            zone_cfg["zone_id"], zone_cfg["event_type"], forecast_vote.raw_payload
+                        )
+                        logger.info(
+                            "enrollment_lock_published",
+                            zone_id=zone_cfg["zone_id"],
+                        )
+                except Exception as exc:
+                    logger.error(
+                        "forecast_poll_error",
                         zone_id=zone_cfg["zone_id"],
                         error=str(exc),
                     )

@@ -20,7 +20,7 @@ services:
     networks:
       - continuum_net
     env_file:
-      - ./services/core_backend/.env.example # Provide actual .env in production
+      - .env
     environment:
       - CORE_BACKEND_URL=http://core_backend:3000
 
@@ -44,7 +44,7 @@ services:
     environment:
       - PORT=8002
       - CORE_BACKEND_URL=http://core_backend:3000
-      - GEMINI_API_KEY=AIzaSyDp1IsNlJBlRioXhIr7T3Ha8CkbxAZ166o
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
 
   # ==========================================
   # NODE.JS CORE
@@ -57,12 +57,13 @@ services:
     networks:
       - continuum_net
     env_file:
-      - ./services/core_backend/.env.example
+      - .env
     environment:
       - PORT=3000
       - DB_HOST=postgres
-      - DB_PASSWORD=password
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
       - KAFKA_BROKERS=kafka:9092
+      - NODE_ENV=${NODE_ENV:-development}
     depends_on:
       - redis
       - postgres
@@ -82,7 +83,7 @@ services:
       - continuum_shared_temps:/tmp
     environment:
       - ISOLATION_FOREST_SOCKET=/tmp/isolation_forest.sock
-      - DATABASE_URL=postgres://postgres:password@postgres:5432/continuum
+      - DATABASE_URL=postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/continuum
     depends_on:
       - postgres
 
@@ -149,9 +150,9 @@ services:
   postgres:
     image: postgres:15-alpine
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: continuum
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-continuum}
     ports:
       - "5432:5432"
     networks:

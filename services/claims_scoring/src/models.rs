@@ -31,6 +31,12 @@ pub struct ScoreRequest {
     pub claim_feature_vector: Option<[f64; 6]>,
     /// Device identifier for Bluetooth/WiFi proximity co-location check (Req 17.3)
     pub device_id: Option<String>,
+    /// Coverage cap from policy tier (INR). Used to compute estimated_payout.
+    pub coverage_cap: Option<f64>,
+    /// Payout cap factor (0.0–1.0) from oracle consensus result.
+    pub payout_cap: Option<f64>,
+    /// Adjacency factor: 1.0 (exact), 0.7 (buffer), 0.5 (touch).
+    pub adjacency_factor: Option<f64>,
 }
 
 /// Claim decision status

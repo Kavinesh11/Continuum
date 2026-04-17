@@ -1,124 +1,190 @@
-// Feature: continuum-ml-pipelines
-// CockroachDB payout record completeness enforcement and reserve balance constraint
-// Requirements: 9.2, 9.3
+// Double-entry ledger service — serialized reserve enforcement
+// Requirements: 9.2, 9.3, R6
 
 'use strict';
 
 const db = require('../db');
 
-/**
- * Required fields for a complete payout record (Requirement 9.3).
- * Maps spec field names to the object property names used in this service.
- */
 const REQUIRED_PAYOUT_FIELDS = [
   'payout_id',
   'worker_id',
   'claim_id',
   'amount',
-  'oracle_votes',   // oracle_vote_breakdown in spec terminology
+  'oracle_votes',
   'zone_id',
   'tier',
-  'created_at',     // timestamp in spec terminology
+  'created_at',
 ];
 
-/**
- * Validate that all required payout fields are present and non-null/non-undefined.
- *
- * Throws a descriptive Error listing every missing field if any are absent.
- *
- * Requirements: 9.3
- *
- * @param {object} record - Payout record to validate
- * @throws {Error} if any required field is null or undefined
- */
 function validatePayoutRecord(record) {
   if (!record || typeof record !== 'object') {
     throw new Error('validatePayoutRecord: record must be a non-null object');
   }
-
   const missing = REQUIRED_PAYOUT_FIELDS.filter(
     (field) => record[field] === null || record[field] === undefined
   );
-
   if (missing.length > 0) {
-    throw new Error(
-      `Payout record is missing required fields: ${missing.join(', ')}`
-    );
+    throw new Error(`Payout record is missing required fields: ${missing.join(', ')}`);
   }
 }
 
 /**
- * Check that the current reserve balance is sufficient to cover the requested
- * payout amount. Enforces the 90-day reserve balance constraint at the
- * application layer (Requirement 9.2).
+ * Atomically check reserve balance and debit reserve in a single serialized
+ * transaction. Uses SELECT ... FOR UPDATE to prevent concurrent overdraw.
  *
- * Queries the `reserve_balance` table (single-row, id=1) and throws if
- * balance < amount.
+ * @param {number} amount
+ * @param {string} referenceId — payout_id or similar for the ledger entry
+ * @returns {Promise<number>} remaining reserve balance after debit
+ */
+async function debitReserve(amount, referenceId) {
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Lock the reserve account row (serialized access)
+    const lockResult = await client.query(
+      `SELECT balance FROM ledger_accounts
+       WHERE account_id = 'RESERVE_MAIN'
+       FOR UPDATE`
+    );
+
+    if (lockResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      throw new Error('debitReserve: RESERVE_MAIN account not found');
+    }
+
+    const balance = parseFloat(lockResult.rows[0].balance);
+
+    if (balance < amount) {
+      await client.query('ROLLBACK');
+      throw new Error(
+        `Insufficient reserve: balance ${balance} < payout ${amount} (90-day constraint violated)`
+      );
+    }
+
+    // Debit reserve, credit payout expense
+    await client.query(
+      `UPDATE ledger_accounts SET balance = balance - $1, updated_at = NOW()
+       WHERE account_id = 'RESERVE_MAIN'`,
+      [amount]
+    );
+
+    await client.query(
+      `UPDATE ledger_accounts SET balance = balance + $1, updated_at = NOW()
+       WHERE account_id = 'PAYOUT_EXPENSE'`,
+      [amount]
+    );
+
+    // Record immutable ledger entry
+    await client.query(
+      `INSERT INTO ledger_entries
+         (debit_account, credit_account, amount, reference_type, reference_id, description)
+       VALUES ('RESERVE_MAIN', 'PAYOUT_EXPENSE', $1, 'payout', $2, 'Payout disbursement')`,
+      [amount, referenceId]
+    );
+
+    await client.query('COMMIT');
+
+    return balance - amount;
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Credit the reserve from collected premiums. Serialized via FOR UPDATE.
  *
- * @param {number} amount - Payout amount in INR
- * @returns {Promise<number>} The current reserve balance
- * @throws {Error} if reserve balance is insufficient or the table is empty
+ * @param {number} amount
+ * @param {string} referenceId — mandate debit ID or policy ID
+ * @returns {Promise<number>} new reserve balance
+ */
+async function creditReserve(amount, referenceId) {
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+
+    await client.query(
+      `SELECT balance FROM ledger_accounts WHERE account_id = 'RESERVE_MAIN' FOR UPDATE`
+    );
+
+    await client.query(
+      `UPDATE ledger_accounts SET balance = balance + $1, updated_at = NOW()
+       WHERE account_id = 'RESERVE_MAIN'`,
+      [amount]
+    );
+
+    await client.query(
+      `UPDATE ledger_accounts SET balance = balance + $1, updated_at = NOW()
+       WHERE account_id = 'PREMIUM_INCOME'`,
+      [amount]
+    );
+
+    await client.query(
+      `INSERT INTO ledger_entries
+         (debit_account, credit_account, amount, reference_type, reference_id, description)
+       VALUES ('PREMIUM_INCOME', 'RESERVE_MAIN', $1, 'premium', $2, 'Premium collection')`,
+      [amount, referenceId]
+    );
+
+    await client.query('COMMIT');
+
+    const result = await db.query(
+      `SELECT balance FROM ledger_accounts WHERE account_id = 'RESERVE_MAIN'`
+    );
+    return parseFloat(result.rows[0].balance);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Read-only reserve balance check (backward-compatible with old API).
  */
 async function checkReserveBalance(amount) {
   const result = await db.query(
-    'SELECT balance FROM reserve_balance WHERE id = 1'
+    `SELECT balance FROM ledger_accounts WHERE account_id = 'RESERVE_MAIN'`
   );
 
   if (result.rows.length === 0) {
-    throw new Error('checkReserveBalance: reserve_balance table has no row');
+    // Fall back to legacy single-row table
+    const legacy = await db.query('SELECT balance FROM reserve_balance WHERE id = 1');
+    if (legacy.rows.length === 0) {
+      throw new Error('checkReserveBalance: no reserve account found');
+    }
+    const balance = parseFloat(legacy.rows[0].balance);
+    if (balance < amount) {
+      throw new Error(`Insufficient reserve: ${balance} < ${amount}`);
+    }
+    return balance;
   }
 
   const balance = parseFloat(result.rows[0].balance);
-
   if (balance < amount) {
-    throw new Error(
-      `Insufficient reserve balance: balance ${balance} < requested payout ${amount} ` +
-      '(90-day reserve constraint violated)'
-    );
+    throw new Error(`Insufficient reserve: ${balance} < ${amount} (90-day constraint violated)`);
   }
-
   return balance;
 }
 
 /**
- * Validate a payout record for completeness, check reserve balance, then
- * INSERT the record into the CockroachDB `payouts` table.
- *
- * The `created_at` field defaults to NOW() if not supplied (the DB column
- * default also covers this, but we set it explicitly for the completeness
- * check to pass before the INSERT).
- *
- * Requirements: 9.2, 9.3
- *
- * @param {object} record - Payout record with all required fields
- * @param {string}  record.payout_id
- * @param {string}  record.worker_id
- * @param {string}  record.claim_id
- * @param {string}  record.policy_id
- * @param {number}  record.amount
- * @param {Array}   record.oracle_votes   - oracle_vote_breakdown array
- * @param {string}  record.zone_id
- * @param {string}  record.tier
- * @param {string|null} [record.payu_txn_ref]
- * @param {string}  [record.status]       - defaults to 'pending'
- * @param {Date|string} [record.created_at] - defaults to current timestamp
- * @returns {Promise<object>} The inserted payout row
- * @throws {Error} on validation failure, insufficient reserve, or DB error
+ * Validate, check reserve (serialized), and insert payout record.
  */
 async function createPayoutRecord(record) {
-  // Default created_at so the completeness check can pass even if caller omits it
   const normalized = {
     ...record,
     created_at: record.created_at ?? new Date(),
   };
 
-  // 1. Enforce field completeness before any DB interaction
   validatePayoutRecord(normalized);
 
-  // 2. Enforce 90-day reserve balance constraint (Requirement 9.2)
-  await checkReserveBalance(normalized.amount);
+  // Serialized reserve debit — prevents concurrent overdraw (R6)
+  await debitReserve(normalized.amount, normalized.payout_id);
 
-  // 3. INSERT into CockroachDB payouts table
   const result = await db.query(
     `INSERT INTO payouts
        (payout_id, worker_id, claim_id, policy_id, amount,
@@ -143,4 +209,10 @@ async function createPayoutRecord(record) {
   return result.rows[0];
 }
 
-module.exports = { validatePayoutRecord, createPayoutRecord, checkReserveBalance };
+module.exports = {
+  validatePayoutRecord,
+  createPayoutRecord,
+  checkReserveBalance,
+  debitReserve,
+  creditReserve,
+};

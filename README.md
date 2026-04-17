@@ -24,6 +24,8 @@
 
   > **Round 2 Update:** This submission addresses reviewer feedback on insurance domain completeness. Standard coverage exclusions (war, terrorism, pandemic, CBRN) are now formally documented with actuarial rationale. The financial model has been upgraded from a conceptual heuristic to a full actuarial adequacy framework with quantitative inputs, governance triggers, and stress scenarios.
 
+  > **IRDAI Compliance Audit:** An 11-point compliance audit was conducted against IRDAI parametric insurance guidelines. Key enhancements: AQI/CPCB oracle, event-type-weighted consensus, UPI eNACH mandate collection, forecast-driven enrollment lockout, double-entry financial ledger, PostGIS adjacency grace, proxy-zone bootstrap for data-sparse zones, payout SLA metrics, Aadhaar/device uniqueness constraints, model provenance verification, DPDP Act consent and 30-day proximity log retention, and Prometheus alerting for oracle health, SLA, and reserve levels.
+
   ![Continuum Homepage](assets/landing-page.jpeg)
 </div>
 
@@ -47,7 +49,8 @@ Continuum is a **parametric income protection product**, not a general insurance
 
 ### Covered Trigger Categories
 
-* Severe weather disruptions that meet parametric thresholds.
+* Severe weather disruptions that meet parametric thresholds (rainfall, wind, flooding, cyclone).
+* Severe air quality events (AQI > 300 from CPCB CAAQMS stations) that make outdoor delivery unsafe.
 * Verified platform outage disruptions that meet technical outage thresholds.
 * Government-mandated curfews/lockdowns where machine-parseable advisories exist.
 
@@ -84,10 +87,14 @@ Continuum relies on highly deterministic data oracles to eradicate the claims in
 ### Primary Data Oracles
 
 * **Meteorological:** API integrations with the India Meteorological Department (IMD) and hyper-local weather nodes to track rainfall volume, wind speed, and extreme temperature anomalies.
+* **Air Quality:** CPCB CAAQMS API integration for AQI-based triggers (threshold AQI > 300), enabling income-loss coverage during severe pollution events that make outdoor delivery unsafe.
 * **Technological:** Programmatic scraping of Downdetector and synthetic ping monitoring of Zomato/Swiggy delivery/order-routing APIs to detect systematic outages.
 * **Regulatory:** Automated parsing of municipal advisory RSS feeds governing lockdown measures or localized curfews.
+* **Forecast (Adverse Selection):** IMD 72-hour-ahead forecast oracle that triggers zone-level enrollment freezes when high-risk events are predicted, preventing opportunistic sign-ups before known storms.
 
-When all three signals converge above threshold, the payout is queued — autonomously.
+Oracle consensus is event-type-aware: weather triggers use IMD + AccuWeather + NASA GPM + ground sensors (3-of-4 required), while AQI triggers use CPCB + ground sensors + IMD (2-of-3 required). This avoids requiring rainfall oracles to vote on pollution events.
+
+When oracle consensus converges above threshold, the payout is queued — autonomously.
 
 At a glance, here is how the stack connects end to end:
 
@@ -129,9 +136,9 @@ Our core personas are grounded in **primary field research** — structured inte
 Traditional insurance utilizes annual or monthly premiums, fundamentally misaligning with gig worker cash flows. Continuum enforces a strictly **Weekly Premium Cycle** anchored to actuarial adequacy first, affordability second.
 
 * **"The One-Order Rule" (UX Affordability Constraint):** The weekly premium targets the behavioral cost of 1–2 successful deliveries. This is a UX ceiling, not a pricing floor — the technical premium always wins if it exceeds the affordability anchor.
-* **Cash Flow Alignment:** Premiums are deducted on a timeline identical to the Zomato/Swiggy weekly payout cadence, abstracting the cognitive load of large upfront payments.
-* **Dynamic Risk Rating:** The premium is recalculated every week using predictive modeling. Premiums adjust based on the 7-day meteorological forecast, zone-level loss ratio history, and partner activity profile.
-* **Micro-Transactions:** Payments are structured as high-frequency, low-denomination micro-premiums, reducing the barrier to entry to near zero.
+* **Cash Flow Alignment:** Premiums are collected automatically via UPI eNACH mandates on a timeline identical to the Zomato/Swiggy weekly payout cadence, abstracting the cognitive load of large upfront payments. The mandate lifecycle (CREATED / APPROVED / ACTIVE / REVOKED / FAILED) is tracked in a dedicated `mandates` table with webhook-driven state transitions.
+* **Dynamic Risk Rating:** The premium is recalculated every week using predictive modeling on a 16-dimensional feature vector. Premiums adjust based on the 7-day meteorological forecast, AQI trends, zone-level loss ratio history, and partner activity profile. Data-sparse zones (< 90 days of history) use proxy-zone KNN bootstrap with a 1.25x uncertainty multiplier on the risk margin.
+* **Micro-Transactions:** Payments are structured as high-frequency, low-denomination micro-premiums, reducing the barrier to entry to near zero. Weekly debits are spread across a 1-hour BullMQ scheduling window to prevent thundering-herd effects.
 
 ### Quantitative Actuarial Framework
 
@@ -212,9 +219,17 @@ FinalPremium = max(55, 62) = ₹62
 
 This keeps pricing behaviorally affordable where possible, but never below actuarial adequacy.
 
+### Actuarial Lab (`services/actuarial_lab/`)
+
+A dedicated Python service implements the quantitative validation gates described above:
+
+* **`historical_backtest.py`** — Queries TimescaleDB and CockroachDB to compute zone-level and portfolio-level loss ratios, expected vs. realized trigger counts, Brier score, calibration buckets, and rolling 13-week loss ratios.
+* **`stress_scenarios.py`** — Simulates three stress classes (catastrophic correlated event, systemic technology outage, climate drift) against current premium and reserve levels. Outputs simulated payouts, BCR under stress, and reserve depletion days.
+* **`ci_gate.py`** — CI/CD gate script that fails the pipeline if rolling 13-week portfolio loss ratio exceeds 100% or any stress scenario results in reserve depletion below 90 days.
+
 ### Current Validation Status
 
-* **Prototype status:** Framework and controls are implemented conceptually for hackathon scope.
+* **Prototype status:** Framework and controls are implemented for hackathon scope with runnable backtest and stress-test pipelines.
 * **Before production:** Final rates and exclusions require licensed actuarial review and legal/regulatory sign-off.
 * **Why this matters:** It prevents underpriced coverage while preserving partner affordability.
 
@@ -259,7 +274,7 @@ Behind the interface, two ML pipelines run autonomously on every premium cycle a
 
 Continuum moves beyond static actuarial tables, deploying ML models for active risk assessment and fraud prevention.
 
-**Risk Profile Engine** — Gradient Boosting model consuming TimescaleDB historical weather, live Weather API data, and worker activity to dynamically price each partner's weekly premium:
+**Risk Profile Engine** — Gradient Boosting model consuming a 16-dimensional feature vector from TimescaleDB historical weather, AQI event history, live Weather API data, and worker activity to dynamically price each partner's weekly premium. Data-sparse zones fall back to proxy-zone KNN medians with a 1.25x risk margin uncertainty multiplier:
 
 <div align="center">
   <img src="assets/Risk_profiler.jpeg" alt="Risk Profile Engine — FastAPI → Feature Builder → Gradient Boosting → Risk Score" style="max-width: 100%;" />
@@ -267,7 +282,7 @@ Continuum moves beyond static actuarial tables, deploying ML models for active r
 
 <br />
 
-**Claims Scoring Pipeline** — Isolation Forest anomaly detection that auto-approves clean claims (score ≥ 0.7) and routes suspicious ones to the fraud queue:
+**Claims Scoring Pipeline** — Isolation Forest anomaly detection (with SHA-256 model provenance verification against `model_card.json` at startup) that auto-approves clean claims (score >= 0.7), routes suspicious ones to the fraud queue, and supports adjacency grace (50% pro-rated payout for claims in ST_Touches-adjacent zones):
 
 <div align="center">
   <img src="assets/Claims_scorer.jpeg" alt="Claims Scoring — FastAPI Gateway → PostGIS + PostgreSQL → Isolation Forest → Auto Approve or Fraud Queue" style="max-width: 100%;" />
@@ -287,7 +302,7 @@ Every layer was chosen to serve a specific reliability, performance, or complian
 | **Claims API** | FastAPI (Python) | Handles proof data upload and claim processing pipeline |
 | **Message Queue** | Apache Kafka | Real-time data streaming for webhook triggers and oracle events |
 | **Task Queue** | Bull MQ | Prioritized background job processing (payout retries, notification dispatch) |
-| **Database** | CockroachDB | Distributed SQL — horizontally scalable, ACID-compliant financial ledger |
+| **Database** | CockroachDB | Distributed SQL — horizontally scalable, ACID-compliant double-entry financial ledger |
 | **Vector Store** | MongoDB Atlas (Vector Index) | Advanced RAG with Pre-Filtering, Fast-Filtering, and Re-Ranking |
 | **Embeddings** | BGE-Large (HuggingFace) | Text vectorization for RAG knowledge base |
 | **RAG Orchestration** | LangChain + LlamaIndex | Data preprocessing, chunking, and vector upsert pipeline |
@@ -297,9 +312,11 @@ Every layer was chosen to serve a specific reliability, performance, or complian
 | **Agent Orchestration** | Crew AI | Multi-agent task delegation for autonomous claim pipeline steps |
 | **Conversational AI** | RASA + Fi | In-app assistant — context-aware partner support bot |
 | **Multilingual NLP** | IndicConformer (AI4Bharat) | Machine translation for regional Indian languages |
-| **Payments** | PayU Sandbox (via minIO) | Simulated UPI payout disbursement with smoother workload distribution |
+| **Payments (Payout)** | PayU Sandbox (via minIO) | Simulated UPI payout disbursement with smoother workload distribution |
+| **Payments (Collection)** | PayU eNACH / UPI Autopay | Frictionless weekly premium collection via recurring mandates with webhook-driven state management |
+| **Actuarial Lab** | Python (TimescaleDB + CockroachDB) | Historical backtesting, stress scenarios, BCR calculation, and CI/CD gate enforcement |
 | **Push Notifications** | Firebase Cloud Messaging | Real-time lock-screen alerts on payout and disruption events |
-| **Monitoring** | Prometheus | Continuous log monitoring and alerting across all services |
+| **Monitoring** | Prometheus + Alertmanager | Continuous monitoring with alerts for oracle abstention (>40%), payout SLA breach (>2h), and low reserves (<Rs. 100K) |
 | **Admin Dashboard** | Power BI | Business intelligence dashboards for admins and insurers |
 | **Environment** | Sandbox (Flutter/Dart) | Isolated development environment for safe end-to-end simulation |
 
@@ -321,8 +338,8 @@ A single GPS coordinate is a claim, not proof. Every payout gate in Continuum re
 
 The first perimeter. A fraudster who cannot establish a legitimate identity cannot participate.
 
-* **1:1 Device Binding:** Each Policy ID is cryptographically bound to a unique device fingerprint (Device_ID). A second policy registration on the same device is rejected at the database constraint level; no application-layer logic can override this.
-* **National KYC Linkage:** Aadhaar/PAN verification enforces a 1:1 mapping between national identity and active policy count. Family-member account farming is structurally impossible within this constraint.
+* **1:1 Device Binding:** Each Policy ID is cryptographically bound to a unique device fingerprint (Device_ID). A second policy registration on the same device is rejected at the database constraint level; no application-layer logic can override this. Enforced by a `UNIQUE` partial index on `device_fingerprint WHERE device_fingerprint IS NOT NULL` in the `workers` table.
+* **National KYC Linkage:** Aadhaar/PAN verification enforces a 1:1 mapping between national identity and active policy count. Family-member account farming is structurally impossible within this constraint. Enforced by a `UNIQUE` partial index on `aadhaar_hash WHERE aadhaar_hash IS NOT NULL`, ensuring database-level deduplication.
 * **Play Integrity API / SafetyNet Attestation:** Android emulators and rooted devices lack valid hardware attestation certificates. Claims from non-attested devices are automatically ineligible. The platform periodically re-attests devices on the background to catch post-enrollment compromise.
 * **Biometric Liveness on Claim Submission:** A biometric face-scan challenge is injected at claim submission, defeating both account-lending schemes and static-ID theft. The liveness detection module specifically flags deepfake-generated video via a dedicated third-party API (e.g., iProov), cross-referencing blink patterns and micro-lighting artifacts that generative models fail to replicate consistently.
 
@@ -340,17 +357,18 @@ GPS coordinates must be corroborated by at least two independent signals before 
 The most powerful anti-fraud signal is not found by examining individual claims — it is found by examining the **population of claims simultaneously**.
 
 * **Geographic Convergence Alert:** If ≥50 unique policy IDs file claims pointing to an identical or near-identical lat/long polygon within a 5-minute window, the zone triggers an automatic **"Convergence Freeze"**. All pending claims for that zone are queued for a mandatory 24-hour review hold before any payout is released. A genuine flood will affect the zone gradually; 500 fraudsters converging instantaneously is a statistical signature unique to coordinated rings.
-* **Social Graph Clustering:** Device-level Bluetooth and WiFi proximity logs are analyzed at the time of claim. Claims from a cluster of devices that have been in close physical proximity over the prior 7 days (indicative of a coordinated group) are flagged for elevated review. Genuine partners stranded in a flood zone may be near each other, but they did not spend the prior week in the same room.
+* **Social Graph Clustering:** Device-level Bluetooth and WiFi proximity logs are analyzed at the time of claim. Claims from a cluster of devices that have been in close physical proximity over the prior 7 days (indicative of a coordinated group) are flagged for elevated review. Genuine partners stranded in a flood zone may be near each other, but they did not spend the prior week in the same room. Proximity data collection requires explicit DPDP Act 2023 consent (`proximity_consent` flag), and all proximity logs are auto-purged after 30 days via a `pg_cron` scheduled job (with application-level fallback).
 * **Velocity Limiting:** A maximum of **3 successful claims per policyholder per 90-day rolling window** is enforced. Chronic super-claimants who exceed this threshold are moved to a mandatory manual review hold, regardless of the technical validity of individual claims.
 
 ### Layer 4 — Multi-Oracle Consensus Engine
 
-No single data source can unilaterally authorize a payout. Trigger events require a weighted **3-of-4 oracle consensus**.
+No single data source can unilaterally authorize a payout. Trigger events require **event-type-weighted oracle consensus**.
 
-* **Oracle Vote Architecture:** 4 independent data oracles vote on whether a qualifying event has occurred: (1) IMD Primary API, (2) Private Weather Network (e.g., AccuWeather commercial feed), (3) Satellite Precipitation Data (NASA GPM API), (4) Ground-level sensor aggregation. A trigger requires a minimum of 3 affirmative votes. A single compromised or failed data source cannot cause a payout.
-* **Stale Data Handling:** Oracle data carries a maximum TTL of 15 minutes. Data exceeding this TTL is treated as an **oracle abstention**, not a vote. An abstaining oracle does not vote "yes."
-* **Certificate Pinning on All Oracle Endpoints:** All HTTPS calls to external data APIs are protected by certificate pinning. An unexpected certificate (indicative of a man-in-the-middle attack or DNS hijack) causes the oracle's vote to be automatically nullified for that polling cycle.
+* **Oracle Vote Architecture:** Oracle sets are selected per event type. Weather triggers poll 4 independent data oracles: (1) IMD Primary API, (2) Private Weather Network (e.g., AccuWeather commercial feed), (3) Satellite Precipitation Data (NASA GPM API), (4) Ground-level sensor aggregation — requiring 3-of-4 affirmative votes. AQI triggers poll CPCB CAAQMS, ground sensors, and IMD — requiring 2-of-3. Technology outages use Downdetector, synthetic ping, and platform API — requiring 2-of-3. This prevents irrelevant oracles from voting on events outside their competency.
+* **Stale Data Handling:** Oracle data carries a maximum TTL of 15 minutes. Data exceeding this TTL is treated as an **oracle abstention**, not a vote. An abstaining oracle does not vote "yes." Prometheus alerts fire when the abstention rate exceeds 40%.
+* **Certificate Pinning with Dual-Pin Rotation:** All HTTPS calls to external data APIs are protected by certificate pinning with dual-pin rotation slots. Two fingerprints are maintained per oracle, enabling seamless certificate rotation without service disruption. An unexpected certificate causes the oracle's vote to be automatically nullified for that polling cycle.
 * **Randomized Poll Scheduling:** Oracle polling intervals are randomized within a ±8 minute window around the base cron schedule. This schedule is never exposed externally, making it computationally infeasible to time fraudulent activity to the exact millisecond between sensor checks.
+* **Forecast-Driven Enrollment Lockout:** A separate forecast oracle polls IMD 72-hour predictions and publishes `enrollment_lock` events via Kafka when high-risk conditions are predicted. The `POST /policies` endpoint checks `zone_enrollment_locks` and returns HTTP 423, preventing opportunistic enrollment before known events.
 
 ### Layer 5 — Incentive-Based Fraud Deterrence
 
@@ -392,7 +410,7 @@ A parametric system is only as trustworthy as its edge-case handling. Three cate
 ### Timing & Boundary Conditions
 
 * **Trigger fires at 11:59 PM on last day of policy week:** If a parametric trigger fires while the policy is technically active—even by 1 minute—the full week's coverage benefit is honored. Policies do not expire mid-disruption.
-* **Partner in adjacent, non-triggered zone is also stranded:** Partners in zones immediately bordering a triggered polygon receive a **50% pro-rated payout** (the "Adjacency Grace" rule), acknowledging that physical disruption is not confined to administrative polygon boundaries.
+* **Partner in adjacent, non-triggered zone is also stranded:** Partners in zones immediately bordering a triggered polygon receive a **50% pro-rated payout** (the "Adjacency Grace" rule), implemented via PostGIS `ST_Touches` adjacency lookup. The claims scoring service returns an `adjacency_grace: true` flag and the `adjacent_zone_id`, and the payout record is flagged with `adjacency_pro_rated = TRUE` for audit.
 * **Partner's GPS centroid spans two municipal boundaries:** Payout is calculated against the municipality containing the GPS centroid, not the zone with the higher coverage value. Partial-zone events pay 50% if the centroid falls within the affected region.
 * **Two qualifying disruptions occur within the same 7-day policy cycle:** A hard cap of **one successful payout per 7-day policy cycle** applies, regardless of the number of distinct parametric triggers that fire. This constraint is foundational to actuarial solvency.
 
@@ -404,9 +422,11 @@ A parametric system is only as trustworthy as its edge-case handling. Three cate
 
 ### Actuarial Safeguards & Reserve Architecture
 
+* **Double-Entry Financial Ledger:** Reserve management uses a full double-entry ledger (`ledger_accounts` + `ledger_entries` tables in CockroachDB) instead of a single-row balance counter. All debits use `SELECT ... FOR UPDATE` serialized transactions with explicit balance checks, eliminating the overdraw race condition inherent in single-row designs. Core accounts: RESERVE_MAIN, PREMIUM_INCOME, PAYOUT_EXPENSE, REINSURANCE_FUND.
 * **Correlated catastrophic event (cyclone, earthquake) affects >1,000 simultaneous policies:** A mandatory reinsurance treaty is activated for any single event breaching the 1,000-simultaneous-policyholder threshold. This is the capital backstop that prevents catastrophic liquidity events from invalidating all outstanding policies.
 * **Zone-specific loss ratio exceeds 80% for 4 consecutive weeks:** The dynamic pricing engine triggers an automatic premium escalation for that specific zone. Partners in the zone are notified 7 days in advance of premium changes. This is the real-time actuarial feedback loop.
 * **Minimum 90-day reserve requirement:** IRDAI-mandated solvency margins require Continuum to hold a minimum 90-day payout reserve in escrow at all times, held exclusively in RBI-approved low-risk liquid instruments (e.g., Treasury bills, money market funds). Zero equity exposure is permitted on reserve capital.
+* **Payout SLA Enforcement:** End-to-end payout latency (oracle trigger to UPI disbursement) is tracked by a `payout_latency_seconds` Prometheus histogram. Payouts exceeding the 2-hour SLA increment a `payout_sla_breach_total` counter and fire a `PayoutSLABreach` alert. A `ReserveLow` alert fires when the reserve balance drops below Rs. 100,000.
 
 ## Terms and Conditions
 
@@ -636,15 +656,17 @@ A total of 11 core microservices (+3 infrastructure containers) are actively run
 | Service | Technology | Port Map | IP Link |
 |---|---|---|---|
 | **FastAPI Gateway** | Python / FastAPI | `8000` | [http://4.186.27.77:8000/docs](http://4.186.27.77:8000/docs) |
-| **RAG Orchestrator** | Python / LlamaIndex| `8001` | http://4.186.27.77:8001 |
-| **Rasa / Gemini Assistant**| Python / Gemini API| `8002` | http://4.186.27.77:8002 |
-| **Web Intelligence** | Python / ScrapeGraph| `8003` | http://4.186.27.77:8003 |
-| **KG Cache** | Go | `8004 -> 8080`| http://4.186.27.77:8004 |
-| **Core Backend** | Express.js | `3000` | http://4.186.27.77:3000 |
+| **RAG Orchestrator** | Python / LlamaIndex| `8001` | http://4.186.27.77:8001/docs |
+| **Rasa / Gemini Assistant**| Python / Gemini API| `8002` | http://4.186.27.77:8002/docs |
+| **Web Intelligence** | Python / ScrapeGraph| `8003` | http://4.186.27.77:8003/docs |
+| **KG Cache** | Go | `8004 -> 8080`| http://4.186.27.77:8004/docs |
+| **Core Backend** | Express.js | `3000` | http://4.186.27.77:3000/docs |
 | **Claims Scoring** | Rust | `8080` | (Internal API) |
 | **Isolation Forest** | Python | Unix Socket | (Sidecar communication) |
 | **Crew AI Agent** | Python | Background | (Kafka Worker) |
-| **Oracle Engine** | Python | Background | (Kafka Worker) |
+| **Oracle Engine** | Python | Background | (Kafka Worker — event-type-weighted consensus + forecast lockout) |
+| **Actuarial Lab** | Python | CLI / CI | (Backtest + stress test + CI gate) |
+| **Risk Profiler** | Python / FastAPI | Background | (16-dim feature vector, proxy-zone bootstrap) |
 | **PostgreSQL** | Postgres 15 | `5432` | (Infra Database) |
 | **Redis** | Redis Alpine | `6379` | (Infra Cache) |
 | **Kafka & Zookeeper** | Confluent | `9092 / 2181` | (Message Broker) |
@@ -653,46 +675,73 @@ A total of 11 core microservices (+3 infrastructure containers) are actively run
 
 ## Getting Started
 
-The following sets up the full Continuum stack locally.
+The following sets up the full Continuum stack locally. For a detailed contributor guide, see `CLAUDE.md`.
 
 ### Prerequisites
 
-* [Flutter SDK](https://docs.flutter.dev/get-started/install) >= 3.19
+* [Flutter SDK](https://docs.flutter.dev/get-started/install) >= 3.8
 * Node.js >= 20.x
 * Python >= 3.11
-* PostgreSQL >= 15
+* Docker & Docker Compose (recommended for full stack)
+* Rust toolchain (for claims_scoring)
+* Go >= 1.21 (for kg_cache)
 
-### 1. Clone the Repository
+### Option A: Full Stack via Docker Compose
 
 ```bash
 git clone https://github.com/your-org/continuum.git
 cd continuum
+cp .env.example .env   # fill in POSTGRES_PASSWORD, JWT_SECRET, etc.
+docker compose up --build
 ```
 
-### 2. Backend Setup
+This starts all 11 services plus PostgreSQL, Redis, Kafka, and Zookeeper.
+
+### Option B: Individual Service Startup
+
+#### Core Backend (Node.js, port 3000)
 
 ```bash
-cd backend
+cd services/core_backend
 npm install
-cp .env.example .env   # configure DB and API keys
-npx prisma migrate dev
-npm run dev            # starts REST API on :3000
+cp .env.example .env   # configure DB, JWT_SECRET, Kafka
+npm run dev
 ```
 
-### 3. Python ML & Oracle Services
+#### Database Migrations (run PostgreSQL before CockroachDB)
 
 ```bash
-cd ml
+# PostgreSQL
+psql -h localhost -U postgres -d continuum
+\i db/migrations/postgres/001_initial_schema.sql
+# ... run all numbered migrations in order
+
+# CockroachDB
+cockroach sql --insecure --database=continuum
+\i db/migrations/cockroachdb/001_initial_schema.sql
+# ... run all numbered migrations in order
+```
+
+#### FastAPI Gateway (Python, port 8000)
+
+```bash
+cd services/fastapi_gateway
 pip install -r requirements.txt
-uvicorn main:app --reload  # FastAPI pricing/fraud service on :8000
+uvicorn main:app --reload
 ```
 
-### 4. Flutter App
+#### Claims Scoring (Rust, port 8080)
 
 ```bash
-cd mobile
+cd services/claims_scoring
+cargo build && cargo run
+```
+
+#### Flutter Mobile App
+
+```bash
 flutter pub get
-flutter run             # targets connected device or emulator
+flutter run
 ```
 
 ---
