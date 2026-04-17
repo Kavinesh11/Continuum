@@ -234,15 +234,17 @@ async fn process_claim(pool: &PgPool, req: ScoreRequest) -> anyhow::Result<Score
     // ── Step 6: DB fallback for estimated_payout when coverage_cap not in request ──
     if response.status == ClaimStatus::AutoApproved && response.estimated_payout == 0.0 {
         if let Some(policy_id) = req.policy_id {
-            let policy_result = sqlx::query!(
-                "SELECT coverage_cap FROM policies WHERE policy_id = $1",
-                policy_id
+            let policy_result: Option<(String,)> = sqlx::query_as(
+                "SELECT coverage_cap::TEXT FROM policies WHERE policy_id = $1",
             )
+            .bind(policy_id)
             .fetch_optional(pool)
-            .await;
+            .await
+            .ok()
+            .flatten();
 
-            if let Ok(Some(policy)) = policy_result {
-                let db_cap: f64 = policy.coverage_cap.to_string().parse().unwrap_or(0.0);
+            if let Some((cap_str,)) = policy_result {
+                let db_cap: f64 = cap_str.parse().unwrap_or(0.0);
                 response.estimated_payout = db_cap * payout_cap * adjacency_factor;
             }
         }

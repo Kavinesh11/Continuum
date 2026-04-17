@@ -108,6 +108,12 @@ services:
       - continuum_net
     environment:
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - POSTGRES_URL=postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/continuum
+      - MONGODB_URI=mongodb://mongodb:27017/continuum
+      - KG_CACHE_URL=http://kg_cache:8080
+    depends_on:
+      - kafka
+      - postgres
   
   isolation_forest_sidecar:
     build:
