@@ -99,14 +99,6 @@ jobs:
           --health-interval=5s
           --health-timeout=5s
           --health-retries=10
-      cockroachdb:
-        image: cockroachdb/cockroach:latest-v23.1
-        ports: ["16257:26257"]
-        options: >-
-          --health-cmd="curl -f http://localhost:8080/health"
-          --health-interval=5s
-          --health-timeout=5s
-          --health-retries=10
     env:
       TEST_PG_DSN: postgresql://test:test@localhost:15432/continuum_test
       TEST_CRDB_DSN: postgresql://root@localhost:16257/defaultdb?sslmode=disable
@@ -120,10 +112,21 @@ jobs:
           for f in db/migrations/postgres/*.sql; do
             PGPASSWORD=test psql -h localhost -p 15432 -U test -d continuum_test -f "$f" || true
           done
+      - name: Start CockroachDB container
+        run: |
+          docker run -d --name cockroachdb -p 16257:26257 -p 8080:8080 cockroachdb/cockroach:latest-v23.1 start-single-node --insecure
+          # wait for HTTP health endpoint
+          for i in $(seq 1 30); do
+            if curl -sSf http://localhost:8080/health; then
+              echo "CockroachDB ready"
+              break
+            fi
+            sleep 2
+          done
       - name: Run CRDB migrations
         run: |
           for f in db/migrations/cockroachdb/*.sql; do
-            cockroach sql --insecure --host=localhost:16257 --database=defaultdb < "$f" || true
+            docker exec -i cockroachdb /cockroach/cockroach sql --insecure --database=defaultdb < "$f" || true
           done
       - name: Install & run integration tests
         working-directory: tests/integration

@@ -1,0 +1,4 @@
+# file: D:\Continuum\services\web_intelligence\scrapers\downdetector.py
+# hypothesis_version: 6.151.5
+
+[100, 500, 2000, 'ALL', 'critical', 'current_status', 'high', 'llm', 'low', 'medium', 'model', 'ollama/mistral', 'peak_time', 'platform', 'platform_outage', 'report_count', 'swiggy', 'temperature', 'unknown', 'zomato']

@@ -1,0 +1,4 @@
+# file: D:\Continuum\services\rasa_assistant\indic_conformer.py
+# hypothesis_version: 6.151.5
+
+['Bengali', 'English', 'Hindi', 'Kannada', 'Tamil', 'Telugu', 'ai4bharat/indic-bert', 'bn', 'en', 'error', 'hi', 'kn', 'model_name', 'pt', 'reason', 'source_lang', 'ta', 'target_lang', 'te', 'use_stub=True']
