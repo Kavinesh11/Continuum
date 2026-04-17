@@ -43,7 +43,9 @@ SOCKET_PATH=/tmp/isolation_forest.sock python sidecar.py
 cd services/core_backend && npm test
 npx jest tests/test_ledger.test.js --runInBand   # single test file
 
-# Integration tests (trigger-to-payout, requires live PostgreSQL with PostGIS + TimescaleDB)
+# Integration tests — needs TEST_PG_DSN (default: postgresql://test:test@localhost:15432/continuum_test)
+# and TEST_CRDB_DSN (default: postgresql://root@localhost:16257/defaultdb?sslmode=disable)
+# Run docker-compose.test.yml first to get those ports, then seed zone polygons and weather data
 cd tests/integration && npm install && npm test
 
 # Python services (pytest)
@@ -73,11 +75,11 @@ python -m services.actuarial_lab.ci_gate \
 
 The system is a microservice mesh coordinated by Kafka and BullMQ. The critical data path for a payout is:
 
-1. **Oracle Engine** (`services/oracle_engine/`) — polls IMD, AccuWeather, NASA GPM, and CPCB concurrently. Uses event-type-aware oracle sets (weather: 3-of-4, AQI: 2-of-3). Data older than 15 min is treated as abstention, not a vote. `platform_outage.py` adds two additional oracle clients: `DowndetectorOracleClient` (complaint-spike detection) and `SyntheticPingOracleClient` (geo-distributed health pings for Swiggy/Zomato). `schedule_loader.py` reads per-oracle poll intervals from the `poll_schedules` table rather than hardcoding them. Publishes `oracle_trigger` to Kafka when consensus is reached.
+1. **Oracle Engine** (`services/oracle_engine/`) — eight oracle clients: `IMDOracleClient`, `AccuWeatherOracleClient`, `NASAGPMOracleClient`, `GroundSensorOracleClient`, `CPCBOracleClient`, `ForecastOracleClient`, `DowndetectorOracleClient`, `SyntheticPingOracleClient`. Event-type-aware quorum sets (weather: 3-of-4, AQI: 2-of-3). Data older than 15 min is treated as abstention, not a vote. Individual trigger thresholds: IMD rainfall ≥ 10 mm/hr, AccuWeather precip probability ≥ 70%, NASA GPM ≥ 5 mm/hr, CPCB AQI ≥ 300, Downdetector spike ≥ 500 reports, synthetic ping failure ≥ 2/3 vantage points. `schedule_loader.py` reads per-oracle poll intervals from `poll_schedules.interval_seconds` (refreshes every 300 s, falls back to hardcoded defaults if DB unreachable). On consensus publishes three Kafka topics: `oracle_trigger`, `payout_authorized`, and `adverse_selection_lock` (enrollment lock).
 
-2. **Core Backend** (`services/core_backend/`) — Express.js REST API on port 3000. Consumes Kafka events and routes work to BullMQ. Five worker queues: `premium_recalculation`, `payout_disbursement`, `notification_dispatch`, `fraud_review_escalation`, `weekly_premium_debit`. All payout debits use double-entry ledger with `SELECT ... FOR UPDATE` serialization to prevent concurrent overdraw. External integrations (KMS, liveness provider, mandate gateway, payout gateway) are isolated behind adapter interfaces in `src/adapters/` — swap implementations without touching business logic.
+2. **Core Backend** (`services/core_backend/`) — Express.js REST API on port 3000. Consumes three Kafka topics via `kafkaConsumerMain.js`: `payout_authorized` → queues payout disbursement, `adverse_selection_lock` → locks zone enrollment, `fraud_alert` → escalates to fraud review queue. Routes work to BullMQ across five queues: `premium_recalculation`, `payout_disbursement`, `notification_dispatch`, `fraud_review_escalation`, `weekly_premium_debit`. All payout debits use double-entry ledger with `SELECT ... FOR UPDATE` serialization to prevent concurrent overdraw. External integrations (KMS, liveness provider, mandate gateway, payout gateway) are isolated behind adapter interfaces in `src/adapters/` — each has `mock | sandbox | prod` implementations selected via `<NAME>_PROVIDER` env var. A `gpsRetentionSweep` BullMQ processor purges `gps_activity` rows older than `GPS_RETENTION_DAYS` (default 60 days).
 
-3. **Claims Scoring** (`services/claims_scoring/`) — Rust/Axum service. Composite fraud score = 0.4×spatial + 0.2×frequency + 0.4×isolation_forest. Score ≥ 0.7 → `AUTO_APPROVED`; below → `FRAUD_QUEUE`. Platform activity veto, soak period failure, and `platform_verifier` (checks that the worker had no active gig orders during the claimed disruption window by calling Swiggy/Zomato APIs) are hard overrides regardless of score. Communicates with the isolation forest sidecar via Unix socket at `/tmp/isolation_forest.sock`.
+3. **Claims Scoring** (`services/claims_scoring/`) — Rust/Axum service on port 8080 (docker) / 8002 (local `cargo run`). Composite claim legitimacy score = 0.4×spatial + 0.2×frequency + 0.4×isolation_forest. Higher score = more legitimate: score ≥ 0.7 → `AutoApproved`; below → `FraudQueue`. Four hard-veto conditions bypass the score entirely: `velocity_cap_exceeded` → `FraudQueue`, `soak_period_failed` → `FraudQueue`, `platform_activity_veto` → `PlatformActivityVeto` (worker had active orders on Swiggy/Zomato during the disruption window), device attestation failure → `DeviceNotAttested`. Communicates with the isolation forest sidecar via Unix socket at `/tmp/isolation_forest.sock`.
 
 4. **Isolation Forest Sidecar** (`services/isolation_forest_sidecar/`) — Python process that loads a pre-trained joblib model. On startup it verifies the model SHA-256 hash against `model/model_card.json`.
 
@@ -106,11 +108,12 @@ psql -h localhost -U postgres -d continuum
 \i db/migrations/postgres/002_enrollment_lock.sql   # zone_enrollment_locks
 \i db/migrations/postgres/003_identity_uniqueness.sql  # UNIQUE indexes on aadhaar_hash, device_fingerprint
 \i db/migrations/postgres/004_dpdp_proximity_retention.sql  # device_proximity_log + pg_cron 30-day purge
-\i db/migrations/postgres/005_ledger_and_mandate_tables.sql  # ledger mirror + mandate tables
-\i db/migrations/postgres/005_poll_schedules.sql     # poll_schedules table (per-oracle intervals)
-\i db/migrations/postgres/006_consent_receipts.sql   # DPDP consent receipts
-\i db/migrations/postgres/006_premium_versions_and_policy_zone.sql  # premium versioning + policy zone
-\i db/migrations/postgres/007_kill_switches.sql      # operator kill switches for circuit-breaking
+# Two migrations share the 005 prefix and two share 006 — run all five; order within each prefix is independent
+\i db/migrations/postgres/005_ledger_and_mandate_tables.sql  # PostgreSQL mirror of ledger_accounts/ledger_entries/mandates/payouts
+\i db/migrations/postgres/005_poll_schedules.sql     # poll_schedules (seeds 12 default rows: 3 zones × 4 event types)
+\i db/migrations/postgres/006_consent_receipts.sql   # consent_receipts (DPDP Act purposes)
+\i db/migrations/postgres/006_premium_versions_and_policy_zone.sql  # premium_versions + zone_id on policies + 60-day GPS partitioning
+\i db/migrations/postgres/007_kill_switches.sql      # zone_kill_switches + portfolio_caps (default daily cap ₹500,000)
 
 # CockroachDB (financial data — ledger, payouts, mandates)
 cockroach sql --insecure --database=continuum
@@ -133,9 +136,9 @@ bash infra/kafka/create_topics.sh
 **Kafka event schemas** live in `contracts/oracle_events/` as JSON Schema v7 files (`payout_authorized.schema.json`, `enrollment_lock.schema.json`, `fraud_alert.schema.json`). These are the canonical shapes of Kafka messages — update them when changing event structures.
 
 **One-shot data loader scripts** in `scripts/`:
-- `seed_synthetic_ledger.py` — generates 24 months of synthetic ledger data in CockroachDB for backtesting
-- `load_weather_historical.py` — backfills the TimescaleDB `weather_events` hypertable
-- `load_zone_polygons.py` — loads WGS84 zone polygons into PostgreSQL (required before integration tests pass)
+- `seed_synthetic_ledger.py` — seeds 24 months of synthetic premiums + payouts into CockroachDB, resets `reserve_balance` to ₹500,000. Usage: `python scripts/seed_synthetic_ledger.py --crdb-dsn "postgresql://root@localhost:26257/continuum"`
+- `load_weather_historical.py` — backfills the TimescaleDB `weather_events` hypertable. Supports `--provider synthetic` (3 zones × 24 months) or `--provider imd` (requires `--imd-data-dir`). Usage: `python scripts/load_weather_historical.py --provider synthetic --pg-dsn "postgresql://..."`
+- `load_zone_polygons.py` — upserts zone WGS84 polygons and risk indices. Supports `--provider fixture` (3 Mumbai zones hardcoded) or `--provider geojson`. Required before integration tests pass. Usage: `python scripts/load_zone_polygons.py --provider fixture --pg-dsn "postgresql://..."`
 
 **Architecture decisions** are documented in `docs/adr/`: ledger-first financial model (ADR-0001), Kafka consumer topology (ADR-0002), external adapter pattern (ADR-0003), PII envelope encryption (ADR-0004). Read these before changing the corresponding systems.
 
@@ -148,14 +151,17 @@ bash infra/kafka/create_topics.sh
 - **Adjacency grace**: PostGIS `ST_Touches` check returns 50% payout for bordering zones
 - **Benefit of doubt**: ≥2 oracles offline + ≥1 confirming → 50% payout cap authorized
 - **BullMQ thundering herd prevention**: weekly premium debit jobs are spread across a 1-hour window
-- **Kill switches**: operator-controlled flags in `kill_switches` table (PostgreSQL). When active, the corresponding subsystem (payout, enrollment, oracle) is halted without a code deploy — checked in the relevant route/worker on each request
+- **Kill switches**: migration 007 creates `zone_kill_switches` and `portfolio_caps` tables (PostgreSQL). `portfolio_caps` seeds a default daily disbursement cap of ₹500,000. When a kill switch is active for a zone/subsystem, payouts or enrollment for that zone are halted without a code deploy — checked in the relevant route/worker on each request
 - **Consent receipts**: `POST /consent` records DPDP-compliant consent with a receipt ID; GPS data collection and proximity logging require an active consent receipt for that worker
 
 ## Kafka Topics
 
+Declared in `infra/kafka/topics.json` (3 partitions, 3× replication, 7-day retention):
 `worker_onboarding`, `claim_submitted`, `claim_decision`, `payout_authorized`, `oracle_trigger`, `premium_updated`, `fraud_alert`
 
-Topics created via `infra/kafka/create_topics.sh` using config in `infra/kafka/topics.json`.
+`adverse_selection_lock` is used in code (oracle engine publishes it; core backend consumes it for zone enrollment locks) but is **not** in `topics.json` — create it manually or add it to the config before running in production.
+
+Topics created via `infra/kafka/create_topics.sh`.
 
 ## Environment Setup
 
@@ -166,9 +172,16 @@ Install pre-commit hooks once after cloning: `pip install pre-commit && pre-comm
 Oracle TLS certificate pins are set as environment variables on the `oracle_engine` container. Each oracle has a primary pin and a rotation-slot pin (`_NEXT`):
 ```
 IMD_CERT_FINGERPRINT, ACCUWEATHER_CERT_FINGERPRINT, NASA_GPM_CERT_FINGERPRINT,
-CPCB_CERT_FINGERPRINT, DOWNDETECTOR_CERT_FINGERPRINT  (+ *_NEXT variants for rotation)
+GROUND_SENSOR_CERT_FINGERPRINT, CPCB_CERT_FINGERPRINT, IMD_FORECAST_CERT_FINGERPRINT,
+DOWNDETECTOR_CERT_FINGERPRINT  (+ *_NEXT variants for each)
 ```
 Omitting a pin disables pinning for that oracle (acceptable in dev, required in production).
+
+Key feature-flag and provider-selection env vars in `.env.example`:
+- `PAYOUT_AUTOMATION_ENABLED` (default: false) — gates the automated payout flow end-to-end
+- `PAYOUT_KILL_SWITCH` / `ENROLLMENT_LOCK_ENFORCED` — runtime toggles without redeploy
+- `PAYOUT_GATEWAY_PROVIDER`, `MANDATE_GATEWAY_PROVIDER`, `PLATFORM_VERIFIER_PROVIDER`, `LIVENESS_PROVIDER` — each accepts `mock | sandbox | prod`; `mock` is the safe default for local dev
+- `KMS_PROVIDER` — `local | aws | gcp`; `local` uses in-process key derivation
 
 ## Monitoring
 
@@ -178,10 +191,12 @@ Prometheus scrape targets:
 - Oracle engine: internal Prometheus counters (no HTTP endpoint)
 - Claims scoring: `GET /metrics` (port 8080)
 
-Three alert rules in `infra/prometheus/oracle_alerts.yml`:
-- `OracleHighAbstentionRate` — oracle failure rate > 40% for 15 min → check TLS cert expiry and API health
-- `PayoutSLABreach` — any payout exceeded 2h oracle-to-UPI SLA → triggers automatic 10% bonus credit to partner
-- `ReserveLow` — `reserve_balance_inr < 100000` for 5 min → initiate reinsurance top-up
+`infra/prometheus/oracle_alerts.yml` contains 15 alert rules in three groups:
+- **Core (3)**: `OracleHighAbstentionRate` (failure rate > 40% for 15 min), `PayoutSLABreach` (any payout exceeded 2h oracle-to-UPI SLA → 10% bonus credit), `ReserveLow` (`reserve_balance_inr < 100000` for 5 min → initiate reinsurance top-up)
+- **SLO burn-rate (7)**: payout latency, oracle freshness, Kafka consumer lag — multi-window burn-rate alerts
+- **Operational health (5)**: DLQ depth, enrollment lock count, kill switch state, circuit breaker trips
+
+`infra/slo.yml` defines the three primary SLO targets: payout latency p95 < 7200 s, oracle freshness ratio ≥ 0.85 over 7 days, Kafka consumer lag < 60 s at 0.95 over 7 days.
 
 ## Invariants That Must Not Be Broken
 
