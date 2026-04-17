@@ -1,0 +1,4 @@
+# file: D:\Continuum\services\rasa_assistant\rasa_handler.py
+# hypothesis_version: 6.151.5
+
+['advice', 'claim_status', 'confidence', 'disruption_alert', 'en', 'escalate_to_human', 'escalating_explicit', 'intent', 'intent_classified', 'latest', 'message', 'payout_inquiry', 'policy_inquiry', 'source_lang', 'target_lang', 'worker_id']
