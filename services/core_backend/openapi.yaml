@@ -1,0 +1,507 @@
+openapi: 3.0.3
+info:
+  title: Continuum Core Backend API
+  description: |
+    REST API for the Continuum parametric income-protection insurance platform.
+    Handles worker registration, policy lifecycle, claims, payouts, mandates,
+    reserves, consent, and admin operations.
+  version: 1.0.0
+  contact:
+    name: Continuum Team
+
+servers:
+  - url: http://localhost:3000
+    description: Local development
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        requestId:
+          type: string
+
+    Token:
+      type: object
+      properties:
+        token:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+
+  parameters:
+    RequestId:
+      in: header
+      name: X-Request-Id
+      schema:
+        type: string
+        format: uuid
+      description: Optional correlation ID; generated server-side if absent.
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      tags: [Infrastructure]
+      security: []
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  /metrics:
+    get:
+      summary: Prometheus metrics
+      tags: [Infrastructure]
+      security: []
+      responses:
+        "200":
+          description: Prometheus text format metrics
+
+  # ── Auth ────────────────────────────────────────────────────
+  /auth/register:
+    post:
+      summary: Register a new worker
+      tags: [Auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [worker_id, platform, upi_id, tier, password]
+              properties:
+                worker_id:
+                  type: string
+                platform:
+                  type: string
+                  enum: [swiggy, zomato]
+                upi_id:
+                  type: string
+                tier:
+                  type: string
+                  enum: [silver, gold, platinum]
+                password:
+                  type: string
+                  minLength: 8
+      responses:
+        "201":
+          description: Worker registered, JWT issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  expires_at:
+                    type: string
+                    format: date-time
+                  policy_eligible_from:
+                    type: string
+                    format: date-time
+        "400":
+          description: Missing fields or password too short
+        "409":
+          description: Worker already exists
+
+  /auth/login:
+    post:
+      summary: Login with credentials
+      tags: [Auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [worker_id, password]
+              properties:
+                worker_id:
+                  type: string
+                password:
+                  type: string
+      responses:
+        "200":
+          description: JWT issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Token"
+        "401":
+          description: Invalid credentials
+
+  # ── Policies ────────────────────────────────────────────────
+  /policies:
+    post:
+      summary: Create a new policy (72h activation delay)
+      tags: [Policies]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [worker_id, tier, zone_id, coverage_cap, weekly_premium, aadhaar_hash, device_fingerprint]
+              properties:
+                worker_id:
+                  type: string
+                tier:
+                  type: string
+                  enum: [silver, gold, platinum]
+                zone_id:
+                  type: string
+                coverage_cap:
+                  type: number
+                weekly_premium:
+                  type: number
+                aadhaar_hash:
+                  type: string
+                device_fingerprint:
+                  type: string
+                device_attestation_token:
+                  type: string
+      responses:
+        "201":
+          description: Policy created
+        "400":
+          description: Missing or invalid fields
+        "409":
+          description: Identity or device already registered
+        "423":
+          description: Zone enrollment locked (forecast-driven freeze)
+
+  /policies/{id}:
+    get:
+      summary: Get policy by ID
+      tags: [Policies]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Policy details
+        "403":
+          description: Cannot access another worker's policy
+        "404":
+          description: Policy not found
+
+    delete:
+      summary: Cancel policy (deferred to billing cycle end)
+      tags: [Policies]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Cancellation scheduled
+        "404":
+          description: Policy not found
+        "409":
+          description: Already cancelled
+
+  /policies/{id}/tier:
+    put:
+      summary: Upgrade policy tier (5-day waiting period)
+      tags: [Policies]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tier]
+              properties:
+                tier:
+                  type: string
+                  enum: [silver, gold, platinum]
+      responses:
+        "200":
+          description: Tier upgraded
+        "400":
+          description: Invalid tier
+
+  /policies/payout-check:
+    post:
+      summary: Check 7-day payout cycle cap
+      tags: [Policies]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [worker_id, policy_id]
+              properties:
+                worker_id:
+                  type: string
+                policy_id:
+                  type: string
+      responses:
+        "200":
+          description: Eligible for payout
+        "409":
+          description: Payout cycle cap exceeded
+
+  # ── Claims ──────────────────────────────────────────────────
+  /claims/{id}/status:
+    get:
+      summary: Get claim status
+      tags: [Claims]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Claim status with fraud score
+        "403":
+          description: Cannot access another worker's claim
+        "404":
+          description: Claim not found
+
+  # ── Payouts ─────────────────────────────────────────────────
+  /payouts:
+    get:
+      summary: List payout history for authenticated worker
+      tags: [Payouts]
+      responses:
+        "200":
+          description: Array of payout records
+
+  # ── Workers ─────────────────────────────────────────────────
+  /workers/fcm-token:
+    put:
+      summary: Update FCM device token
+      tags: [Workers]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fcm_token]
+              properties:
+                fcm_token:
+                  type: string
+      responses:
+        "200":
+          description: Token updated
+        "400":
+          description: Missing fcm_token
+
+  # ── Mandates ────────────────────────────────────────────────
+  /mandates:
+    post:
+      summary: Create UPI eNACH mandate
+      tags: [Mandates]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [policy_id, upi_id, max_amount]
+              properties:
+                policy_id:
+                  type: string
+                upi_id:
+                  type: string
+                max_amount:
+                  type: number
+      responses:
+        "201":
+          description: Mandate created
+
+  /mandates/policy/{policyId}:
+    get:
+      summary: Get active mandate for a policy
+      tags: [Mandates]
+      parameters:
+        - in: path
+          name: policyId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Mandate details
+        "404":
+          description: No active mandate
+
+  /mandates/webhook:
+    post:
+      summary: PayU mandate state transition webhook
+      tags: [Mandates]
+      security: []
+      parameters:
+        - in: header
+          name: X-PayU-Signature
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Webhook processed
+        "401":
+          description: Missing signature
+        "403":
+          description: Invalid signature
+
+  # ── Consent (DPDP) ─────────────────────────────────────────
+  /consent:
+    post:
+      summary: Grant consent for a purpose
+      tags: [Consent]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [purpose]
+              properties:
+                purpose:
+                  type: string
+                  enum: [gps_location_tracking, biometric_liveness, proximity_detection, aadhaar_verification, upi_mandate, push_notifications]
+                template_version:
+                  type: string
+      responses:
+        "201":
+          description: Consent granted
+
+    get:
+      summary: List consent receipts
+      tags: [Consent]
+      responses:
+        "200":
+          description: Array of consent receipts
+
+  /consent/{purpose}:
+    delete:
+      summary: Revoke consent
+      tags: [Consent]
+      parameters:
+        - in: path
+          name: purpose
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Consent revoked
+        "404":
+          description: Not found or already revoked
+
+  # ── Reserves ────────────────────────────────────────────────
+  /reserves/balance:
+    get:
+      summary: Get reserve balance and runway estimate
+      tags: [Reserves]
+      responses:
+        "200":
+          description: Balance, income, expense, and runway data
+
+  /reserves/ledger:
+    get:
+      summary: Get recent ledger entries
+      tags: [Reserves]
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 100
+            maximum: 500
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Paginated ledger entries
+
+  /reserves/credit:
+    post:
+      summary: Manual reserve credit (admin only)
+      tags: [Reserves]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount, reference_id]
+              properties:
+                amount:
+                  type: number
+                  minimum: 0.01
+                reference_id:
+                  type: string
+                description:
+                  type: string
+      responses:
+        "200":
+          description: Reserve credited
+
+  # ── Admin ───────────────────────────────────────────────────
+  /admin/breach:
+    post:
+      summary: Report a data breach (DPDP Act 72h notification)
+      tags: [Admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [breach_type, description]
+              properties:
+                breach_type:
+                  type: string
+                description:
+                  type: string
+                affected_data_principals:
+                  type: string
+                severity:
+                  type: string
+                  enum: [low, medium, high, critical]
+      responses:
+        "201":
+          description: Breach recorded

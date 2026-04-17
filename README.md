@@ -476,46 +476,73 @@ A total of 11 core microservices (+3 infrastructure containers) are actively run
 
 ## Getting Started
 
-The following sets up the full Continuum stack locally.
+The following sets up the full Continuum stack locally. For a detailed contributor guide, see `CLAUDE.md`.
 
 ### Prerequisites
 
-* [Flutter SDK](https://docs.flutter.dev/get-started/install) >= 3.19
+* [Flutter SDK](https://docs.flutter.dev/get-started/install) >= 3.8
 * Node.js >= 20.x
 * Python >= 3.11
-* PostgreSQL >= 15
+* Docker & Docker Compose (recommended for full stack)
+* Rust toolchain (for claims_scoring)
+* Go >= 1.21 (for kg_cache)
 
-### 1. Clone the Repository
+### Option A: Full Stack via Docker Compose
 
 ```bash
 git clone https://github.com/your-org/continuum.git
 cd continuum
+cp .env.example .env   # fill in POSTGRES_PASSWORD, JWT_SECRET, etc.
+docker compose up --build
 ```
 
-### 2. Backend Setup
+This starts all 11 services plus PostgreSQL, Redis, Kafka, and Zookeeper.
+
+### Option B: Individual Service Startup
+
+#### Core Backend (Node.js, port 3000)
 
 ```bash
-cd backend
+cd services/core_backend
 npm install
-cp .env.example .env   # configure DB and API keys
-npx prisma migrate dev
-npm run dev            # starts REST API on :3000
+cp .env.example .env   # configure DB, JWT_SECRET, Kafka
+npm run dev
 ```
 
-### 3. Python ML & Oracle Services
+#### Database Migrations (run PostgreSQL before CockroachDB)
 
 ```bash
-cd ml
+# PostgreSQL
+psql -h localhost -U postgres -d continuum
+\i db/migrations/postgres/001_initial_schema.sql
+# ... run all numbered migrations in order
+
+# CockroachDB
+cockroach sql --insecure --database=continuum
+\i db/migrations/cockroachdb/001_initial_schema.sql
+# ... run all numbered migrations in order
+```
+
+#### FastAPI Gateway (Python, port 8000)
+
+```bash
+cd services/fastapi_gateway
 pip install -r requirements.txt
-uvicorn main:app --reload  # FastAPI pricing/fraud service on :8000
+uvicorn main:app --reload
 ```
 
-### 4. Flutter App
+#### Claims Scoring (Rust, port 8080)
 
 ```bash
-cd mobile
+cd services/claims_scoring
+cargo build && cargo run
+```
+
+#### Flutter Mobile App
+
+```bash
 flutter pub get
-flutter run             # targets connected device or emulator
+flutter run
 ```
 
 ---

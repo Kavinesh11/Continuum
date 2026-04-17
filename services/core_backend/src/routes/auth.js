@@ -12,31 +12,43 @@ const router = express.Router();
 const BCRYPT_ROUNDS = 10;
 const POLICY_ELIGIBLE_DELAY_MS = 72 * 60 * 60 * 1000; // 72 hours in ms
 
+const MIN_PASSWORD_LENGTH = 8;
+
 /**
  * POST /auth/register
- * Accept {worker_id, platform, upi_id, tier}, hash password with bcrypt,
+ * Accept {worker_id, platform, upi_id, tier, password}, hash password with bcrypt,
  * insert worker into DB, issue JWT (role: "worker", 24h expiry).
  * Returns {token, expires_at, policy_eligible_from}
+ * Returns HTTP 409 if worker_id already exists.
  */
 router.post('/register', async (req, res, next) => {
   try {
     const { worker_id, platform, upi_id, tier, password } = req.body;
 
-    if (!worker_id || !platform || !upi_id || !tier) {
+    if (!worker_id || !platform || !upi_id || !tier || !password) {
       return res.status(400).json({ error: 'missing_fields' });
     }
 
-    // Hash password (use worker_id as password if none provided, for initial registration)
-    const rawPassword = password || worker_id;
-    const passwordHash = await bcrypt.hash(rawPassword, BCRYPT_ROUNDS);
+    if (typeof password !== 'string' || password.length < MIN_PASSWORD_LENGTH) {
+      return res.status(400).json({
+        error: 'password_too_short',
+        min_length: MIN_PASSWORD_LENGTH,
+      });
+    }
 
-    // Insert worker into DB
-    await db.query(
+    const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+
+    const result = await db.query(
       `INSERT INTO workers (worker_id, platform, tier, upi_id, password_hash, registered_at)
        VALUES ($1, $2, $3, $4, $5, NOW())
-       ON CONFLICT (worker_id) DO NOTHING`,
+       ON CONFLICT (worker_id) DO NOTHING
+       RETURNING worker_id`,
       [worker_id, platform, tier, upi_id, passwordHash]
     );
+
+    if (result.rowCount === 0) {
+      return res.status(409).json({ error: 'worker_already_exists' });
+    }
 
     const now = new Date();
     const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);

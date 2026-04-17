@@ -62,6 +62,15 @@
         "retention.ms": "604800000",
         "cleanup.policy": "delete"
       }
+    },
+    {
+      "name": "adverse_selection_lock",
+      "partitions": 3,
+      "replication-factor": 3,
+      "configs": {
+        "retention.ms": "604800000",
+        "cleanup.policy": "delete"
+      }
     }
   ]
 }
