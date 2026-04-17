@@ -1,8 +1,11 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
+#[cfg(unix)]
+use anyhow::Context;
 use serde::{Deserialize, Serialize};
 use tracing::{error, info};
 
 /// JSON-RPC request sent to the Python Isolation Forest sidecar
+#[cfg(unix)]
 #[derive(Debug, Serialize)]
 struct IsolationForestRequest {
     jsonrpc: &'static str,
@@ -11,18 +14,21 @@ struct IsolationForestRequest {
     id: u64,
 }
 
+#[cfg(unix)]
 #[derive(Debug, Serialize)]
 struct IsolationForestParams {
     feature_vector: [f64; 6],
 }
 
 /// JSON-RPC response from the Python sidecar
+#[cfg(unix)]
 #[derive(Debug, Deserialize)]
 struct IsolationForestResponse {
     result: Option<IsolationForestResult>,
     error: Option<serde_json::Value>,
 }
 
+#[cfg(unix)]
 #[derive(Debug, Deserialize)]
 struct IsolationForestResult {
     fraud_score: f64,
