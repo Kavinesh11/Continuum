@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
-import '../services/api_service.dart';
+import '../../theme/app_theme.dart';
+import '../../services/api_service.dart';
 
 class PolicyScreen extends StatefulWidget {
   const PolicyScreen({Key? key}) : super(key: key);
@@ -56,48 +56,7 @@ class _PolicyScreenState extends State<PolicyScreen> {
         .cast<Map<String, dynamic>>();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('CONTINUUM'),
-        leading: GestureDetector(
-          onTap: () => Navigator.pushNamed(context, '/profile'),
-          child: Padding(
-            padding: const EdgeInsets.all(10.0),
-            child: Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: AppTheme.accentGradient,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.primary.withOpacity(0.3),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: const Center(
-                child: Icon(Icons.person, color: Colors.white, size: 18),
-              ),
-            ),
-          ),
-        ),
-        actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 8),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Theme.of(context).scaffoldBackgroundColor,
-            ),
-            child: IconButton(
-              onPressed: () {},
-              icon: Icon(
-                Icons.notifications_none_rounded,
-                color: AppTheme.textSecondaryOf(context),
-                size: 22,
-              ),
-            ),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('My Policy')),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -176,7 +135,7 @@ class _PolicyScreenState extends State<PolicyScreen> {
                 ),
                 child: Text(
                   badge,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
@@ -187,7 +146,7 @@ class _PolicyScreenState extends State<PolicyScreen> {
               const SizedBox(height: 14),
               Text(
                 title,
-                style: TextStyle(
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
@@ -269,12 +228,14 @@ class _PolicyScreenState extends State<PolicyScreen> {
                     children: [
                       Icon(icon, size: 16, color: AppTheme.primary),
                       const SizedBox(width: 6),
-                      Text(
-                        title,
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                          color: AppTheme.textPrimaryOf(context),
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: AppTheme.textPrimaryOf(context),
+                          ),
                         ),
                       ),
                     ],

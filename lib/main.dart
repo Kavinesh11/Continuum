@@ -5,14 +5,14 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'theme/app_theme.dart';
 import 'theme/theme_provider.dart';
 import 'routes/app_routes.dart';
-import 'screens/login.dart';
-import 'screens/home_shell.dart';
-import 'screens/profile.dart';
-import 'screens/edit_profile.dart';
-import 'screens/payments.dart';
-import 'screens/apply_form.dart';
-import 'screens/policy.dart';
-import 'screens/status_tracker.dart';
+import 'screens/new/login.dart';
+import 'screens/new/home_shell.dart';
+import 'screens/new/profile.dart';
+import 'screens/new/edit_profile.dart';
+import 'screens/new/payments.dart';
+import 'screens/new/apply_form.dart';
+import 'screens/new/policy.dart';
+import 'screens/new/status_tracker.dart';
 import 'sandbox/sandbox_selector_screen.dart';
 import 'services/api_service.dart';
 
@@ -26,8 +26,8 @@ Future<void> _registerFcmToken() async {
     if (token == null) return;
     final valid = await ApiService().isTokenValid();
     if (!valid) return;
-    // Worker ID would come from secure storage in a real app; use placeholder
-    await ApiService().registerFcmToken('current_worker', token);
+    final workerId = await ApiService().getCurrentWorkerId();
+    await ApiService().registerFcmToken(workerId, token);
   } catch (_) {
     // FCM unavailable (web/desktop) — ignore gracefully
   }
@@ -95,6 +95,7 @@ class _ContinuumAppState extends State<ContinuumApp> {
             AppRoutes.claimStatus: (context) => const StatusTrackerScreen(),
             AppRoutes.profile: (context) => const ProfileScreen(),
             AppRoutes.policy: (context) => const PolicyScreen(),
+            AppRoutes.planDetails: (context) => const PolicyScreen(),
             AppRoutes.editProfile: (context) => const EditProfileScreen(),
             AppRoutes.payments: (context) => const PaymentsScreen(),
           },

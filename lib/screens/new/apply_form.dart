@@ -5,12 +5,13 @@ import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
 import 'package:uuid/uuid.dart';
-import '../routes/app_routes.dart';
-import '../theme/app_theme.dart';
-import '../services/api_service.dart';
+import '../../routes/app_routes.dart';
+import '../../theme/app_theme.dart';
+import '../../services/api_service.dart';
 
 class ApplyFormScreen extends StatefulWidget {
-  const ApplyFormScreen({Key? key}) : super(key: key);
+  final Map<String, dynamic>? existingClaim;
+  const ApplyFormScreen({Key? key, this.existingClaim}) : super(key: key);
 
   @override
   State<ApplyFormScreen> createState() => _ApplyFormScreenState();
@@ -18,11 +19,11 @@ class ApplyFormScreen extends StatefulWidget {
 
 class _ApplyFormScreenState extends State<ApplyFormScreen> {
   static const List<String> _claimReasons = [
-    'Accident',
+    'Select a reason',
+    'Heavy Rain / Waterlogging',
+    'App Outage (Swiggy / Zomato)',
+    'Network Failure',
     'Vehicle Breakdown',
-    'Medical Emergency',
-    'Weather Disruption',
-    'Platform Outage',
   ];
 
   late String _selectedReason;
@@ -38,9 +39,23 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedReason = _claimReasons.first;
-    _dateController = TextEditingController();
-    _descriptionController = TextEditingController();
+    String presetReason = widget.existingClaim?['title'] ?? _claimReasons[0];
+    if (!_claimReasons.contains(presetReason)) {
+      presetReason = _claimReasons[0];
+    }
+    _selectedReason = presetReason;
+
+    _dateController = TextEditingController(
+      text: widget.existingClaim?['date'] ?? '',
+    );
+    // If the mock didn't specify description, initialize blank
+    _descriptionController = TextEditingController(
+      text:
+          widget.existingClaim?['claim_description'] ==
+              'Submitted via Apply Form'
+          ? ''
+          : (widget.existingClaim?['claim_description'] ?? ''),
+    );
   }
 
   @override
@@ -54,14 +69,15 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('New Claim')),
+      appBar: AppBar(
+        title: Text(widget.existingClaim != null ? 'Edit Claim' : 'New Claim'),
+      ),
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildStepIndicator(),
               const SizedBox(height: 20),
               Container(
                 padding: const EdgeInsets.all(18),
@@ -166,18 +182,20 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
                             color: Colors.white,
                           ),
                         )
-                      : const Row(
+                      : Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(
+                            const Icon(
                               Icons.send_rounded,
                               color: Colors.white,
                               size: 18,
                             ),
-                            SizedBox(width: 10),
+                            const SizedBox(width: 10),
                             Text(
-                              'Submit Claim',
-                              style: TextStyle(
+                              widget.existingClaim != null
+                                  ? 'Update Claim'
+                                  : 'Submit Claim',
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w700,
                                 fontSize: 16,
@@ -192,26 +210,6 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildStepIndicator() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(3, (i) {
-        final isActive = i == 0;
-        return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 4),
-          width: isActive ? 28 : 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: isActive
-                ? AppTheme.primary
-                : AppTheme.primary.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(4),
-          ),
-        );
-      }),
     );
   }
 
@@ -541,6 +539,28 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
                         ),
                       ),
                       GestureDetector(
+                        onTap: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Playing audio placeholder...'),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.play_arrow_rounded,
+                            color: AppTheme.primary,
+                            size: 16,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      GestureDetector(
                         onTap: () => setState(() => _audioPaths.removeAt(i)),
                         child: Container(
                           padding: const EdgeInsets.all(4),
@@ -592,23 +612,20 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
         'worker_id': workerId,
         'event_type': _selectedReason,
         'event_timestamp': DateTime.now().toIso8601String(),
+        'verification_message': _descriptionController.text.trim(),
+        'claim_description': _descriptionController.text.trim(),
         'gps_coordinates': [0.0, 0.0],
         'zone_id': 'default',
-        'device_attestation_token': 'mock_token',
+        'device_attestation_token': 'mobile_app',
       };
 
       final result = await ApiService().submitClaim(payload);
       if (!mounted) return;
-
-      if (result.containsKey('claim_id') || result.containsKey('status')) {
-        Navigator.pushReplacementNamed(
-          context,
-          AppRoutes.claimStatus,
-          arguments: result['claim_id'] ?? claimId,
-        );
-      } else {
-        _showSubmitError('Claim submission failed. Please try again.');
-      }
+      Navigator.pushReplacementNamed(
+        context,
+        AppRoutes.claimStatus,
+        arguments: (result['claim_id'] ?? claimId).toString(),
+      );
     } on ServerException {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -622,21 +639,16 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
       );
     } catch (_) {
       if (!mounted) return;
-      _showSubmitError('Network error. Please check your connection.');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Network error. Please check your connection.'),
+          backgroundColor: AppTheme.dangerRed,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
-  }
-
-  void _showSubmitError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: AppTheme.dangerRed,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
   }
 
   Future<void> _capturePhoto() async {

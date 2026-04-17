@@ -1,0 +1,2 @@
+ALTER TABLE IF EXISTS claims
+ADD COLUMN IF NOT EXISTS claim_description STRING;

@@ -1,8 +1,7 @@
-import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
-import '../services/api_service.dart';
+import '../../theme/app_theme.dart';
+import '../../services/api_service.dart';
 
 class StatusTrackerScreen extends StatefulWidget {
   const StatusTrackerScreen({Key? key}) : super(key: key);
@@ -14,30 +13,40 @@ class StatusTrackerScreen extends StatefulWidget {
 class _StatusTrackerScreenState extends State<StatusTrackerScreen> {
   Map<String, dynamic>? _liveData;
   bool _isLoading = true;
-  String? _claimId;
   bool _invalidClaim = false;
-  Timer? _pollTimer;
+  String? _claimId;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (_claimId != null || _invalidClaim) return;
+
     final args = ModalRoute.of(context)?.settings.arguments;
-    if (args is String && _claimId == null) {
+    if (args is String && args.isNotEmpty) {
       _claimId = args;
       _loadStatus();
-    } else if (_claimId == null) {
-      setState(() {
-        _isLoading = false;
-        _invalidClaim = true;
-      });
+      return;
     }
+    if (args is Map<String, dynamic>) {
+      final id = args['id']?.toString() ?? args['claimId']?.toString();
+      if (id != null && id.isNotEmpty) {
+        _claimId = id;
+        _loadStatus();
+        return;
+      }
+      _liveData = args;
+      _isLoading = false;
+      return;
+    }
+
+    setState(() {
+      _isLoading = false;
+      _invalidClaim = true;
+    });
   }
 
   Future<void> _loadStatus() async {
-    if (_claimId == null) {
-      setState(() => _isLoading = false);
-      return;
-    }
+    if (_claimId == null) return;
     try {
       final result = await ApiService().getClaimStatus(_claimId!);
       if (!mounted) return;
@@ -45,7 +54,6 @@ class _StatusTrackerScreenState extends State<StatusTrackerScreen> {
         _liveData = result;
         _isLoading = false;
       });
-      _maybeStartPolling(result['status'] as String?);
     } on ServerException {
       if (!mounted) return;
       setState(() {
@@ -68,51 +76,116 @@ class _StatusTrackerScreenState extends State<StatusTrackerScreen> {
     }
   }
 
-  void _maybeStartPolling(String? status) {
-    _pollTimer?.cancel();
-    if (status == 'processing') {
-      _pollTimer = Timer.periodic(const Duration(seconds: 30), (_) {
-        _loadStatus();
-      });
-    }
-  }
+  Map<String, dynamic> _buildDisplayData(dynamic args) {
+    final mapArgs = args is Map<String, dynamic> ? args : null;
+    final source = _liveData ?? mapArgs ?? const <String, dynamic>{};
+    final statusRaw = (source['status'] ?? mapArgs?['status'] ?? 'processing')
+        .toString();
+    final status = statusRaw.toLowerCase() == 'approved'
+        ? 'Approved'
+        : (statusRaw.toLowerCase() == 'rejected' ? 'Rejected' : 'Under Review');
+    final amount =
+        (source['estimated_payout'] ??
+                source['expectedPayout'] ??
+                mapArgs?['amount'] ??
+                0)
+            .toString();
+    final claimId =
+        (source['claim_id'] ??
+                source['id'] ??
+                mapArgs?['id'] ??
+                _claimId ??
+                'N/A')
+            .toString();
+    final stages = (source['stages'] as List<dynamic>? ?? const [])
+        .cast<Map<String, dynamic>>();
 
-  @override
-  void dispose() {
-    _pollTimer?.cancel();
-    super.dispose();
+    final mappedStages = stages.isNotEmpty
+        ? stages
+              .map(
+                (s) => {
+                  'name': (s['name'] ?? '').toString().toUpperCase(),
+                  'time': (s['time'] ?? '').toString().isEmpty
+                      ? ((s['completed'] == true) ? 'Completed' : 'Pending')
+                      : (s['time']).toString(),
+                  'complete': s['completed'] == true,
+                },
+              )
+              .toList()
+        : [
+            {'name': 'SUBMITTED', 'time': 'Completed', 'complete': true},
+            {
+              'name': 'REVIEW',
+              'time': status == 'Under Review' ? 'In Progress' : 'Done',
+              'complete': true,
+            },
+            {
+              'name': 'APPROVED',
+              'time': status == 'Approved' ? 'Done' : 'Pending',
+              'complete': status == 'Approved',
+            },
+            {
+              'name': 'PAYOUT',
+              'time': status == 'Approved' ? 'Processing' : 'Pending',
+              'complete': false,
+            },
+          ];
+
+    return {
+      'claimId': claimId,
+      'status': status,
+      'isAuto': mapArgs?['isAuto'] == true,
+      'isApproved': status == 'Approved',
+      'reason':
+          (source['event_type'] ??
+                  source['title'] ??
+                  source['reason'] ??
+                  'Claim')
+              .toString(),
+      'claim_description':
+          (source['claim_description'] ??
+                  source['verification_message'] ??
+                  source['claim_description'] ??
+                  'No description provided')
+              .toString(),
+      'expectedPayout': amount,
+      'timelineText':
+          (source['timelineText'] ??
+                  source['timeline_text'] ??
+                  (status == 'Approved'
+                      ? 'Within 1 business day'
+                      : '2-3 business days'))
+              .toString(),
+      'verificationMessage':
+          (source['verificationMessage'] ??
+                  source['verification_message'] ??
+                  (status == 'Approved'
+                      ? 'Verification complete'
+                      : 'We are verifying your details'))
+              .toString(),
+      'stages': mappedStages,
+    };
   }
 
   @override
   Widget build(BuildContext context) {
-    final data = _liveData;
-    final stages = (data?['stages'] as List<dynamic>? ?? [])
+    final args = ModalRoute.of(context)?.settings.arguments;
+    final data = _buildDisplayData(args);
+    final stages = (data['stages'] as List<dynamic>)
         .cast<Map<String, dynamic>>();
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('CONTINUUM'),
-        leading: GestureDetector(
-          onTap: () => Navigator.pushNamed(context, '/profile'),
-          child: Padding(
-            padding: const EdgeInsets.all(10.0),
-            child: Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: AppTheme.accentGradient,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.primary.withOpacity(0.3),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: const Center(
-                child: Icon(Icons.person, color: Colors.white, size: 18),
-              ),
-            ),
-          ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          onPressed: () {
+            if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            } else {
+              Navigator.of(context).pushReplacementNamed('/home');
+            }
+          },
         ),
         actions: [
           Container(
@@ -141,36 +214,11 @@ class _StatusTrackerScreenState extends State<StatusTrackerScreen> {
                 ? Center(
                     child: Padding(
                       padding: const EdgeInsets.all(20),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.error_outline_rounded,
-                            size: 40,
-                            color: AppTheme.warningOrange,
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'Invalid claim reference. Please open status from a specific claim.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: AppTheme.textSecondaryOf(context),
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                : data == null
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
                       child: Text(
-                        'Unable to load claim status right now.',
+                        'Invalid claim reference. Open status from a specific claim.',
+                        textAlign: TextAlign.center,
                         style: TextStyle(
                           color: AppTheme.textSecondaryOf(context),
-                          fontSize: 14,
                         ),
                       ),
                     ),
@@ -185,6 +233,8 @@ class _StatusTrackerScreenState extends State<StatusTrackerScreen> {
                           const SizedBox(height: 22),
                           _buildProgressCard(context, stages),
                           const SizedBox(height: 22),
+                          _buildClaimDetailsCard(context, data),
+                          const SizedBox(height: 16),
                           _buildPayoutCard(context, data),
                           const SizedBox(height: 16),
                           _buildTimelineCard(context, data),
@@ -202,19 +252,37 @@ class _StatusTrackerScreenState extends State<StatusTrackerScreen> {
   }
 
   Widget _buildStatusHeader(BuildContext context, Map<String, dynamic> data) {
+    final status = data['status'] as String;
+    final isAuto = data['isAuto'] as bool;
+    final isApproved = data['isApproved'] as bool;
+
+    List<Color> gradientColors;
+    Color shadowColor;
+
+    if (isAuto || status == 'Auto-Approved') {
+      gradientColors = const [Color(0xFF8B5CF6), Color(0xFF6366F1)];
+      shadowColor = const Color(0xFF8B5CF6);
+    } else if (isApproved || status == 'Approved') {
+      gradientColors = const [AppTheme.successGreen, Color(0xFF059669)];
+      shadowColor = AppTheme.successGreen;
+    } else {
+      gradientColors = const [AppTheme.warningOrange, Color(0xFFE67E22)];
+      shadowColor = AppTheme.warningOrange;
+    }
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFF59E0B), Color(0xFFE67E22)],
+        gradient: LinearGradient(
+          colors: gradientColors,
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(AppTheme.radiusLg),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFF59E0B).withOpacity(0.3),
+            color: shadowColor.withOpacity(0.3),
             blurRadius: 14,
             offset: const Offset(0, 6),
           ),
@@ -224,7 +292,7 @@ class _StatusTrackerScreenState extends State<StatusTrackerScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'CLAIM ${data['claimId'] ?? data['claim_id'] ?? '—'}',
+            'CLAIM ${data['claimId']}',
             style: TextStyle(
               color: Colors.white.withOpacity(0.7),
               fontSize: 11,
@@ -234,7 +302,7 @@ class _StatusTrackerScreenState extends State<StatusTrackerScreen> {
           ),
           const SizedBox(height: 10),
           Text(
-            (data['status'] as String? ?? 'Processing').toUpperCase(),
+            data['status'] as String,
             style: const TextStyle(
               color: Colors.white,
               fontSize: 24,
@@ -288,17 +356,17 @@ class _StatusTrackerScreenState extends State<StatusTrackerScreen> {
       children: stages.asMap().entries.map((entry) {
         final idx = entry.key;
         final stage = entry.value;
-        final isComplete = stage['complete'] as bool? ?? false;
+        final isComplete = stage['complete'] as bool;
 
         final leftLineColor = idx == 0
             ? Colors.transparent
-            : (stages[idx]['complete'] as bool? ?? false
+            : (stages[idx]['complete'] as bool
                   ? AppTheme.primary
                   : AppTheme.dividerOf(context));
 
         final rightLineColor = idx == stages.length - 1
             ? Colors.transparent
-            : ((stages[idx + 1]['complete'] as bool? ?? false)
+            : ((stages[idx + 1]['complete'] as bool)
                   ? AppTheme.primary
                   : AppTheme.dividerOf(context));
 
@@ -314,7 +382,7 @@ class _StatusTrackerScreenState extends State<StatusTrackerScreen> {
               ),
               const SizedBox(height: 12),
               Text(
-                stage['name'] as String? ?? '',
+                stage['name'] as String,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 10,
@@ -327,7 +395,7 @@ class _StatusTrackerScreenState extends State<StatusTrackerScreen> {
               ),
               const SizedBox(height: 3),
               Text(
-                stage['time'] as String? ?? '',
+                stage['time'] as String,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 10,
@@ -346,7 +414,7 @@ class _StatusTrackerScreenState extends State<StatusTrackerScreen> {
     Map<String, dynamic> stage,
     int index,
   ) {
-    final isComplete = stage['complete'] as bool? ?? false;
+    final isComplete = stage['complete'] as bool;
     const size = 38.0;
 
     return Container(
@@ -381,11 +449,6 @@ class _StatusTrackerScreenState extends State<StatusTrackerScreen> {
   }
 
   Widget _buildPayoutCard(BuildContext context, Map<String, dynamic> data) {
-    final payout =
-        data['expectedPayout'] ??
-        data['estimated_payout'] ??
-        data['amount'] ??
-        '—';
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -421,7 +484,7 @@ class _StatusTrackerScreenState extends State<StatusTrackerScreen> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    '₹ $payout',
+                    '₹ ${data['expectedPayout']}',
                     style: const TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.w800,
@@ -430,6 +493,7 @@ class _StatusTrackerScreenState extends State<StatusTrackerScreen> {
                   ),
                 ],
               ),
+              // Glassmorphic icon container
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: BackdropFilter(
@@ -456,9 +520,67 @@ class _StatusTrackerScreenState extends State<StatusTrackerScreen> {
     );
   }
 
+  Widget _buildClaimDetailsCard(
+    BuildContext context,
+    Map<String, dynamic> data,
+  ) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: AppTheme.cardDecorationOf(context),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Claim Details',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.textPrimaryOf(context),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Reason',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.textSecondaryOf(context),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            data['reason'] as String,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textPrimaryOf(context),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'claim_description',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.textSecondaryOf(context),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            data['claim_description'] as String,
+            style: TextStyle(
+              fontSize: 13,
+              color: AppTheme.textPrimaryOf(context),
+              height: 1.4,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildTimelineCard(BuildContext context, Map<String, dynamic> data) {
-    final timeline =
-        data['timelineText'] ?? data['timeline'] ?? 'Pending review';
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: AppTheme.cardDecorationOf(context),
@@ -490,7 +612,7 @@ class _StatusTrackerScreenState extends State<StatusTrackerScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                timeline.toString(),
+                data['timelineText'] as String,
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
@@ -508,10 +630,6 @@ class _StatusTrackerScreenState extends State<StatusTrackerScreen> {
     BuildContext context,
     Map<String, dynamic> data,
   ) {
-    final msg =
-        data['verificationMessage'] ??
-        data['verification_message'] ??
-        'Verification in progress';
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -555,7 +673,7 @@ class _StatusTrackerScreenState extends State<StatusTrackerScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  msg.toString(),
+                  data['verificationMessage'] as String,
                   style: TextStyle(
                     fontSize: 12,
                     color: AppTheme.textSecondaryOf(context),
