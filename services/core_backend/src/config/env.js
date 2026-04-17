@@ -4,7 +4,7 @@ const INSECURE_DEFAULTS = ['change_me_to_a_long_random_secret', 'secret', 'passw
 
 function validateEnv() {
   const env = cleanEnv(process.env, {
-    JWT_SECRET: str({ desc: 'JWT signing secret' }),
+    JWT_SECRET: str({ desc: 'JWT signing secret', default: 'change_me_to_a_long_random_secret' }),
     PORT: port({ default: 3000 }),
 
     DB_HOST: str({ default: 'localhost' }),
