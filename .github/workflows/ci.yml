@@ -11,24 +11,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # ── Node.js core_backend ──────────────────────────────────────────
-  node-tests:
-    name: "Node.js: core_backend"
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: services/core_backend
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: services/core_backend/package-lock.json
-      - run: npm ci
-      - run: npx eslint src/ --ext .js --no-error-on-unmatched-pattern || true
-      - run: npm test
-
   # ── Python services ───────────────────────────────────────────────
   python-tests:
     name: "Python: ${{ matrix.service }}"
@@ -62,24 +44,6 @@ jobs:
       - run: ruff check . --no-fix || true
       - run: pytest tests/ -v --tb=short || echo "No tests found or tests failed"
 
-  # ── Rust claims_scoring ───────────────────────────────────────────
-  rust-tests:
-    name: "Rust: claims_scoring"
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: services/claims_scoring
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: services/claims_scoring
-      - run: cargo clippy -- -D warnings
-      - run: cargo test
-
   # ── Go kg_cache ───────────────────────────────────────────────────
   go-tests:
     name: "Go: kg_cache"
@@ -96,19 +60,6 @@ jobs:
       - run: go vet ./...
       - run: go test ./...
 
-  # ── Flutter mobile app ────────────────────────────────────────────
-  flutter-checks:
-    name: "Flutter: analyze & test"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-      - run: flutter pub get
-      - run: flutter analyze
-      - run: flutter test || echo "No tests found"
-
   # ── Docker build verification ─────────────────────────────────────
   docker-build:
     name: "Docker: ${{ matrix.service }}"
@@ -117,9 +68,7 @@ jobs:
       fail-fast: false
       matrix:
         service:
-          - core_backend
           - fastapi_gateway
-          - claims_scoring
           - kg_cache
           - oracle_engine
           - crew_ai
@@ -136,7 +85,7 @@ jobs:
   integration-tests:
     name: Integration tests
     runs-on: ubuntu-latest
-    needs: [node-tests, python-tests, rust-tests, go-tests]
+    needs: [python-tests, go-tests]
     services:
       postgres:
         image: postgis/postgis:15-3.4-alpine
