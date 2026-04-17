@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
+import '../../services/api_service.dart';
+import '../../theme/app_theme.dart';
+import '../../widgets/notification_action.dart';
 
 class AssistsScreen extends StatefulWidget {
   const AssistsScreen({Key? key}) : super(key: key);
@@ -9,31 +11,118 @@ class AssistsScreen extends StatefulWidget {
 }
 
 class _AssistsScreenState extends State<AssistsScreen> {
+  final ApiService _api = ApiService();
   final TextEditingController _messageController = TextEditingController();
+  final List<Map<String, dynamic>> _messages = [];
+  bool _isLoading = true;
+  bool _isSending = false;
+  String? _error;
 
-  final List<Map<String, dynamic>> _messages = [
-    {
-      'text': 'Hi there! I am Continuum Assist. How can I help you today?',
-      'isBot': true,
-      'time': '10:00 AM',
-    },
-    {
-      'text': 'What is my current expected payout?',
-      'isBot': false,
-      'time': '10:01 AM',
-    },
-    {
-      'text':
-          'Based on your latest shifts, your expected payout is ₹2,850. Would you like to view detailed earnings?',
-      'isBot': true,
-      'time': '10:01 AM',
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadMessages();
+  }
 
   @override
   void dispose() {
     _messageController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadMessages() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final items = await _api.getAssistMessages();
+      if (!mounted) return;
+
+      _messages
+        ..clear()
+        ..addAll(items.map(_mapMessage));
+
+      setState(() {
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _error = 'Unable to load assist messages';
+      });
+    }
+  }
+
+  Map<String, dynamic> _mapMessage(Map<String, dynamic> raw) {
+    final role = (raw['role'] ?? raw['sender'] ?? 'assistant').toString();
+    final isBot = role != 'user';
+    final text = (raw['text'] ?? raw['message'] ?? raw['content'] ?? '')
+        .toString();
+    final timeRaw = raw['time'] ?? raw['created_at'] ?? raw['timestamp'];
+
+    String timeLabel;
+    if (timeRaw == null) {
+      final now = DateTime.now();
+      timeLabel = _hhmm(now);
+    } else {
+      final parsed = DateTime.tryParse(timeRaw.toString());
+      if (parsed != null) {
+        timeLabel = _hhmm(parsed.toLocal());
+      } else {
+        timeLabel = timeRaw.toString();
+      }
+    }
+
+    return {'text': text, 'isBot': isBot, 'time': timeLabel};
+  }
+
+  String _hhmm(DateTime dt) {
+    final h = dt.hour.toString().padLeft(2, '0');
+    final m = dt.minute.toString().padLeft(2, '0');
+    return '$h:$m';
+  }
+
+  Future<void> _sendMessage() async {
+    final text = _messageController.text.trim();
+    if (text.isEmpty || _isSending) return;
+
+    final now = TimeOfDay.now().format(context);
+    setState(() {
+      _isSending = true;
+      _messages.add({'text': text, 'isBot': false, 'time': now});
+      _messageController.clear();
+    });
+
+    try {
+      final response = await _api.sendAssistMessage(text);
+      if (!mounted) return;
+
+      final reply =
+          (response['reply'] ??
+                  response['response'] ??
+                  response['message'] ??
+                  '')
+              .toString()
+              .trim();
+      if (reply.isNotEmpty) {
+        final replyTime = TimeOfDay.now().format(context);
+        setState(() {
+          _messages.add({'text': reply, 'isBot': true, 'time': replyTime});
+        });
+      }
+
+      setState(() {
+        _isSending = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isSending = false;
+      });
+    }
   }
 
   @override
@@ -63,40 +152,41 @@ class _AssistsScreenState extends State<AssistsScreen> {
             ),
           ),
         ),
-        actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 8),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Theme.of(context).scaffoldBackgroundColor,
-            ),
-            child: IconButton(
-              onPressed: () {},
-              icon: Icon(
-                Icons.notifications_none_rounded,
-                color: AppTheme.textSecondaryOf(context),
-                size: 22,
-              ),
-            ),
-          ),
-        ],
+        actions: [const NotificationAction()],
       ),
       body: Column(
         children: [
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16.0),
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                final msg = _messages[index];
-                return _buildMessageBubble(
-                  context: context,
-                  text: msg['text'] as String,
-                  isBot: msg['isBot'] as bool,
-                  time: msg['time'] as String,
-                );
-              },
-            ),
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _messages.isEmpty
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Text(
+                        _error ?? 'No assist messages yet',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: AppTheme.textSecondaryOf(context),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16.0),
+                    itemCount: _messages.length,
+                    itemBuilder: (context, index) {
+                      final msg = _messages[index];
+                      return _buildMessageBubble(
+                        context: context,
+                        text: msg['text'] as String,
+                        isBot: msg['isBot'] as bool,
+                        time: msg['time'] as String,
+                      );
+                    },
+                  ),
           ),
           _buildChatInput(context),
         ],
@@ -232,7 +322,7 @@ class _AssistsScreenState extends State<AssistsScreen> {
               boxShadow: AppTheme.primaryGlow(0.2),
             ),
             child: IconButton(
-              onPressed: () {},
+              onPressed: _isLoading ? null : _sendMessage,
               icon: const Icon(Icons.send_rounded, color: Colors.white),
             ),
           ),

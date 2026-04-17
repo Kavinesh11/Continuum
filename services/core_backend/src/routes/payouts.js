@@ -64,10 +64,12 @@ async function createPayoutWithOCC(payoutData) {
 
     const result = await client.query(
       `INSERT INTO payouts
-         (payout_id, worker_id, claim_id, policy_id, amount,
-          oracle_votes, zone_id, tier, payu_txn_ref, status, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
-       RETURNING *`,
+        (payout_id, worker_id, claim_id, policy_id, amount,
+        oracle_votes, zone_id, tier, payu_txn_ref, status, disbursed_at, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+            CASE WHEN $10 = 'disbursed' THEN NOW() ELSE NULL END,
+            NOW())
+      RETURNING *`,
       [
         payoutId,
         payoutData.worker_id,
@@ -139,6 +141,81 @@ router.get('/', authenticate, requireRole('worker'), async (req, res, next) => {
     }));
 
     return res.status(200).json(payouts);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/', authenticate, requireRole('worker', 'admin'), async (req, res, next) => {
+  try {
+    const {
+      worker_id,
+      claim_id,
+      policy_id,
+      amount,
+      oracle_votes,
+      zone_id,
+      tier,
+      payu_txn_ref,
+      status
+    } = req.body;
+
+    if (!worker_id || !claim_id || !policy_id || amount == null || !zone_id || !tier) {
+      return res.status(400).json({ error: 'missing_fields' });
+    }
+
+    if (req.user.role === 'worker' && req.user.worker_id !== worker_id) {
+      return res.status(403).json({ error: 'insufficient_role' });
+    }
+
+    const created = await createPayoutWithOCC({
+      worker_id, claim_id, policy_id, amount, oracle_votes, zone_id, tier, payu_txn_ref, status
+    });
+
+    if (!created) return res.status(409).json({ error: 'duplicate_payout' });
+    return res.status(201).json(created);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.put('/:id', authenticate, requireRole('worker', 'admin', 'insurer'), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status, payu_txn_ref } = req.body;
+
+    const existing = await db.query(`SELECT worker_id FROM payouts WHERE payout_id = $1`, [id]);
+    if (existing.rows.length === 0) return res.status(404).json({ error: 'not_found' });
+    if (req.user.role === 'worker' && existing.rows[0].worker_id !== req.user.worker_id) {
+      return res.status(403).json({ error: 'insufficient_role' });
+    }
+
+    await db.query(
+      `UPDATE payouts
+       SET status = COALESCE($1, status),
+           payu_txn_ref = COALESCE($2, payu_txn_ref),
+           disbursed_at = CASE WHEN COALESCE($1, status) = 'disbursed' THEN NOW() ELSE disbursed_at END
+       WHERE payout_id = $3`,
+      [status, payu_txn_ref, id]
+    );
+
+    return res.status(200).json({ updated: true, payout_id: id });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete('/:id', authenticate, requireRole('worker', 'admin'), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const existing = await db.query(`SELECT worker_id FROM payouts WHERE payout_id = $1`, [id]);
+    if (existing.rows.length === 0) return res.status(404).json({ error: 'not_found' });
+    if (req.user.role === 'worker' && existing.rows[0].worker_id !== req.user.worker_id) {
+      return res.status(403).json({ error: 'insufficient_role' });
+    }
+
+    await db.query(`DELETE FROM payouts WHERE payout_id = $1`, [id]);
+    return res.status(200).json({ deleted: true, payout_id: id });
   } catch (err) {
     next(err);
   }

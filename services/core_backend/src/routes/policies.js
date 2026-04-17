@@ -118,6 +118,76 @@ router.post('/', authenticate, requireRole('worker'), async (req, res, next) => 
   }
 });
 
+router.get('/content', authenticate, requireRole('worker', 'admin', 'insurer'), async (req, res, next) => {
+  try {
+    const result = await db.query(
+      `SELECT section_id, number, title, icon_key, body
+       FROM policy_content
+       ORDER BY number ASC`
+    );
+
+    return res.status(200).json({
+      hero: {
+        badge: 'COMPREHENSIVE',
+        title: 'Gig Worker Protection Plan',
+        subtitle: 'Complete coverage for disruptions, outages, and accidents on platform.'
+      },
+      sections: result.rows
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/content', authenticate, requireRole('admin', 'insurer'), async (req, res, next) => {
+  try {
+    const { number, title, icon_key, body } = req.body;
+    if (!number || !title || !icon_key || !body) return res.status(400).json({ error: 'missing_fields' });
+
+    const row = await db.query(
+      `INSERT INTO policy_content (section_id, number, title, icon_key, body)
+       VALUES (gen_random_uuid(), $1, $2, $3, $4)
+       RETURNING section_id, number, title, icon_key, body`,
+      [number, title, icon_key, body]
+    );
+
+    return res.status(201).json(row.rows[0]);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.put('/content/:sectionId', authenticate, requireRole('admin', 'insurer'), async (req, res, next) => {
+  try {
+    const { sectionId } = req.params;
+    const { number, title, icon_key, body } = req.body;
+
+    await db.query(
+      `UPDATE policy_content
+       SET number = COALESCE($1, number),
+           title = COALESCE($2, title),
+           icon_key = COALESCE($3, icon_key),
+           body = COALESCE($4, body)
+       WHERE section_id = $5`,
+      [number, title, icon_key, body, sectionId]
+    );
+
+    return res.status(200).json({ updated: true, section_id: sectionId });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete('/content/:sectionId', authenticate, requireRole('admin', 'insurer'), async (req, res, next) => {
+  try {
+    const { sectionId } = req.params;
+    await db.query(`DELETE FROM policy_content WHERE section_id = $1`, [sectionId]);
+    return res.status(200).json({ deleted: true, section_id: sectionId });
+  } catch (err) {
+    next(err);
+  }
+});
+
 /**
  * GET /policies/:id
  * Retrieve a policy by ID. Worker can only access their own policy.

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../routes/app_routes.dart';
-import '../data/mock_data.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 
@@ -13,7 +12,6 @@ class ClaimsScreen extends StatefulWidget {
 
 class _ClaimsScreenState extends State<ClaimsScreen> {
   String _selectedFilter = 'All';
-  bool _isOffline = false;
   bool _isLoading = true;
   List<Map<String, dynamic>> _liveClaims = [];
 
@@ -30,13 +28,11 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
       if (!mounted) return;
       setState(() {
         _liveClaims = claims;
-        _isOffline = false;
         _isLoading = false;
       });
     } on ServerException {
       if (!mounted) return;
       setState(() {
-        _isOffline = true;
         _isLoading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
@@ -51,7 +47,6 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _isOffline = true;
         _isLoading = false;
       });
     }
@@ -104,26 +99,6 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
       ),
       body: Column(
         children: [
-          if (_isOffline)
-            Container(
-              width: double.infinity,
-              color: Colors.amber.shade700,
-              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
-              child: const Row(
-                children: [
-                  Icon(Icons.wifi_off_rounded, color: Colors.white, size: 16),
-                  SizedBox(width: 8),
-                  Text(
-                    'Offline — showing cached data',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
@@ -206,12 +181,19 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
   }
 
   Widget _buildSummaryPills() {
+    final total = _liveClaims.length;
+    final approved = _liveClaims
+        .where(
+          (c) => (c['status'] ?? '').toString().toLowerCase() == 'approved',
+        )
+        .length;
+
     return Row(
       children: [
         Expanded(
           child: _buildSummaryCard(
             label: 'TOTAL CLAIMS',
-            value: '8',
+            value: '$total',
             icon: Icons.assignment_outlined,
             color: AppTheme.primary,
           ),
@@ -220,7 +202,7 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
         Expanded(
           child: _buildSummaryCard(
             label: 'APPROVED',
-            value: '6',
+            value: '$approved',
             icon: Icons.check_circle_outline,
             color: AppTheme.successGreen,
           ),
@@ -352,26 +334,70 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
   }
 
   Widget _buildClaimsList(BuildContext context) {
-    // Use live data if available, otherwise fall back to mock
-    final allClaims = _liveClaims.isNotEmpty
-        ? _liveClaims
-        : MockData.claims as List<Map<String, dynamic>>;
+    final allClaims = _liveClaims;
     final filteredClaims = _selectedFilter == 'All'
         ? allClaims
-        : allClaims
-              .where((claim) => claim['status'] == _selectedFilter)
-              .toList();
+        : allClaims.where((claim) {
+            final status = (claim['status'] ?? '').toString().toLowerCase();
+            switch (_selectedFilter) {
+              case 'In Review':
+                return status == 'processing' || status == 'in review';
+              case 'Approved':
+                return status == 'approved';
+              case 'Rejected':
+                return status == 'rejected';
+              default:
+                return true;
+            }
+          }).toList();
+
+    if (filteredClaims.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(18),
+        decoration: AppTheme.cardDecorationOf(context),
+        child: Text(
+          'No claims yet. Tap "Apply New Claim" to create one.',
+          style: TextStyle(
+            color: AppTheme.textSecondaryOf(context),
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      );
+    }
 
     return Column(
       children: filteredClaims.asMap().entries.map((entry) {
         int idx = entry.key;
         var claim = entry.value;
-        final statusColor = claim['statusColor'] as Color;
+        final statusText = (claim['status'] ?? 'processing').toString();
+        final statusColor = _statusColor(statusText);
+        final claimId = (claim['claim_id'] ?? claim['id'] ?? 'CLAIM')
+            .toString();
+        final title = (claim['event_type'] ?? claim['title'] ?? 'Claim')
+            .toString();
+        final date =
+            (claim['event_timestamp'] ??
+                    claim['created_at'] ??
+                    claim['date'] ??
+                    '')
+                .toString();
+        final amount = (claim['amount'] ?? claim['estimated_payout'] ?? 0)
+            .toString();
+        final progress =
+            (claim['progress_pct'] as num?)?.toDouble() ??
+            (claim['progressPct'] as num?)?.toDouble() ??
+            _statusProgress(statusText);
 
         return Column(
           children: [
             GestureDetector(
-              onTap: () => Navigator.pushNamed(context, AppRoutes.claimStatus),
+              onTap: () => Navigator.pushNamed(
+                context,
+                AppRoutes.claimStatus,
+                arguments: claimId,
+              ),
               child: Container(
                 decoration: BoxDecoration(
                   color: AppTheme.cardOf(context),
@@ -397,7 +423,7 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  claim['id'] as String,
+                                  claimId,
                                   style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700,
@@ -414,7 +440,7 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
                                     borderRadius: BorderRadius.circular(20),
                                   ),
                                   child: Text(
-                                    claim['status'] as String,
+                                    statusText,
                                     style: TextStyle(
                                       fontSize: 11,
                                       fontWeight: FontWeight.w800,
@@ -426,7 +452,7 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
                             ),
                             const SizedBox(height: 10),
                             Text(
-                              claim['title'] as String,
+                              title,
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
@@ -446,7 +472,7 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
-                                      claim['date'] as String,
+                                      _prettyDate(date),
                                       style: TextStyle(
                                         fontSize: 12,
                                         color: AppTheme.textSecondaryOf(
@@ -457,7 +483,7 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
                                   ],
                                 ),
                                 Text(
-                                  '₹ ${claim['amount']}',
+                                  '₹ $amount',
                                   style: TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w800,
@@ -470,7 +496,7 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
                             ClipRRect(
                               borderRadius: BorderRadius.circular(6),
                               child: LinearProgressIndicator(
-                                value: claim['progressPct'] as double,
+                                value: progress.clamp(0.0, 1.0),
                                 minHeight: 4,
                                 backgroundColor: statusColor.withOpacity(0.1),
                                 valueColor: AlwaysStoppedAnimation<Color>(
@@ -491,5 +517,36 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
         );
       }).toList(),
     );
+  }
+
+  Color _statusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'approved':
+        return AppTheme.successGreen;
+      case 'rejected':
+        return AppTheme.dangerRed;
+      default:
+        return AppTheme.warningOrange;
+    }
+  }
+
+  double _statusProgress(String status) {
+    switch (status.toLowerCase()) {
+      case 'approved':
+      case 'rejected':
+        return 1.0;
+      case 'processing':
+      case 'in review':
+        return 0.6;
+      default:
+        return 0.3;
+    }
+  }
+
+  String _prettyDate(String raw) {
+    if (raw.isEmpty) return '—';
+    final parsed = DateTime.tryParse(raw);
+    if (parsed == null) return raw;
+    return '${parsed.day}/${parsed.month}/${parsed.year}';
   }
 }

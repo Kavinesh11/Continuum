@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
-import '../services/api_service.dart';
+import '../../theme/app_theme.dart';
+import '../../services/api_service.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({Key? key}) : super(key: key);
@@ -16,6 +16,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late TextEditingController _platformController;
   late TextEditingController _emergencyController;
   bool _isSaving = false;
+  String _partnerId = 'N/A';
+  String _tier = 'Standard';
+  String _memberSince = '-';
 
   @override
   void initState() {
@@ -38,6 +41,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       _platformController.text = (profile['platform'] ?? '').toString();
       _emergencyController.text = (profile['emergency_contact'] ?? '')
           .toString();
+      _partnerId = (profile['worker_id'] ?? 'N/A').toString();
+      _tier = (profile['tier'] ?? 'Standard').toString();
       setState(() {});
     } on ServerException {
       if (!mounted) return;
@@ -109,6 +114,25 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           size: 16,
                         ),
                       ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Center(
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.center,
+                  children: [
+                    _buildMetaChip('ID $_partnerId', Icons.badge_outlined),
+                    _buildMetaChip(
+                      '$_tier tier',
+                      Icons.workspace_premium_outlined,
+                    ),
+                    _buildMetaChip(
+                      'Since $_memberSince',
+                      Icons.calendar_today_outlined,
                     ),
                   ],
                 ),
@@ -281,6 +305,31 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
+  Widget _buildMetaChip(String text, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppTheme.primary.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: AppTheme.primary, size: 14),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.primary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _save() async {
     setState(() => _isSaving = true);
     try {
@@ -291,31 +340,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         'platform': _platformController.text.trim(),
         'emergency_contact': _emergencyController.text.trim(),
       });
-
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Row(
-            children: [
-              Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
-              SizedBox(width: 10),
-              Text(
-                'Profile updated successfully',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
-            ],
-          ),
+          content: const Text('Profile updated successfully'),
           backgroundColor: AppTheme.successGreen,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
-          margin: const EdgeInsets.all(16),
         ),
       );
-      Future.delayed(const Duration(milliseconds: 600), () {
-        if (mounted) Navigator.pop(context);
-      });
+      Navigator.pop(context);
     } on ServerException {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -330,7 +366,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Unable to update profile right now.')),
+        SnackBar(
+          content: const Text('Could not save profile right now.'),
+          backgroundColor: AppTheme.dangerRed,
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     } finally {
       if (mounted) setState(() => _isSaving = false);

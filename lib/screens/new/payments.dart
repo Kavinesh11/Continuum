@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
-import '../services/api_service.dart';
+import '../../theme/app_theme.dart';
+import '../../services/api_service.dart';
 
 class PaymentsScreen extends StatefulWidget {
   const PaymentsScreen({Key? key}) : super(key: key);
@@ -11,10 +11,21 @@ class PaymentsScreen extends StatefulWidget {
 
 class _PaymentsScreenState extends State<PaymentsScreen> {
   bool _autoPay = true;
+  String _selectedMethodId = 'upi_1';
   bool _isLoading = true;
   Map<String, dynamic>? _profile;
   Map<String, dynamic>? _policyContent;
   List<Map<String, dynamic>> _payouts = [];
+
+  static const List<Map<String, dynamic>> _paymentMethods = [
+    {'id': 'upi_1', 'type': 'UPI', 'label': 'primary@upi', 'isDefault': true},
+    {
+      'id': 'card_1',
+      'type': 'Card',
+      'label': '•••• •••• •••• 4821',
+      'isDefault': false,
+    },
+  ];
 
   @override
   void initState() {
@@ -37,7 +48,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
       if (!mounted) return;
       setState(() {
         _profile = profile;
-        _payouts = payouts;
+        _payouts = payouts.map(_mapPayout).toList();
         _policyContent = policy;
         _isLoading = false;
       });
@@ -63,31 +74,48 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final plan = _buildPlanData();
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('Payments')),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildPlanCard(context, plan),
-                    const SizedBox(height: 22),
-                    _buildPayNowButton(context),
-                    const SizedBox(height: 28),
-                    _buildPaymentHistory(context, _payouts),
-                    const SizedBox(height: 20),
-                  ],
-                ),
-              ),
-            ),
+  Map<String, dynamic> _mapPayout(Map<String, dynamic> payout) {
+    final amount =
+        (payout['amount'] as num?)?.toDouble() ??
+        (payout['payout_amount'] as num?)?.toDouble() ??
+        0;
+    final statusRaw = (payout['status'] ?? 'processed')
+        .toString()
+        .toLowerCase();
+    final status =
+        (statusRaw == 'disbursed' ||
+            statusRaw == 'processed' ||
+            statusRaw == 'success')
+        ? 'Success'
+        : (statusRaw == 'pending' ? 'Pending' : 'Failed');
+    final date = DateTime.tryParse(
+      (payout['disbursed_at'] ?? payout['created_at'] ?? '').toString(),
     );
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    final dateText = date == null
+        ? 'Recent'
+        : '${months[date.month - 1]} ${date.day}, ${date.year}';
+
+    return {
+      'id': (payout['payout_id'] ?? 'TXN-NA').toString(),
+      'date': dateText,
+      'amount': amount.round(),
+      'method': (payout['payu_txn_ref'] ?? 'Bank Transfer').toString(),
+      'status': status,
+    };
   }
 
   Map<String, dynamic> _buildPlanData() {
@@ -102,6 +130,37 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
       'weeklyCost': (_profile?['weekly_premium'] ?? 57).toString(),
       'nextBillingDate': 'Upcoming cycle',
     };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final plan = _buildPlanData();
+    final methods = _paymentMethods;
+    final history = _payouts;
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Payments')),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildPlanCard(context, plan),
+                    const SizedBox(height: 22),
+                    _buildPaymentMethodsSection(context, methods),
+                    const SizedBox(height: 22),
+                    _buildPayNowButton(context),
+                    const SizedBox(height: 28),
+                    _buildPaymentHistory(context, history),
+                    const SizedBox(height: 20),
+                  ],
+                ),
+              ),
+            ),
+    );
   }
 
   Widget _buildPlanCard(BuildContext context, Map<String, dynamic> plan) {
@@ -284,6 +343,186 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
     );
   }
 
+  Widget _buildPaymentMethodsSection(
+    BuildContext context,
+    List<Map<String, dynamic>> methods,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Payment Methods',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.textPrimaryOf(context),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppTheme.primary.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: GestureDetector(
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text('Add method tapped'),
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  );
+                },
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.add_rounded, color: AppTheme.primary, size: 16),
+                    SizedBox(width: 4),
+                    Text(
+                      'Add new',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        ...methods.map((method) {
+          final isSelected = _selectedMethodId == method['id'];
+          final iconData = method['type'] == 'UPI'
+              ? Icons.account_balance_rounded
+              : Icons.credit_card_rounded;
+
+          return GestureDetector(
+            onTap: () =>
+                setState(() => _selectedMethodId = method['id'] as String),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppTheme.cardOf(context),
+                borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                border: Border.all(
+                  color: isSelected
+                      ? AppTheme.primary
+                      : AppTheme.dividerOf(context),
+                  width: isSelected ? 2 : 1.5,
+                ),
+                boxShadow: isSelected
+                    ? AppTheme.primaryGlow(0.1)
+                    : AppTheme.softShadowOf(context),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? AppTheme.primary.withOpacity(0.12)
+                          : AppTheme.textHintOf(context).withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      iconData,
+                      color: isSelected
+                          ? AppTheme.primary
+                          : AppTheme.textSecondaryOf(context),
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          method['type'] as String,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: AppTheme.textSecondaryOf(context),
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          method['label'] as String,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.textPrimaryOf(context),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (method['isDefault'] == true)
+                    Container(
+                      margin: const EdgeInsets.only(right: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppTheme.successGreen.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        'Default',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.successGreen,
+                        ),
+                      ),
+                    ),
+                  Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: isSelected
+                            ? AppTheme.primary
+                            : AppTheme.dividerOf(context),
+                        width: 2,
+                      ),
+                    ),
+                    child: isSelected
+                        ? Center(
+                            child: Container(
+                              width: 12,
+                              height: 12,
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: AppTheme.primary,
+                              ),
+                            ),
+                          )
+                        : null,
+                  ),
+                ],
+              ),
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
   Widget _buildPayNowButton(BuildContext context) {
     return Container(
       width: double.infinity,
@@ -367,7 +606,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
             Icon(Icons.payment_rounded, color: Colors.white, size: 20),
             SizedBox(width: 10),
             Text(
-              'Pay Now',
+              'Pay Now — ₹57',
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
@@ -384,22 +623,6 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
     BuildContext context,
     List<Map<String, dynamic>> history,
   ) {
-    if (history.isEmpty) {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(18),
-        decoration: AppTheme.cardDecorationOf(context),
-        child: Text(
-          'No payout history yet.',
-          style: TextStyle(
-            color: AppTheme.textSecondaryOf(context),
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      );
-    }
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -415,8 +638,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
         ...history.asMap().entries.map((entry) {
           final idx = entry.key;
           final txn = entry.value;
-          final status = (txn['status'] ?? '').toString().toLowerCase();
-          final isSuccess = status == 'disbursed' || status == 'success';
+          final isSuccess = txn['status'] == 'Success';
           final statusColor = isSuccess
               ? AppTheme.successGreen
               : AppTheme.dangerRed;
@@ -466,7 +688,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                                     MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
-                                    '₹${txn['amount'] ?? txn['disbursed_amount'] ?? 0}',
+                                    '₹${txn['amount']}',
                                     style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w800,
@@ -483,7 +705,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: Text(
-                                      (txn['status'] ?? 'pending').toString(),
+                                      txn['status'] as String,
                                       style: TextStyle(
                                         fontSize: 10,
                                         fontWeight: FontWeight.w800,
@@ -495,7 +717,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                '${txn['method'] ?? 'UPI'} • ${txn['disbursed_at'] ?? txn['updated_at'] ?? txn['created_at'] ?? '—'}',
+                                '${txn['method']} • ${txn['date']}',
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: AppTheme.textSecondaryOf(context),
@@ -503,8 +725,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                (txn['payout_id'] ?? txn['id'] ?? 'TXN')
-                                    .toString(),
+                                txn['id'] as String,
                                 style: TextStyle(
                                   fontSize: 11,
                                   color: AppTheme.textHintOf(context),
