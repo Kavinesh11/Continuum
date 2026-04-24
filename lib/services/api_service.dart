@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
@@ -22,21 +23,28 @@ class ApiService {
   factory ApiService() => _instance;
   ApiService._internal();
 
-  // ── Base URLs (configurable via --dart-define) ────────────────────────────
-  static const String _coreUrl = String.fromEnvironment(
-    'CORE_API_URL',
-    defaultValue: 'http://localhost:3000',
+  // ── Base URLs ──────────────────────────────────────────────────────────────
+  static const String _apiHostOverride = String.fromEnvironment(
+    'API_HOST',
+    defaultValue: '192.168.1.10',
   );
-  static const String _fastapiUrl = String.fromEnvironment(
-    'FASTAPI_URL',
-    defaultValue: 'http://localhost:8000',
-  );
+
+  // For physical phones, pass --dart-define=API_HOST=<laptop-lan-ip>
+  // Example: --dart-define=API_HOST=192.168.1.23
+  static String get _resolvedHost {
+    if (_apiHostOverride.isNotEmpty) return _apiHostOverride;
+    if (kIsWeb) return 'localhost';
+    if (Platform.isAndroid) return '10.0.2.2';
+    return 'localhost';
+  }
+
+  static String get _coreUrl => 'http://$_resolvedHost:3000';
+  static String get _fastapiUrl => 'http://$_resolvedHost:8000';
 
   // ── Storage ────────────────────────────────────────────────────────────────
   final _secureStorage = const FlutterSecureStorage();
   static const _tokenKey = 'auth_token';
   static const _expiryKey = 'token_expiry';
-  static const _workerIdKey = 'worker_id';
 
   Box get _cache => Hive.box('api_cache');
 
@@ -52,14 +60,7 @@ class ApiService {
   Future<void> clearToken() async {
     await _secureStorage.delete(key: _tokenKey);
     await _secureStorage.delete(key: _expiryKey);
-    await _secureStorage.delete(key: _workerIdKey);
   }
-
-  Future<void> saveWorkerId(String workerId) async {
-    await _secureStorage.write(key: _workerIdKey, value: workerId);
-  }
-
-  Future<String?> getWorkerId() => _secureStorage.read(key: _workerIdKey);
 
   Future<bool> isTokenValid() async {
     final token = await getToken();
@@ -72,6 +73,26 @@ class ApiService {
     } catch (_) {
       return false;
     }
+  }
+
+  String? _decodeWorkerIdFromToken(String token) {
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return null;
+      final payload = utf8.decode(
+        base64Url.decode(base64Url.normalize(parts[1])),
+      );
+      final map = jsonDecode(payload) as Map<String, dynamic>;
+      return map['worker_id'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<String> getCurrentWorkerId() async {
+    final token = await getToken();
+    final id = token != null ? _decodeWorkerIdFromToken(token) : null;
+    return id ?? 'current_worker';
   }
 
   // ── HTTP helpers ───────────────────────────────────────────────────────────
@@ -169,8 +190,8 @@ class ApiService {
       if (response.statusCode >= 500) {
         throw ServerException(response.statusCode, response.body);
       }
-      final data = jsonDecode(response.body) as List<dynamic>;
-      final result = data.cast<Map<String, dynamic>>();
+      final decoded = jsonDecode(response.body);
+      final result = _toListOfMaps(decoded);
       if (cacheKey != null) _cache.put(cacheKey, response.body);
       return result;
     } on SocketException {
@@ -187,12 +208,12 @@ class ApiService {
         try {
           final decoded = jsonDecode(cached as String);
           if (decoded is Map<String, dynamic>) {
-            return {...decoded, '_isOffline': true};
+            return decoded;
           }
         } catch (_) {}
       }
     }
-    return {'_isOffline': true};
+    return {};
   }
 
   List<Map<String, dynamic>> _fallbackList(String? cacheKey) {
@@ -201,32 +222,50 @@ class ApiService {
       if (cached != null) {
         try {
           final decoded = jsonDecode(cached as String);
-          if (decoded is List) {
-            return decoded.cast<Map<String, dynamic>>();
-          }
+          return _toListOfMaps(decoded);
         } catch (_) {}
       }
     }
     return [];
   }
 
+  List<Map<String, dynamic>> _toListOfMaps(dynamic decoded) {
+    if (decoded is List) {
+      return decoded
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+    }
+
+    if (decoded is Map) {
+      for (final key in const [
+        'items',
+        'data',
+        'results',
+        'payouts',
+        'claims',
+      ]) {
+        final value = decoded[key];
+        if (value is List) {
+          return value
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList();
+        }
+      }
+    }
+
+    return [];
+  }
+
   // ── Public API methods ─────────────────────────────────────────────────────
 
   /// POST /auth/login → Core Backend
-  /// Persists JWT token and worker_id on success.
   Future<Map<String, dynamic>> login(String workerId, String password) async {
-    final result = await _post('$_coreUrl/auth/login', {
+    return _post('$_coreUrl/auth/login', {
       'worker_id': workerId,
       'password': password,
     });
-    final token = result['token'] as String?;
-    final expiresAt = result['expires_at'] as String?;
-    if (token != null && expiresAt != null) {
-      await saveToken(token, expiresAt);
-      final id = result['worker_id'] as String? ?? workerId;
-      await saveWorkerId(id);
-    }
-    return result;
   }
 
   /// POST /onboard → FastAPI Gateway
@@ -242,7 +281,7 @@ class ApiService {
 
   /// POST /claims/submit → FastAPI Gateway
   Future<Map<String, dynamic>> submitClaim(Map<String, dynamic> payload) async {
-    return _post('$_fastapiUrl/claims/submit', payload);
+    return _post('$_coreUrl/claims', payload);
   }
 
   /// GET /claims/:id/status → Core Backend
@@ -266,6 +305,11 @@ class ApiService {
     );
   }
 
+  Future<Map<String, dynamic>> getWorkerProfileCurrent() async {
+    final workerId = await getCurrentWorkerId();
+    return getWorkerProfile(workerId);
+  }
+
   /// PUT /workers/:id → Core Backend
   Future<Map<String, dynamic>> updateWorkerProfile(
     String workerId,
@@ -278,6 +322,13 @@ class ApiService {
     );
   }
 
+  Future<Map<String, dynamic>> updateWorkerProfileCurrent(
+    Map<String, dynamic> data,
+  ) async {
+    final workerId = await getCurrentWorkerId();
+    return updateWorkerProfile(workerId, data);
+  }
+
   /// POST /policies → Core Backend
   Future<Map<String, dynamic>> createPolicy(
     Map<String, dynamic> payload,
@@ -285,17 +336,14 @@ class ApiService {
     return _post('$_coreUrl/policies', payload);
   }
 
-  /// POST /workers/:id/fcm-token → Core Backend
+  Future<Map<String, dynamic>> getPolicyContent() async {
+    return _get('$_coreUrl/policies/content', cacheKey: 'policy_content');
+  }
+
+  /// PUT /workers/fcm-token → Core Backend
   Future<void> registerFcmToken(String workerId, String fcmToken) async {
     try {
-      final headers = await _authHeaders();
-      await http
-          .post(
-            Uri.parse('$_coreUrl/workers/$workerId/fcm-token'),
-            headers: headers,
-            body: jsonEncode({'fcm_token': fcmToken}),
-          )
-          .timeout(const Duration(seconds: 10));
+      await _put('$_coreUrl/workers/fcm-token', {'fcm_token': fcmToken});
     } catch (_) {
       // FCM registration is best-effort; never crash the app
     }
@@ -306,18 +354,21 @@ class ApiService {
     return _getList('$_coreUrl/payouts', cacheKey: 'payouts_list');
   }
 
-  /// POST /consent → Core Backend (DPDP consent receipt)
-  Future<Map<String, dynamic>> submitConsent(Map<String, dynamic> payload) async {
-    return _post('$_coreUrl/consent', payload);
+  /// GET /assist/messages → Core Backend
+  Future<List<Map<String, dynamic>>> getAssistMessages() async {
+    try {
+      return _getList('$_coreUrl/assist/messages', cacheKey: 'assist_messages');
+    } catch (_) {
+      return [];
+    }
   }
 
-  /// POST /mandates → Core Backend (UPI eNACH mandate creation)
-  Future<Map<String, dynamic>> createMandate(Map<String, dynamic> payload) async {
-    return _post('$_coreUrl/mandates', payload);
-  }
-
-  /// GET /mandates/:workerId → Core Backend
-  Future<Map<String, dynamic>> getMandateStatus(String workerId) async {
-    return _get('$_coreUrl/mandates/$workerId', cacheKey: 'mandate_$workerId');
+  /// POST /assist/chat → Core Backend
+  Future<Map<String, dynamic>> sendAssistMessage(String message) async {
+    try {
+      return _post('$_coreUrl/assist/chat', {'message': message});
+    } catch (_) {
+      return {};
+    }
   }
 }

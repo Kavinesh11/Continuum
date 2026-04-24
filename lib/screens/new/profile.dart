@@ -1,10 +1,9 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import '../routes/app_routes.dart';
-import '../theme/app_theme.dart';
-import '../main.dart';
-import '../sandbox/driver_provider.dart';
-import '../services/api_service.dart';
+import '../../routes/app_routes.dart';
+import '../../theme/app_theme.dart';
+import '../../main.dart';
+import '../../services/api_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -47,21 +46,55 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final driver = DriverProvider.of(context).driver;
     final stats = (_workerData?['stats'] as Map<String, dynamic>?) ?? const {};
-    final history =
+    final historyRaw =
         (_workerData?['recent_history'] as List<dynamic>? ?? const [])
             .cast<Map<String, dynamic>>();
-    // Use live data when available, fall back to sandbox driver
-    final name = _workerData?['full_name'] as String? ?? driver.fullName;
-    final initials = name.isNotEmpty
-        ? name.split(' ').map((p) => p.isNotEmpty ? p[0] : '').take(2).join()
-        : driver.initials;
-    final city = _workerData?['city'] as String? ?? driver.city;
-    final phone = _workerData?['phone'] as String? ?? driver.phone;
-    final platform = _workerData?['platform'] as String? ?? driver.platform;
-    final zone = _workerData?['zone_id'] as String? ?? driver.zone;
-    final tier = _workerData?['tier'] as String? ?? driver.tier;
+
+    final name =
+        (_workerData?['full_name'] ?? _workerData?['name'] ?? 'Partner')
+            .toString();
+    final initials = name
+        .split(' ')
+        .where((p) => p.isNotEmpty)
+        .take(2)
+        .map((p) => p[0])
+        .join()
+        .toUpperCase();
+    final city = (_workerData?['city'] ?? 'Unknown').toString();
+    final phone = (_workerData?['phone'] ?? '--').toString();
+    final platform = (_workerData?['platform'] ?? 'Unknown').toString();
+    final zone = (_workerData?['zone_id'] ?? 'Unknown').toString();
+    final tier = (_workerData?['tier'] ?? 'Standard').toString();
+    final memberSince = (_workerData?['member_since'] ?? 'N/A').toString();
+    final totalProtected = (stats['total_protected_amount'] ?? 0).toString();
+    final claimsApproved =
+        (stats['claims_approved_count'] as num?)?.toInt() ?? 0;
+    final emergencyContact = (_workerData?['emergency_contact'] ?? '--')
+        .toString();
+    final weeklyOrderCount =
+        (stats['weekly_order_count'] as num?)?.toInt() ?? 0;
+    final weeklyEarnings =
+        (stats['weekly_earnings'] as num?)?.toDouble() ?? 0.0;
+    final completionRate =
+        (stats['completion_rate'] as num?)?.toDouble() ?? 0.0;
+    final currentLocation =
+        (_workerData?['current_location'] as Map<String, dynamic>?) ?? const {};
+    final locationAddress = (currentLocation['address'] ?? 'Unknown')
+        .toString();
+    final locationZone = (currentLocation['zone'] ?? zone).toString();
+    final locationHistory =
+        (_workerData?['location_history'] as List<dynamic>?) ?? const [];
+    final history = historyRaw
+        .map(
+          (h) => {
+            'incident': (h['incident'] ?? h['event_type'] ?? 'Claim')
+                .toString(),
+            'date': (h['date'] ?? 'Recent').toString(),
+            'detail': (h['detail'] ?? 'Claim activity recorded').toString(),
+          },
+        )
+        .toList();
 
     return Scaffold(
       body: Column(
@@ -74,10 +107,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _buildGradientHeader(
                     context,
                     name,
-                    initials,
+                    initials.isEmpty ? 'NA' : initials,
                     'Delivery Partner',
                     city,
-                    driver.memberSince,
+                    memberSince,
                     tier,
                   ),
                   Padding(
@@ -87,29 +120,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       children: [
                         _buildStatsPills(
                           context,
-                          '₹ ${(stats['total_protected_amount'] ?? driver.totalProtected).toString()}',
-                          (stats['claims_approved_count'] as num?)?.toInt() ??
-                              driver.claimsApproved,
+                          '₹ $totalProtected',
+                          claimsApproved,
                         ),
                         const SizedBox(height: 24),
                         _buildPersonalData(
                           context,
                           phone,
                           platform,
-                          driver.emergencyContact,
+                          emergencyContact,
                           zone,
                         ),
                         const SizedBox(height: 24),
                         _buildOrderSummary(
-                          driver.weeklyOrderCount,
-                          driver.weeklyEarnings,
-                          driver.completionRate,
+                          context,
+                          weeklyOrderCount,
+                          weeklyEarnings,
+                          completionRate,
                         ),
                         const SizedBox(height: 24),
                         _buildLocationSection(
-                          driver.currentLocation.address,
-                          driver.currentLocation.zone,
-                          driver.locationHistory.length,
+                          context,
+                          locationAddress,
+                          locationZone,
+                          locationHistory.length,
                         ),
                         const SizedBox(height: 24),
                         _buildQuickLinks(context),
@@ -234,8 +268,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ],
                   ),
                   GestureDetector(
-                    onTap: () =>
-                        Navigator.pushNamed(context, AppRoutes.editProfile),
+                    onTap: () async {
+                      await Navigator.pushNamed(context, AppRoutes.editProfile);
+                      if (!mounted) return;
+                      _loadProfile();
+                    },
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(10),
                       child: BackdropFilter(
@@ -475,16 +512,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildOrderSummary(int count, double earnings, double rate) {
+  Widget _buildOrderSummary(
+    BuildContext context,
+    int count,
+    double earnings,
+    double rate,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           "This Week's Orders",
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
-            color: Colors.black87,
+            color: AppTheme.textPrimaryOf(context),
           ),
         ),
         const SizedBox(height: 12),
@@ -496,16 +538,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
               icon: Icons.receipt_long_outlined,
               color: AppTheme.primary,
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 5),
             _StatCard(
               label: 'Earnings',
               value: '₹${earnings.toStringAsFixed(0)}',
               icon: Icons.account_balance_wallet_outlined,
               color: AppTheme.successGreen,
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 5),
             _StatCard(
-              label: 'Completion',
+              label: 'Completed',
               value: '${(rate * 100).toStringAsFixed(0)}%',
               icon: Icons.task_alt_outlined,
               color: AppTheme.primary,
@@ -516,26 +558,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildLocationSection(String address, String zone, int pingCount) {
+  Widget _buildLocationSection(
+    BuildContext context,
+    String address,
+    String zone,
+    int pingCount,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Current Location',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
-            color: Colors.black87,
+            color: AppTheme.textPrimaryOf(context),
           ),
         ),
         const SizedBox(height: 12),
         Container(
           padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.black.withOpacity(0.05)),
-          ),
+          decoration: AppTheme.cardDecorationOf(context),
           child: Row(
             children: [
               const Icon(Icons.location_on, color: AppTheme.primary, size: 20),
@@ -546,17 +589,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   children: [
                     Text(
                       address,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                        color: AppTheme.textPrimaryOf(context),
                       ),
                     ),
                     Text(
                       zone,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: Colors.black54,
+                        color: AppTheme.textSecondaryOf(context),
                       ),
                     ),
                   ],
@@ -564,7 +607,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               Text(
                 '$pingCount pings',
-                style: const TextStyle(fontSize: 12, color: Colors.black38),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppTheme.textHintOf(context),
+                ),
               ),
             ],
           ),
@@ -633,7 +679,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
         // ── Edit Profile row ──
         GestureDetector(
-          onTap: () => Navigator.pushNamed(context, AppRoutes.editProfile),
+          onTap: () async {
+            await Navigator.pushNamed(context, AppRoutes.editProfile);
+            if (!mounted) return;
+            _loadProfile();
+          },
           child: Container(
             padding: const EdgeInsets.all(14),
             decoration: AppTheme.cardDecorationOf(context),
@@ -655,6 +705,48 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Expanded(
                   child: Text(
                     'Edit Profile',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textPrimaryOf(context),
+                    ),
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppTheme.textHintOf(context),
+                  size: 22,
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+
+        // ── My Policy row ──
+        GestureDetector(
+          onTap: () => Navigator.pushNamed(context, AppRoutes.planDetails),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: AppTheme.cardDecorationOf(context),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.description_outlined,
+                    color: AppTheme.primary,
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Policy Details',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -729,12 +821,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildHistorySection(
-    BuildContext context,
-    List<Map<String, dynamic>> history,
-  ) {
+  Widget _buildHistorySection(BuildContext context, List history) {
     if (history.isEmpty) return const SizedBox.shrink();
-    final recent = history[0];
+    final recent = history[0] as Map<String, dynamic>;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -789,10 +878,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         children: [
                           Expanded(
                             child: Text(
-                              (recent['incident'] ??
-                                      recent['event_type'] ??
-                                      'Recent claim')
-                                  .toString(),
+                              recent['incident'] as String,
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
@@ -844,8 +930,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            (recent['date'] ?? recent['event_timestamp'] ?? '—')
-                                .toString(),
+                            recent['date'] as String,
                             style: TextStyle(
                               fontSize: 12,
                               color: AppTheme.textSecondaryOf(context),
@@ -855,10 +940,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        (recent['detail'] ??
-                                recent['status'] ??
-                                'Claim activity')
-                            .toString(),
+                        recent['detail'] as String,
                         style: TextStyle(
                           fontSize: 12,
                           color: AppTheme.textSecondaryOf(context),
@@ -994,3 +1076,38 @@ class _StatCard extends StatelessWidget {
     );
   }
 }
+
+// class _DataRow extends StatelessWidget {
+//   final String label;
+//   final String value;
+//   const _DataRow({required this.label, required this.value});
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Container(
+//       padding: const EdgeInsets.all(14),
+//       decoration: BoxDecoration(
+//         color: Colors.white,
+//         borderRadius: BorderRadius.circular(12),
+//         border: Border.all(color: Colors.black.withOpacity(0.05)),
+//       ),
+//       child: Row(
+//         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+//         children: [
+//           Text(
+//             label,
+//             style: const TextStyle(fontSize: 13, color: Colors.black54),
+//           ),
+//           Text(
+//             value,
+//             style: const TextStyle(
+//               fontSize: 13,
+//               fontWeight: FontWeight.bold,
+//               color: Colors.black87,
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }
