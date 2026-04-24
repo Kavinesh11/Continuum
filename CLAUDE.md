@@ -117,7 +117,7 @@ psql -h localhost -U postgres -d continuum
 
 # CockroachDB (financial data — ledger, payouts, mandates)
 cockroach sql --insecure --database=continuum
-\i db/migrations/cockroachdb/001_initial_schema.sql  # policies, payouts, reserve_balance
+\i db/migrations/cockroachdb/001_financial_ledger.sql  # policies, payouts, reserve_balance
 \i db/migrations/cockroachdb/002_mandates.sql          # mandates + mandate_debits
 \i db/migrations/cockroachdb/003_adjacency_payout.sql  # adjacency_pro_rated flag on payouts
 \i db/migrations/cockroachdb/004_double_entry_ledger.sql  # ledger_accounts + ledger_entries (seeds 4 core accounts)
@@ -156,16 +156,16 @@ bash infra/kafka/create_topics.sh
 
 ## Kafka Topics
 
-Declared in `infra/kafka/topics.json` (3 partitions, 3× replication, 7-day retention):
-`worker_onboarding`, `claim_submitted`, `claim_decision`, `payout_authorized`, `oracle_trigger`, `premium_updated`, `fraud_alert`
+Declared in `infra/kafka/topics.json` (3 partitions, 7-day retention; replication factor via `KAFKA_REPLICATION_FACTOR` env, default 1 for local):
+`worker_onboarding`, `claim_submitted`, `claim_decision`, `payout_authorized`, `oracle_trigger`, `premium_updated`, `fraud_alert`, `adverse_selection_lock`
 
-`adverse_selection_lock` is used in code (oracle engine publishes it; core backend consumes it for zone enrollment locks) but is **not** in `topics.json` — create it manually or add it to the config before running in production.
+`adverse_selection_lock` is declared in `topics.json` and `create_topics.sh`.
 
 Topics created via `infra/kafka/create_topics.sh`.
 
 ## Environment Setup
 
-Copy `services/core_backend/.env.example` to `services/core_backend/.env`. Required vars: `JWT_SECRET`, `DB_HOST`, `DB_PASSWORD`, `KAFKA_BROKERS`, `FIREBASE_CREDENTIALS_PATH`. The `GEMINI_API_KEY` used by the Rasa assistant is hardcoded in `docker-compose.yml` — replace before production.
+Copy `services/core_backend/.env.example` to `services/core_backend/.env`. Required vars: `JWT_SECRET`, `DB_HOST`, `DB_PASSWORD`, `KAFKA_BROKERS`, `FIREBASE_CREDENTIALS_PATH`. The `GEMINI_API_KEY` used by the Rasa assistant is parameterized in `docker-compose.yml` via `${GEMINI_API_KEY}` — set it in your root `.env`.
 
 Install pre-commit hooks once after cloning: `pip install pre-commit && pre-commit install`. Hooks run gitleaks (secret scanning), detect-private-key, check-yaml/json, and trailing-whitespace on every commit. The same gitleaks scan runs in CI via `.github/workflows/security.yml`.
 
@@ -181,7 +181,7 @@ Key feature-flag and provider-selection env vars in `.env.example`:
 - `PAYOUT_AUTOMATION_ENABLED` (default: false) — gates the automated payout flow end-to-end
 - `PAYOUT_KILL_SWITCH` / `ENROLLMENT_LOCK_ENFORCED` — runtime toggles without redeploy
 - `PAYOUT_GATEWAY_PROVIDER`, `MANDATE_GATEWAY_PROVIDER`, `PLATFORM_VERIFIER_PROVIDER`, `LIVENESS_PROVIDER` — each accepts `mock | sandbox | prod`; `mock` is the safe default for local dev
-- `KMS_PROVIDER` — `local | aws | gcp`; `local` uses in-process key derivation
+- `KMS_PROVIDER` — `local | aws`; `local` uses in-process key derivation
 
 ## Monitoring
 
@@ -191,7 +191,7 @@ Prometheus scrape targets:
 - Oracle engine: internal Prometheus counters (no HTTP endpoint)
 - Claims scoring: `GET /metrics` (port 8080)
 
-`infra/prometheus/oracle_alerts.yml` contains 15 alert rules in three groups:
+`infra/prometheus/oracle_alerts.yml` contains 13 alert rules in three groups:
 - **Core (3)**: `OracleHighAbstentionRate` (failure rate > 40% for 15 min), `PayoutSLABreach` (any payout exceeded 2h oracle-to-UPI SLA → 10% bonus credit), `ReserveLow` (`reserve_balance_inr < 100000` for 5 min → initiate reinsurance top-up)
 - **SLO burn-rate (7)**: payout latency, oracle freshness, Kafka consumer lag — multi-window burn-rate alerts
 - **Operational health (5)**: DLQ depth, enrollment lock count, kill switch state, circuit breaker trips

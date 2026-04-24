@@ -33,6 +33,9 @@ services:
       - continuum_net
     environment:
       - PORT=8001
+      - MONGODB_URI=mongodb://mongodb:27017/continuum
+    depends_on:
+      - mongodb
 
   rasa_assistant:
     build:
@@ -62,11 +65,13 @@ services:
       - PORT=3000
       - DB_HOST=postgres
       - DB_PASSWORD=${POSTGRES_PASSWORD}
+      - CRDB_DSN=postgresql://root@cockroachdb:26257/continuum?sslmode=disable
       - KAFKA_BROKERS=kafka:9092
       - NODE_ENV=${NODE_ENV:-development}
     depends_on:
       - redis
       - postgres
+      - cockroachdb
       - kafka
 
   # ==========================================
@@ -114,6 +119,7 @@ services:
     depends_on:
       - kafka
       - postgres
+      - mongodb
   
   isolation_forest_sidecar:
     build:
@@ -154,7 +160,7 @@ services:
       - continuum_net
 
   postgres:
-    image: postgres:15-alpine
+    image: postgis/postgis:15-3.4-alpine
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
@@ -163,6 +169,37 @@ services:
       - "5432:5432"
     networks:
       - continuum_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-continuum}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  cockroachdb:
+    image: cockroachdb/cockroach:v23.2.0
+    command: start-single-node --insecure --store=type=mem,size=512MiB
+    ports:
+      - "26257:26257"
+      - "26080:8080"
+    networks:
+      - continuum_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mongodb:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    networks:
+      - continuum_net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.4.0

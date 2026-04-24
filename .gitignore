@@ -48,3 +48,5 @@ app.*.map.json
 .cursor\rules\openmemory.mdc
 
 .kiro/
+.cursor\rules\openmemory.mdc
+CLAUDE.md

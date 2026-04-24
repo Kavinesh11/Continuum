@@ -579,9 +579,10 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
     setState(() => _isSubmitting = true);
     try {
       final claimId = const Uuid().v4();
+      final workerId = await ApiService().getWorkerId() ?? 'unknown';
       final payload = {
         'claim_id': claimId,
-        'worker_id': 'current_worker',
+        'worker_id': workerId,
         'event_type': _selectedReason,
         'event_timestamp': DateTime.now().toIso8601String(),
         'gps_coordinates': [0.0, 0.0],

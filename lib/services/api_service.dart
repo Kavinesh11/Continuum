@@ -22,14 +22,21 @@ class ApiService {
   factory ApiService() => _instance;
   ApiService._internal();
 
-  // ── Base URLs ──────────────────────────────────────────────────────────────
-  static const String _coreUrl = 'http://localhost:3000';
-  static const String _fastapiUrl = 'http://localhost:8000';
+  // ── Base URLs (configurable via --dart-define) ────────────────────────────
+  static const String _coreUrl = String.fromEnvironment(
+    'CORE_API_URL',
+    defaultValue: 'http://localhost:3000',
+  );
+  static const String _fastapiUrl = String.fromEnvironment(
+    'FASTAPI_URL',
+    defaultValue: 'http://localhost:8000',
+  );
 
   // ── Storage ────────────────────────────────────────────────────────────────
   final _secureStorage = const FlutterSecureStorage();
   static const _tokenKey = 'auth_token';
   static const _expiryKey = 'token_expiry';
+  static const _workerIdKey = 'worker_id';
 
   Box get _cache => Hive.box('api_cache');
 
@@ -45,7 +52,14 @@ class ApiService {
   Future<void> clearToken() async {
     await _secureStorage.delete(key: _tokenKey);
     await _secureStorage.delete(key: _expiryKey);
+    await _secureStorage.delete(key: _workerIdKey);
   }
+
+  Future<void> saveWorkerId(String workerId) async {
+    await _secureStorage.write(key: _workerIdKey, value: workerId);
+  }
+
+  Future<String?> getWorkerId() => _secureStorage.read(key: _workerIdKey);
 
   Future<bool> isTokenValid() async {
     final token = await getToken();
@@ -199,11 +213,20 @@ class ApiService {
   // ── Public API methods ─────────────────────────────────────────────────────
 
   /// POST /auth/login → Core Backend
+  /// Persists JWT token and worker_id on success.
   Future<Map<String, dynamic>> login(String workerId, String password) async {
-    return _post('$_coreUrl/auth/login', {
+    final result = await _post('$_coreUrl/auth/login', {
       'worker_id': workerId,
       'password': password,
     });
+    final token = result['token'] as String?;
+    final expiresAt = result['expires_at'] as String?;
+    if (token != null && expiresAt != null) {
+      await saveToken(token, expiresAt);
+      final id = result['worker_id'] as String? ?? workerId;
+      await saveWorkerId(id);
+    }
+    return result;
   }
 
   /// POST /onboard → FastAPI Gateway
@@ -281,5 +304,20 @@ class ApiService {
   /// GET /payouts → Core Backend
   Future<List<Map<String, dynamic>>> getPayouts() async {
     return _getList('$_coreUrl/payouts', cacheKey: 'payouts_list');
+  }
+
+  /// POST /consent → Core Backend (DPDP consent receipt)
+  Future<Map<String, dynamic>> submitConsent(Map<String, dynamic> payload) async {
+    return _post('$_coreUrl/consent', payload);
+  }
+
+  /// POST /mandates → Core Backend (UPI eNACH mandate creation)
+  Future<Map<String, dynamic>> createMandate(Map<String, dynamic> payload) async {
+    return _post('$_coreUrl/mandates', payload);
+  }
+
+  /// GET /mandates/:workerId → Core Backend
+  Future<Map<String, dynamic>> getMandateStatus(String workerId) async {
+    return _get('$_coreUrl/mandates/$workerId', cacheKey: 'mandate_$workerId');
   }
 }

@@ -13,31 +13,41 @@ import 'screens/payments.dart';
 import 'screens/apply_form.dart';
 import 'screens/policy.dart';
 import 'screens/status_tracker.dart';
+import 'screens/enrollment_screen.dart';
+import 'screens/consent_screen.dart';
+import 'screens/mandate_screen.dart';
 import 'sandbox/sandbox_selector_screen.dart';
+import 'sandbox/driver_provider.dart';
 import 'services/api_service.dart';
 
 Future<void> _registerFcmToken() async {
   try {
-    // firebase_messaging is unavailable on web/desktop; guard with try/catch
-    // ignore: avoid_dynamic_calls
     final messaging = await _loadFirebaseMessaging();
     if (messaging == null) return;
     final token = await messaging.getToken();
     if (token == null) return;
-    final valid = await ApiService().isTokenValid();
+    final api = ApiService();
+    final valid = await api.isTokenValid();
     if (!valid) return;
-    // Worker ID would come from secure storage in a real app; use placeholder
-    await ApiService().registerFcmToken('current_worker', token);
+    final workerId = await api.getWorkerId();
+    if (workerId == null) return;
+    await api.registerFcmToken(workerId, token);
   } catch (_) {
     // FCM unavailable (web/desktop) — ignore gracefully
   }
 }
 
 /// Returns the FirebaseMessaging instance or null if unavailable.
+/// Requires google-services.json (Android) / GoogleService-Info.plist (iOS)
+/// to be present. Returns null gracefully if Firebase is not configured.
 Future<dynamic> _loadFirebaseMessaging() async {
   try {
-    // Dynamic import to avoid compile errors on platforms without Firebase
-    return null; // Replace with FirebaseMessaging.instance when Firebase is configured
+    final hasConfig = const bool.fromEnvironment('FIREBASE_CONFIGURED', defaultValue: false);
+    if (!hasConfig) return null;
+    // When Firebase is configured, uncomment the line below and add
+    // firebase_messaging to pubspec.yaml dependencies:
+    // return FirebaseMessaging.instance;
+    return null;
   } catch (_) {
     return null;
   }
@@ -77,29 +87,34 @@ class _ContinuumAppState extends State<ContinuumApp> {
 
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: themeProvider,
-      builder: (context, _) {
-        return MaterialApp(
-          title: 'Continuum',
-          debugShowCheckedModeBanner: false,
-          theme: AppTheme.lightTheme,
-          darkTheme: AppTheme.darkTheme,
-          themeMode: themeProvider.themeMode,
-          initialRoute: AppRoutes.login,
-          routes: {
-            AppRoutes.login: (context) => const LoginScreen(),
-            AppRoutes.sandboxSelect: (context) => const SandboxSelectorScreen(),
-            AppRoutes.home: (context) => const HomeShell(),
-            AppRoutes.apply: (context) => const ApplyFormScreen(),
-            AppRoutes.claimStatus: (context) => const StatusTrackerScreen(),
-            AppRoutes.profile: (context) => const ProfileScreen(),
-            AppRoutes.policy: (context) => const PolicyScreen(),
-            AppRoutes.editProfile: (context) => const EditProfileScreen(),
-            AppRoutes.payments: (context) => const PaymentsScreen(),
-          },
-        );
-      },
+    return DriverProviderRoot(
+      child: ListenableBuilder(
+        listenable: themeProvider,
+        builder: (context, _) {
+          return MaterialApp(
+            title: 'Continuum',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: themeProvider.themeMode,
+            initialRoute: AppRoutes.login,
+            routes: {
+              AppRoutes.login: (context) => const LoginScreen(),
+              AppRoutes.sandboxSelect: (context) => const SandboxSelectorScreen(),
+              AppRoutes.home: (context) => const HomeShell(),
+              AppRoutes.apply: (context) => const ApplyFormScreen(),
+              AppRoutes.claimStatus: (context) => const StatusTrackerScreen(),
+              AppRoutes.profile: (context) => const ProfileScreen(),
+              AppRoutes.policy: (context) => const PolicyScreen(),
+              AppRoutes.editProfile: (context) => const EditProfileScreen(),
+              AppRoutes.payments: (context) => const PaymentsScreen(),
+              AppRoutes.enrollment: (context) => const EnrollmentScreen(),
+              AppRoutes.consent: (context) => const ConsentScreen(),
+              AppRoutes.mandate: (context) => const MandateScreen(),
+            },
+          );
+        },
+      ),
     );
   }
 }

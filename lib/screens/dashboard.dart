@@ -29,8 +29,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _fetchRiskProfile() async {
     try {
-      final result = await ApiService().fetchRiskProfile({
-        'worker_id': 'current_worker',
+      final api = ApiService();
+      final workerId = await api.getWorkerId() ?? 'unknown';
+      final result = await api.fetchRiskProfile({
+        'worker_id': workerId,
         'zone_id': MockData.coverage['zone'] ?? 'default',
         'platform': 'swiggy',
         'tier': 'gold',

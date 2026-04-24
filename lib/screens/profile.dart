@@ -26,7 +26,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _loadProfile() async {
     try {
-      final result = await ApiService().getWorkerProfile('current_worker');
+      final api = ApiService();
+      final workerId = await api.getWorkerId() ?? 'unknown';
+      final result = await api.getWorkerProfile(workerId);
       if (!mounted) return;
       setState(() {
         _workerData = result;

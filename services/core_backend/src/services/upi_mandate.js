@@ -5,27 +5,7 @@
 
 const db = require('../db');
 const { v4: uuidv4 } = require('uuid');
-
-const PAYU_BASE_URL = process.env.PAYU_MANDATE_URL || process.env.PAYU_BASE_URL || 'http://localhost:9000';
-const PAYU_API_KEY = process.env.PAYU_API_KEY || '';
-
-async function _payuRequest(path, body) {
-  const fetch = require('node-fetch');
-  const resp = await fetch(`${PAYU_BASE_URL}${path}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${PAYU_API_KEY}`,
-    },
-    body: JSON.stringify(body),
-    timeout: 15000,
-  });
-  if (!resp.ok) {
-    const text = await resp.text();
-    throw new Error(`PayU ${path} returned ${resp.status}: ${text}`);
-  }
-  return resp.json();
-}
+const { createMandateGateway } = require('../adapters/mandateGateway');
 
 /**
  * Create a new UPI eNACH mandate for a worker's policy.
@@ -38,14 +18,9 @@ async function _payuRequest(path, body) {
  */
 async function createMandate(workerId, policyId, upiId, maxAmount) {
   const mandateId = uuidv4();
+  const gateway = createMandateGateway();
 
-  const providerResult = await _payuRequest('/api/mandate/create', {
-    mandate_id: mandateId,
-    upi_id: upiId,
-    max_amount: maxAmount,
-    frequency: 'weekly',
-    description: `Continuum weekly premium — policy ${policyId}`,
-  });
+  const providerResult = await gateway.createMandate(mandateId, upiId, maxAmount, 'weekly');
 
   await db.query(
     `INSERT INTO mandates
@@ -124,12 +99,8 @@ async function executeDebit(mandateId, amount) {
   const debitId = uuidv4();
 
   try {
-    const result = await _payuRequest('/api/mandate/debit', {
-      mandate_id: mandateId,
-      provider_ref: mandate.provider_ref,
-      amount,
-      debit_id: debitId,
-    });
+    const gateway = createMandateGateway();
+    const result = await gateway.executeDebit(mandateId, mandate.provider_ref, amount, debitId);
 
     await db.query(
       `INSERT INTO mandate_debits

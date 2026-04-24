@@ -26,7 +26,7 @@ jobs:
           cache: npm
           cache-dependency-path: services/core_backend/package-lock.json
       - run: npm ci
-      - run: npx eslint src/ --ext .js --no-error-on-unmatched-pattern || true
+      - run: npx eslint src/ --ext .js --no-error-on-unmatched-pattern
       - run: npm test
 
   # ── Python services ───────────────────────────────────────────────
@@ -59,8 +59,8 @@ jobs:
         run: |
           if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
           pip install pytest ruff
-      - run: ruff check . --no-fix || true
-      - run: pytest tests/ -v --tb=short || echo "No tests found or tests failed"
+      - run: ruff check . --no-fix
+      - run: pytest tests/ -v --tb=short
 
   # ── Rust claims_scoring ───────────────────────────────────────────
   rust-tests:
@@ -107,7 +107,7 @@ jobs:
           channel: stable
       - run: flutter pub get
       - run: flutter analyze
-      - run: flutter test || echo "No tests found"
+      - run: flutter test
 
   # ── Docker build verification ─────────────────────────────────────
   docker-build:
@@ -180,4 +180,4 @@ jobs:
         working-directory: tests/integration
         run: |
           npm install
-          npm test || echo "Integration tests completed with issues"
+          npm test
