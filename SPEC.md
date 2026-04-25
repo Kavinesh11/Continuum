@@ -183,6 +183,21 @@ Parametric income-protection insurance for gig delivery workers. Oracle consensu
 | V59 | Premium floor = affordability_anchor (never zero for active zone). |
 | V60 | Zone loss ratio > 0.80 applies escalation multiplier: `1 + (zlr - 0.80) * 2.5`. |
 
+**Flutter Frontend — Integration Contracts**
+
+| id | invariant |
+|----|-----------|
+| V61 | `assists.dart` send button must call `POST /assist/chat {message}` and append reply; `initState` must call `GET /assist/messages` to restore history. Static hardcoded `_messages` list must not exist in production path. |
+| V62 | `apply_form.dart` `zone_id` in `POST /claims` payload must come from `GET /workers/:id` response — NOT hardcoded `'default'`. Worker profile must be fetched (or cached) before submission. |
+| V63 | `apply_form.dart` `POST /claims` payload must include `claim_description` from text field. `device_attestation_token` field must be removed — Play Integrity runs in Rust scoring layer, not Flutter. |
+| V64 | `GET /claims/:id/status` returns `{ claim_id, status, fraud_score, decided_at, verification_message }` — NO `stages` field. `status_tracker.dart` must derive `stages` list client-side from `status` string and timestamps. Progress stepper is blank when `stages` is not built. |
+| V65 | `GET /workers/:id` returns `claims_approved_count` and `total_protected_amount` at TOP LEVEL. `profile.dart` must NOT read these from a nested `_workerData['stats']` map (that key does not exist in the response). |
+| V66 | `GET /workers/:id` returns claim history under key `recent_claims`. `profile.dart` reads `_workerData['recent_history']` — key mismatch means history section always shows empty. Must use `recent_claims`. |
+| V67 | `GET /policies/content` route does not exist in `policies.js`. Both `policy.dart` and `payments.dart` call this via `ApiService.getPolicyContent()`. Route must be added returning `{ hero: { badge, title, subtitle }, sections: [{ title, body, icon_key }] }`. |
+| V68 | `CORS_ALLOWED_ORIGINS` must be non-empty in `.env` before any browser or Android emulator (10.0.2.2) call reaches core backend. Empty env var → empty allowed list → all cross-origin requests blocked. |
+| V69 | `dashboard.dart` reads `_profile['next_renewal']` which `GET /workers/:id` does not return; falls back to literal `'upcoming cycle'` — not a crash but stale UI. Field must be added to worker query or fetched from policy endpoint. |
+| V70 | `payments.dart` reads `_profile['weekly_premium']` which `GET /workers/:id` does not return; hardcodes fallback `57`. Real premium comes from `POST /onboard` (risk profiler) `weekly_premium` field. |
+
 ---
 
 ## §T Tasks
@@ -214,6 +229,15 @@ Parametric income-protection insurance for gig delivery workers. Oracle consensu
 | T23 | `x` | Add `actuarial_lab` to `python-tests` matrix in `.github/workflows/ci.yml` | V24,V25,V26,V27,V28 |
 | T24 | `x` | Fix `src/routes/policies.js:80` — HTTP 423 → 409 for `enrollment_locked`; add §B2 | V31 |
 | T25 | `x` | Create `tests/test_payoutAuthorizedHandler.test.js` — kill switch, automation-disabled, zone pause, reserve floor, daily cap, happy path | V35,V36,V37,C8 |
+| T26 | `x` | Wire `lib/screens/assists.dart` — call `getAssistMessages()` in `initState`, wire send button to `sendAssistMessage()`, append bot reply optimistically, remove hardcoded `_messages` list | V61,I.api |
+| T27 | `x` | Fix `lib/screens/apply_form.dart` — fetch worker profile before submit, use `profile['zone_id']`, add `claim_description` to payload, remove `device_attestation_token` field | V62,V63,I.api |
+| T28 | `x` | Fix `lib/screens/status_tracker.dart` — derive `stages` list client-side from `status`+`decided_at`; fix polling case match (`'in review'` variant) | V64,I.api |
+| T29 | `x` | Fix `lib/screens/profile.dart` — read `claims_approved_count` + `total_protected_amount` from top-level; read history from `recent_claims` key | V65,V66,I.api |
+| T30 | `x` | Add `GET /policies/content` route to `services/core_backend/src/routes/policies.js` returning `{ hero: { badge, title, subtitle }, sections: [{ title, body, icon_key }] }` | V67,I.api |
+| T31 | `x` | Add `clearAssistHistory()` to `lib/services/api_service.dart` calling `DELETE /assist/messages` | V61,I.api |
+| T32 | `x` | Fix `lib/screens/payments.dart` — source `weekly_premium` from risk profiler `POST /onboard` result or add field to `GET /workers/:id` via policy join, remove hardcoded `57` | V70,I.api,I.gateway |
+| T33 | `x` | Fix `lib/screens/dashboard.dart` — source `next_renewal` from policy endpoint or add to `GET /workers/:id` via policy join | V69,I.api |
+| T34 | `x` | Update `.env.example` — set `CORS_ALLOWED_ORIGINS=http://10.0.2.2:3000,http://localhost:3000,http://localhost:5000` for Android emulator + web dev | V68,I.api |
 
 ---
 

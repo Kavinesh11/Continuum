@@ -89,11 +89,24 @@ router.get('/:id', authenticate, requireRole('worker', 'admin', 'insurer'), asyn
       [id]
     );
 
-    const [workerR, statsR, protectedR, historyR] = await Promise.all([workerQ, statsQ, protectedQ, historyQ]);
+    // Fetch active policy for weekly_premium and next_renewal (V70, V69)
+    const policyQ = db.query(
+      `SELECT weekly_premium, billing_cycle_end
+       FROM policies
+       WHERE worker_id = $1 AND status = 'active'
+       ORDER BY effective_date DESC
+       LIMIT 1`,
+      [id]
+    );
+
+    const [workerR, statsR, protectedR, historyR, policyR] = await Promise.all([
+      workerQ, statsQ, protectedQ, historyQ, policyQ,
+    ]);
     if (workerR.rows.length === 0) return res.status(404).json({ error: 'not_found' });
 
     const w = workerR.rows[0];
     const s = statsR.rows[0];
+    const p = policyR.rows[0];
 
     return res.status(200).json({
       worker_id: w.worker_id,
@@ -108,6 +121,10 @@ router.get('/:id', authenticate, requireRole('worker', 'admin', 'insurer'), asyn
       emergency_contact: w.emergency_contact || null,
       claims_approved_count: s?.claims_approved_count || 0,
       total_protected_amount: protectedR.rows[0]?.total_protected_amount || 0,
+      weekly_premium: p?.weekly_premium ? parseFloat(p.weekly_premium) : null,
+      next_renewal: p?.billing_cycle_end instanceof Date
+        ? p.billing_cycle_end.toISOString()
+        : p?.billing_cycle_end || null,
       recent_claims: historyR.rows.map((c) => ({
         claim_id: c.claim_id,
         event_type: c.event_type,

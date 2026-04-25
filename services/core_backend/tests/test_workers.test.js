@@ -119,3 +119,60 @@ describe('PUT /workers/fcm-token', () => {
     );
   });
 });
+
+// ─── GET /workers/:id — weekly_premium + next_renewal (V70, V69) ──────────────
+
+describe('GET /workers/:id — policy fields', () => {
+  const workerRow = {
+    worker_id: 'worker-w1',
+    platform: 'swiggy',
+    tier: 'silver',
+    zone_id: 'BLR_SOUTH',
+    upi_id: 'test@upi',
+    registered_at: new Date('2024-01-01T00:00:00Z'),
+    full_name: 'Test Worker',
+    city: 'Bangalore',
+    phone: '9999999999',
+    emergency_contact: '8888888888',
+  };
+
+  const statsRow = { claims_approved_count: 2 };
+  const protectedRow = { total_protected_amount: 5000 };
+  const billingEnd = new Date('2026-05-01T00:00:00Z');
+
+  beforeEach(() => jest.clearAllMocks());
+
+  test('returns weekly_premium and next_renewal from active policy (V70, V69)', async () => {
+    db.query
+      .mockResolvedValueOnce({ rows: [workerRow] })        // worker
+      .mockResolvedValueOnce({ rows: [statsRow] })          // stats
+      .mockResolvedValueOnce({ rows: [protectedRow] })      // protected amount
+      .mockResolvedValueOnce({ rows: [] })                  // history
+      .mockResolvedValueOnce({ rows: [{ weekly_premium: '149.00', billing_cycle_end: billingEnd }] }); // policy
+
+    const res = await request(app)
+      .get('/workers/worker-w1')
+      .set('Authorization', `Bearer ${workerToken('worker-w1')}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.weekly_premium).toBe(149);
+    expect(res.body.next_renewal).toBe(billingEnd.toISOString());
+  });
+
+  test('returns null weekly_premium and next_renewal when no active policy', async () => {
+    db.query
+      .mockResolvedValueOnce({ rows: [workerRow] })
+      .mockResolvedValueOnce({ rows: [statsRow] })
+      .mockResolvedValueOnce({ rows: [protectedRow] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] }); // no policy
+
+    const res = await request(app)
+      .get('/workers/worker-w1')
+      .set('Authorization', `Bearer ${workerToken('worker-w1')}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.weekly_premium).toBeNull();
+    expect(res.body.next_renewal).toBeNull();
+  });
+});

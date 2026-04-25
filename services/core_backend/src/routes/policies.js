@@ -190,6 +190,53 @@ router.post('/', authenticate, requireRole('worker'), async (req, res, next) => 
 });
 
 /**
+ * GET /policies/content
+ * Static CMS-style policy content for the Flutter app (V67).
+ * Must be registered before GET /:id to avoid Express capturing 'content' as an :id param.
+ */
+router.get('/content', authenticate, requireRole('worker', 'admin', 'insurer'), (req, res) => {
+  return res.status(200).json({
+    hero: {
+      badge: 'COMPREHENSIVE',
+      title: 'Gig Worker Protection Plan',
+      subtitle: 'Parametric income protection triggered automatically when a covered disruption is detected — no claims paperwork needed.',
+    },
+    sections: [
+      {
+        title: 'Coverage',
+        icon_key: 'coverage',
+        body: 'Covers income loss due to accidents, vehicle breakdown, medical emergencies, weather disruptions, and platform outages while on active duty.',
+      },
+      {
+        title: 'Eligibility',
+        icon_key: 'eligibility',
+        body: 'Active gig delivery workers with a verified policy. Coverage begins 72 hours after policy creation and resets 5 days after a tier upgrade.',
+      },
+      {
+        title: 'Claim Process',
+        icon_key: 'claim_process',
+        body: 'Submit a claim with incident details. Our oracle engine validates the disruption event automatically — no documents required for parametric triggers.',
+      },
+      {
+        title: 'Payouts',
+        icon_key: 'payouts',
+        body: 'Approved payouts are credited to your registered UPI wallet within 5 minutes of oracle authorization. A 7-day non-duplication window applies per billing cycle.',
+      },
+      {
+        title: 'Exclusions',
+        icon_key: 'exclusions',
+        body: 'Pre-existing conditions, incidents outside active duty hours, and events flagged for fraud are excluded. Device attestation failure blocks the claim pipeline.',
+      },
+      {
+        title: 'Renewal',
+        icon_key: 'renewal',
+        body: 'Weekly auto-renewal via eNACH mandate. Coverage lapses if the mandate payment fails. Re-enrollment is subject to zone availability and adverse-selection locks.',
+      },
+    ],
+  });
+});
+
+/**
  * GET /policies/:id
  * Retrieve a policy by ID. Worker can only access their own policy.
  * Requirements: 6.1

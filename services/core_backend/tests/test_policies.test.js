@@ -536,6 +536,44 @@ describe('Business Rule: 72-hour activation delay (Requirement 6.5)', () => {
   });
 });
 
+// ─── GET /policies/content (V67) ─────────────────────────────────────────────
+
+describe('GET /policies/content', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('returns hero + sections shape for worker (V67)', async () => {
+    const res = await request(app)
+      .get('/policies/content')
+      .set('Authorization', `Bearer ${workerToken('worker-123')}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.hero).toBeDefined();
+    expect(res.body.hero.badge).toBeDefined();
+    expect(res.body.hero.title).toBeDefined();
+    expect(res.body.hero.subtitle).toBeDefined();
+    expect(Array.isArray(res.body.sections)).toBe(true);
+    expect(res.body.sections.length).toBeGreaterThan(0);
+    expect(res.body.sections[0].title).toBeDefined();
+    expect(res.body.sections[0].body).toBeDefined();
+    expect(res.body.sections[0].icon_key).toBeDefined();
+  });
+
+  test('returns 200 for admin role', async () => {
+    const res = await request(app)
+      .get('/policies/content')
+      .set('Authorization', `Bearer ${adminToken()}`);
+
+    expect(res.status).toBe(200);
+  });
+
+  test('returns 401 without auth token', async () => {
+    const res = await request(app).get('/policies/content');
+    expect(res.status).toBe(401);
+  });
+});
+
 // ─── Business Rule: Cancellation deferred to billing cycle end ───────────────
 
 describe('Business Rule: Cancellation deferred to billing cycle end (Requirement 6.10)', () => {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 
 class AssistsScreen extends StatefulWidget {
@@ -10,30 +11,79 @@ class AssistsScreen extends StatefulWidget {
 
 class _AssistsScreenState extends State<AssistsScreen> {
   final TextEditingController _messageController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
 
-  final List<Map<String, dynamic>> _messages = [
-    {
-      'text': 'Hi there! I am Continuum Assist. How can I help you today?',
-      'isBot': true,
-      'time': '10:00 AM',
-    },
-    {
-      'text': 'What is my current expected payout?',
-      'isBot': false,
-      'time': '10:01 AM',
-    },
-    {
-      'text':
-          'Based on your latest shifts, your expected payout is ₹2,850. Would you like to view detailed earnings?',
-      'isBot': true,
-      'time': '10:01 AM',
-    },
-  ];
+  List<Map<String, dynamic>> _messages = [];
+  bool _isSending = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHistory();
+  }
 
   @override
   void dispose() {
     _messageController.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadHistory() async {
+    try {
+      final history = await ApiService().getAssistMessages();
+      if (!mounted) return;
+      setState(() {
+        _messages = history.map((m) => {
+          'text': m['text']?.toString() ?? m['message']?.toString() ?? '',
+          'isBot': (m['role']?.toString() ?? 'assistant') != 'user',
+          'time': m['time']?.toString() ?? m['created_at']?.toString() ?? '',
+        }).toList();
+      });
+      _scrollToBottom();
+    } catch (_) {}
+  }
+
+  Future<void> _send() async {
+    final text = _messageController.text.trim();
+    if (text.isEmpty || _isSending) return;
+
+    final now = TimeOfDay.now();
+    final timeStr = '${now.hour}:${now.minute.toString().padLeft(2, '0')}';
+
+    setState(() {
+      _isSending = true;
+      _messages.add({'text': text, 'isBot': false, 'time': timeStr});
+      _messageController.clear();
+    });
+    _scrollToBottom();
+
+    try {
+      final result = await ApiService().sendAssistMessage(text);
+      if (!mounted) return;
+      final reply = result['text']?.toString() ?? result['message']?.toString() ?? '';
+      if (reply.isNotEmpty) {
+        setState(() {
+          _messages.add({'text': reply, 'isBot': true, 'time': timeStr});
+        });
+        _scrollToBottom();
+      }
+    } catch (_) {
+    } finally {
+      if (mounted) setState(() => _isSending = false);
+    }
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
   @override
@@ -84,19 +134,30 @@ class _AssistsScreenState extends State<AssistsScreen> {
       body: Column(
         children: [
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16.0),
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                final msg = _messages[index];
-                return _buildMessageBubble(
-                  context: context,
-                  text: msg['text'] as String,
-                  isBot: msg['isBot'] as bool,
-                  time: msg['time'] as String,
-                );
-              },
-            ),
+            child: _messages.isEmpty
+                ? Center(
+                    child: Text(
+                      'Ask Assist anything about your coverage.',
+                      style: TextStyle(
+                        color: AppTheme.textSecondaryOf(context),
+                        fontSize: 14,
+                      ),
+                    ),
+                  )
+                : ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.all(16.0),
+                    itemCount: _messages.length,
+                    itemBuilder: (context, index) {
+                      final msg = _messages[index];
+                      return _buildMessageBubble(
+                        context: context,
+                        text: msg['text'] as String,
+                        isBot: msg['isBot'] as bool,
+                        time: msg['time'] as String,
+                      );
+                    },
+                  ),
           ),
           _buildChatInput(context),
         ],
@@ -113,9 +174,8 @@ class _AssistsScreenState extends State<AssistsScreen> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
       child: Row(
-        mainAxisAlignment: isBot
-            ? MainAxisAlignment.start
-            : MainAxisAlignment.end,
+        mainAxisAlignment:
+            isBot ? MainAxisAlignment.start : MainAxisAlignment.end,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (isBot) ...[
@@ -136,7 +196,8 @@ class _AssistsScreenState extends State<AssistsScreen> {
           ],
           Flexible(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
                 color: isBot
                     ? AppTheme.cardOf(context)
@@ -212,9 +273,11 @@ class _AssistsScreenState extends State<AssistsScreen> {
                   color: AppTheme.textPrimaryOf(context),
                   fontSize: 14,
                 ),
+                onSubmitted: (_) => _send(),
                 decoration: InputDecoration(
                   hintText: 'Ask Assist anything...',
-                  hintStyle: TextStyle(color: AppTheme.textHintOf(context)),
+                  hintStyle:
+                      TextStyle(color: AppTheme.textHintOf(context)),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 20,
@@ -227,13 +290,23 @@ class _AssistsScreenState extends State<AssistsScreen> {
           const SizedBox(width: 12),
           Container(
             decoration: BoxDecoration(
-              gradient: AppTheme.accentGradient,
+              gradient: _isSending ? null : AppTheme.accentGradient,
+              color: _isSending ? AppTheme.dividerOf(context) : null,
               shape: BoxShape.circle,
-              boxShadow: AppTheme.primaryGlow(0.2),
+              boxShadow: _isSending ? null : AppTheme.primaryGlow(0.2),
             ),
             child: IconButton(
-              onPressed: () {},
-              icon: const Icon(Icons.send_rounded, color: Colors.white),
+              onPressed: _isSending ? null : _send,
+              icon: _isSending
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.send_rounded, color: Colors.white),
             ),
           ),
         ],

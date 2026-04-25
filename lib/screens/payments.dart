@@ -99,7 +99,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
       'planName': hero?['title']?.toString() ?? '$tier Tier Plan',
       'coverage':
           hero?['subtitle']?.toString() ?? 'Coverage active in zone $zone',
-      'weeklyCost': (_profile?['weekly_premium'] ?? 57).toString(),
+      'weeklyCost': (_profile?['weekly_premium'] as num?)?.toStringAsFixed(0) ?? '—',
       'nextBillingDate': 'Upcoming cycle',
     };
   }
@@ -321,9 +321,9 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                   ),
                 ],
               ),
-              content: const Text(
-                'Your payment of ₹57 has been initiated and will be processed shortly.',
-                style: TextStyle(height: 1.4),
+              content: Text(
+                'Your payment of ₹${(_profile?['weekly_premium'] as num?)?.toStringAsFixed(0) ?? '—'} has been initiated and will be processed shortly.',
+                style: const TextStyle(height: 1.4),
               ),
               actions: [
                 Container(

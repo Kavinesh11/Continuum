@@ -371,4 +371,15 @@ class ApiService {
       return {};
     }
   }
+
+  /// DELETE /assist/messages → Core Backend
+  Future<void> clearAssistHistory() async {
+    try {
+      final headers = await _authHeaders();
+      await http
+          .delete(Uri.parse('$_coreUrl/assist/messages'), headers: headers)
+          .timeout(const Duration(seconds: 15));
+      _cache.delete('assist_messages');
+    } catch (_) {}
+  }
 }

@@ -48,9 +48,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final driver = DriverProvider.of(context).driver;
-    final stats = (_workerData?['stats'] as Map<String, dynamic>?) ?? const {};
     final history =
-        (_workerData?['recent_history'] as List<dynamic>? ?? const [])
+        (_workerData?['recent_claims'] as List<dynamic>? ?? const [])
             .cast<Map<String, dynamic>>();
     // Use live data when available, fall back to sandbox driver
     final name = _workerData?['full_name'] as String? ?? driver.fullName;
@@ -87,8 +86,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       children: [
                         _buildStatsPills(
                           context,
-                          '₹ ${(stats['total_protected_amount'] ?? driver.totalProtected).toString()}',
-                          (stats['claims_approved_count'] as num?)?.toInt() ??
+                          '₹ ${(_workerData?['total_protected_amount'] ?? driver.totalProtected).toString()}',
+                          (_workerData?['claims_approved_count'] as num?)?.toInt() ??
                               driver.claimsApproved,
                         ),
                         const SizedBox(height: 24),
