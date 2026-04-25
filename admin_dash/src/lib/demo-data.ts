@@ -31,6 +31,7 @@ export const initialClaims = [
     priority: "High",
     fraudScore: 0.08,
     zone: "BLR-South",
+    justification: "",
   },
   {
     id: "CLM-7711-08",
@@ -42,6 +43,7 @@ export const initialClaims = [
     priority: "High",
     fraudScore: 0.12,
     zone: "BLR-North",
+    justification: "",
   },
   {
     id: "CLM-5510-44",
@@ -53,6 +55,7 @@ export const initialClaims = [
     priority: "Medium",
     fraudScore: 0.09,
     zone: "CHN-Central",
+    justification: "",
   },
   {
     id: "CLM-9102-54",
@@ -64,6 +67,7 @@ export const initialClaims = [
     priority: "High",
     fraudScore: 0.71,
     zone: "BLR-South",
+    justification: "",
   },
   {
     id: "CLM-7322-90",
@@ -75,6 +79,7 @@ export const initialClaims = [
     priority: "Low",
     fraudScore: 0.44,
     zone: "BLR-North",
+    justification: "GPS proximity log shows worker outside disruption zone.",
   },
   {
     id: "CLM-5388-19",
@@ -86,6 +91,7 @@ export const initialClaims = [
     priority: "Medium",
     fraudScore: 0.06,
     zone: "CHN-Central",
+    justification: "Oracle consensus confirmed.",
   },
   {
     id: "CLM-8101-33",
@@ -97,6 +103,7 @@ export const initialClaims = [
     priority: "Medium",
     fraudScore: 0.15,
     zone: "BLR-South",
+    justification: "",
   },
   {
     id: "CLM-6623-77",
@@ -108,6 +115,7 @@ export const initialClaims = [
     priority: "High",
     fraudScore: 0.19,
     zone: "CHN-Central",
+    justification: "",
   },
 ];
 

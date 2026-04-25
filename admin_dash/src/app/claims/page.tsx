@@ -101,6 +101,11 @@ export default function ClaimsPage() {
                     <span>{claim.reason}</span>
                     <span className="opacity-70">Priority: {claim.priority}</span>
                   </div>
+                  {claim.status !== "Pending" && claim.justification && (
+                    <div className="mt-2 text-xs italic text-teal-800 bg-teal-50 p-1.5 rounded border border-teal-100">
+                      Note: {claim.justification}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -184,6 +189,15 @@ export default function ClaimsPage() {
                   <span className="text-teal-600 block text-xs uppercase tracking-wider mb-1">UPI Ref</span>
                   <div className="font-mono text-xs">UPI/040426/CONT847291</div>
                 </div>
+
+                {selectedClaim.status !== "Pending" && selectedClaim.justification && (
+                  <div className="mt-4 p-3 bg-teal-50 rounded-lg border border-teal-100">
+                    <span className="text-teal-800 font-semibold block text-xs uppercase tracking-wider mb-1">Action Justification</span>
+                    <div className="text-sm italic text-teal-900">
+                      &quot;{selectedClaim.justification}&quot;
+                    </div>
+                  </div>
+                )}
 
                 {selectedClaim.status === "Pending" && (
                   <div className="pt-4 flex flex-col gap-2 border-t border-teal-100">

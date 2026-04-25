@@ -115,8 +115,8 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     setKpis((prev) => ({ ...prev, rejectedToday: prev.rejectedToday + 2 }));
     addNotification("2 claims auto-rejected — GPS proximity failed.");
     setClaims((prev) => [
-      { id: "CLM-9999-01", driver: "Ravi T.", tier: "Platinum", reason: "Vehicle Breakdown", amount: 0, status: "Rejected", priority: "Low", fraudScore: 0.55, zone: "BLR-North" },
-      { id: "CLM-9999-02", driver: "Sudha M.", tier: "Silver", reason: "Outside Zone", amount: 0, status: "Rejected", priority: "Low", fraudScore: 0.60, zone: "CHN-Central" },
+      { id: "CLM-9999-01", driver: "Ravi T.", tier: "Platinum", reason: "Vehicle Breakdown", amount: 0, status: "Rejected", priority: "Low", fraudScore: 0.55, zone: "BLR-North", justification: "GPS proximity log shows worker outside disruption zone." },
+      { id: "CLM-9999-02", driver: "Sudha M.", tier: "Silver", reason: "Outside Zone", amount: 0, status: "Rejected", priority: "Low", fraudScore: 0.60, zone: "CHN-Central", justification: "Claim originated outside active zone." },
       ...prev
     ]);
   }, [addNotification]);
@@ -149,14 +149,14 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const approveClaim = useCallback((id: string, message: string) => {
-    setClaims((prev) => prev.map(c => c.id === id ? { ...c, status: killSwitchActive ? "Approved (payout queued — kill switch active)" : "Approved" } : c));
+    setClaims((prev) => prev.map(c => c.id === id ? { ...c, status: killSwitchActive ? "Approved (payout queued — kill switch active)" : "Approved", justification: message } : c));
     setKpis((prev) => ({ ...prev, pendingQueue: Math.max(0, prev.pendingQueue - 1), approvedToday: prev.approvedToday + 1 }));
     addAuditLog("Preethi Nair", "APPROVED", id, killSwitchActive ? `Payout Queued: ${message}` : `Approved: ${message}`);
     if (!killSwitchActive) addNotification(`✅ ${id} approved.`);
   }, [killSwitchActive, addAuditLog, addNotification]);
 
   const rejectClaim = useCallback((id: string, reason: string) => {
-    setClaims((prev) => prev.map(c => c.id === id ? { ...c, status: "Rejected" } : c));
+    setClaims((prev) => prev.map(c => c.id === id ? { ...c, status: "Rejected", justification: reason } : c));
     setKpis((prev) => ({ ...prev, pendingQueue: Math.max(0, prev.pendingQueue - 1), rejectedToday: prev.rejectedToday + 1 }));
     addAuditLog("Preethi Nair", "REJECTED", id, reason);
   }, [addAuditLog]);
