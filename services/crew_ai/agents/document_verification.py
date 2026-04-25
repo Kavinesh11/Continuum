@@ -20,6 +20,8 @@ def make_document_verification_agent():
             "and event type. You flag any discrepancies for further review."
         ),
         llm=make_gemini_llm(),
+        max_iter=15,
+        max_execution_time=90,
         verbose=True,
         allow_delegation=False,
     )
