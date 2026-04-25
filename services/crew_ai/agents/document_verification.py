@@ -3,6 +3,8 @@ document_verification agent — validates claim documents against policy terms.
 """
 from __future__ import annotations
 
+from ..llm_factory import make_gemini_llm
+
 
 def make_document_verification_agent():
     from crewai import Agent  # noqa: PLC0415
@@ -17,6 +19,7 @@ def make_document_verification_agent():
             "submitted claim documents match the policy tier, coverage period, "
             "and event type. You flag any discrepancies for further review."
         ),
+        llm=make_gemini_llm(),
         verbose=True,
         allow_delegation=False,
     )

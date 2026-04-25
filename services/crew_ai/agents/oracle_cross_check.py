@@ -3,6 +3,8 @@ oracle_cross_check agent — verifies claim event against oracle vote history.
 """
 from __future__ import annotations
 
+from ..llm_factory import make_gemini_llm
+
 
 def make_oracle_cross_check_agent():
     from crewai import Agent  # noqa: PLC0415
@@ -18,6 +20,7 @@ def make_oracle_cross_check_agent():
             "whether a parametric trigger was authorized for the claimed zone "
             "and time window, and flag claims that lack oracle support."
         ),
+        llm=make_gemini_llm(),
         verbose=True,
         allow_delegation=False,
     )

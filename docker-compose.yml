@@ -116,6 +116,7 @@ services:
       - POSTGRES_URL=postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/continuum
       - MONGODB_URI=mongodb://mongodb:27017/continuum
       - KG_CACHE_URL=http://kg_cache:8080
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
     depends_on:
       - kafka
       - postgres

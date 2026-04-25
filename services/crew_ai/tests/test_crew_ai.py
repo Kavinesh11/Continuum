@@ -167,8 +167,10 @@ class TestProcessFraudQueueClaim:
             patch("services.crew_ai.crew_ai_orchestrator.log_agent_action", new=AsyncMock()),
             patch("services.crew_ai.crew_ai_orchestrator._build_crew") as mock_build,
         ):
+            mock_crew_output = MagicMock()
+            mock_crew_output.raw = mock_report_json
             mock_crew = MagicMock()
-            mock_crew.kickoff.return_value = mock_report_json
+            mock_crew.kickoff_async = AsyncMock(return_value=mock_crew_output)
             mock_build.return_value = mock_crew
 
             from services.crew_ai.crew_ai_orchestrator import process_fraud_queue_claim
@@ -207,8 +209,10 @@ class TestProcessFraudQueueClaim:
             patch("services.crew_ai.crew_ai_orchestrator.log_agent_action", side_effect=capture_log),
             patch("services.crew_ai.crew_ai_orchestrator._build_crew") as mock_build,
         ):
+            mock_crew_output = MagicMock()
+            mock_crew_output.raw = high_confidence_json
             mock_crew = MagicMock()
-            mock_crew.kickoff.return_value = high_confidence_json
+            mock_crew.kickoff_async = AsyncMock(return_value=mock_crew_output)
             mock_build.return_value = mock_crew
 
             from services.crew_ai.crew_ai_orchestrator import process_fraud_queue_claim
@@ -247,8 +251,10 @@ class TestProcessFraudQueueClaim:
             patch("services.crew_ai.crew_ai_orchestrator.log_agent_action", side_effect=capture_log),
             patch("services.crew_ai.crew_ai_orchestrator._build_crew") as mock_build,
         ):
+            mock_crew_output = MagicMock()
+            mock_crew_output.raw = low_confidence_json
             mock_crew = MagicMock()
-            mock_crew.kickoff.return_value = low_confidence_json
+            mock_crew.kickoff_async = AsyncMock(return_value=mock_crew_output)
             mock_build.return_value = mock_crew
 
             from services.crew_ai.crew_ai_orchestrator import process_fraud_queue_claim
@@ -296,8 +302,10 @@ def test_property_33_confidence_escalation(confidence: float):
             patch("services.crew_ai.crew_ai_orchestrator.log_agent_action", side_effect=capture_log),
             patch("services.crew_ai.crew_ai_orchestrator._build_crew") as mock_build,
         ):
+            mock_crew_output = MagicMock()
+            mock_crew_output.raw = report_json
             mock_crew = MagicMock()
-            mock_crew.kickoff.return_value = report_json
+            mock_crew.kickoff_async = AsyncMock(return_value=mock_crew_output)
             mock_build.return_value = mock_crew
 
             from services.crew_ai.crew_ai_orchestrator import process_fraud_queue_claim
