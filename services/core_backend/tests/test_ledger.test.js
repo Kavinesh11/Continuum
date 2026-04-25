@@ -6,14 +6,21 @@
 const fc = require('fast-check');
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
+// debitReserve (called by createPayoutRecord) uses db.connect() for transactions.
+// mockClientQuery / mockRelease are declared here so tests can configure them.
 
-jest.mock('../src/db', () => ({ query: jest.fn() }));
+jest.mock('../src/db', () => ({ query: jest.fn(), connect: jest.fn() }));
 
 const db = require('../src/db');
+
+// Shared mock client — configured in beforeEach so each test starts clean
+const mockClientQuery = jest.fn().mockResolvedValue({ rows: [] });
+const mockRelease = jest.fn();
 const {
   validatePayoutRecord,
   createPayoutRecord,
   checkReserveBalance,
+  creditReserve,
 } = require('../src/services/ledger');
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -80,11 +87,13 @@ describe('validatePayoutRecord', () => {
 });
 
 // ─── checkReserveBalance — unit tests ────────────────────────────────────────
+// checkReserveBalance now queries ledger_accounts (primary) and falls back to
+// the legacy reserve_balance table when ledger_accounts has no RESERVE_MAIN row.
 
 describe('checkReserveBalance', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  test('resolves with balance when balance >= amount', async () => {
+  test('resolves with balance when balance >= amount (ledger_accounts path)', async () => {
     db.query.mockResolvedValueOnce({ rows: [{ balance: '10000.00' }] });
     const balance = await checkReserveBalance(500);
     expect(balance).toBe(10000);
@@ -97,7 +106,7 @@ describe('checkReserveBalance', () => {
 
   test('throws when balance < amount', async () => {
     db.query.mockResolvedValueOnce({ rows: [{ balance: '100.00' }] });
-    await expect(checkReserveBalance(500)).rejects.toThrow(/Insufficient reserve balance/);
+    await expect(checkReserveBalance(500)).rejects.toThrow(/Insufficient reserve/);
   });
 
   test('error message includes balance and amount', async () => {
@@ -105,15 +114,31 @@ describe('checkReserveBalance', () => {
     await expect(checkReserveBalance(999)).rejects.toThrow(/200.*999|999.*200/);
   });
 
-  test('throws when reserve_balance table is empty', async () => {
-    db.query.mockResolvedValueOnce({ rows: [] });
-    await expect(checkReserveBalance(100)).rejects.toThrow(/no row/);
+  test('throws when both ledger_accounts and reserve_balance table are empty', async () => {
+    // First call: ledger_accounts returns empty → fallback triggered
+    // Second call: reserve_balance also empty → throw
+    db.query
+      .mockResolvedValueOnce({ rows: [] })   // ledger_accounts
+      .mockResolvedValueOnce({ rows: [] });  // reserve_balance fallback
+    await expect(checkReserveBalance(100)).rejects.toThrow(/no reserve account found/);
   });
 
-  test('queries reserve_balance with id = 1', async () => {
+  test('queries ledger_accounts as primary reserve source', async () => {
     db.query.mockResolvedValueOnce({ rows: [{ balance: '5000.00' }] });
     await checkReserveBalance(100);
     const [sql] = db.query.mock.calls[0];
+    expect(sql).toMatch(/ledger_accounts/);
+    expect(sql).toMatch(/RESERVE_MAIN/);
+  });
+
+  test('fallback: uses reserve_balance table when ledger_accounts is empty', async () => {
+    db.query
+      .mockResolvedValueOnce({ rows: [] })                           // ledger_accounts empty
+      .mockResolvedValueOnce({ rows: [{ balance: '500.00' }] });    // reserve_balance fallback
+    const balance = await checkReserveBalance(100);
+    expect(balance).toBe(500);
+    // Second query should target reserve_balance with id = 1
+    const [sql] = db.query.mock.calls[1];
     expect(sql).toMatch(/reserve_balance/);
     expect(sql).toMatch(/id\s*=\s*1/);
   });
@@ -122,7 +147,34 @@ describe('checkReserveBalance', () => {
 // ─── createPayoutRecord — unit tests ─────────────────────────────────────────
 
 describe('createPayoutRecord', () => {
-  beforeEach(() => jest.clearAllMocks());
+  // createPayoutRecord calls debitReserve which uses db.connect() for a transaction.
+  // client.query calls in order: BEGIN, SELECT FOR UPDATE, UPDATE RESERVE, UPDATE EXPENSE, INSERT entry, COMMIT
+  // Then db.query is called for the final INSERT INTO payouts.
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // Set up connect() to return mock client with default empty-row responses
+    mockClientQuery.mockResolvedValue({ rows: [] });
+    db.connect.mockResolvedValue({ query: mockClientQuery, release: mockRelease });
+  });
+
+  // Helper: configure client.query for a successful debitReserve (balance=10000)
+  function setupSuccessfulDebit() {
+    mockClientQuery
+      .mockResolvedValueOnce({ rows: [] })                           // BEGIN
+      .mockResolvedValueOnce({ rows: [{ balance: '10000.00' }] })   // SELECT FOR UPDATE
+      .mockResolvedValueOnce({ rows: [] })                           // UPDATE RESERVE_MAIN
+      .mockResolvedValueOnce({ rows: [] })                           // UPDATE PAYOUT_EXPENSE
+      .mockResolvedValueOnce({ rows: [] })                           // INSERT ledger_entry
+      .mockResolvedValueOnce({ rows: [] });                          // COMMIT
+  }
+
+  // Helper: configure client.query for a failed debitReserve (insufficient balance)
+  function setupInsufficientDebit() {
+    mockClientQuery
+      .mockResolvedValueOnce({ rows: [] })                          // BEGIN
+      .mockResolvedValueOnce({ rows: [{ balance: '10.00' }] })     // SELECT FOR UPDATE (low)
+      .mockResolvedValueOnce({ rows: [] });                         // ROLLBACK
+  }
 
   const insertedRow = {
     payout_id:   'payout-uuid-001',
@@ -139,9 +191,8 @@ describe('createPayoutRecord', () => {
   };
 
   test('inserts and returns the payout row on success', async () => {
-    db.query
-      .mockResolvedValueOnce({ rows: [{ balance: '10000.00' }] }) // checkReserveBalance
-      .mockResolvedValueOnce({ rows: [insertedRow] });             // INSERT
+    setupSuccessfulDebit();
+    db.query.mockResolvedValueOnce({ rows: [insertedRow] }); // INSERT INTO payouts
 
     const result = await createPayoutRecord(validRecord());
 
@@ -154,30 +205,30 @@ describe('createPayoutRecord', () => {
     const rec = validRecord({ payout_id: null });
 
     await expect(createPayoutRecord(rec)).rejects.toThrow('payout_id');
-    // DB should not be called at all
+    // DB should not be called at all (validation fails before any DB access)
+    expect(db.connect).not.toHaveBeenCalled();
     expect(db.query).not.toHaveBeenCalled();
   });
 
   test('throws when reserve balance is insufficient (INSERT not called)', async () => {
-    db.query.mockResolvedValueOnce({ rows: [{ balance: '10.00' }] }); // low balance
+    setupInsufficientDebit();
 
     await expect(createPayoutRecord(validRecord())).rejects.toThrow(/Insufficient reserve/);
-    // Only one DB call (reserve check), no INSERT
-    expect(db.query).toHaveBeenCalledTimes(1);
+    // db.query (INSERT payouts) must NOT be called — error happened inside debitReserve
+    expect(db.query).not.toHaveBeenCalled();
   });
 
   test('defaults created_at to current time when not provided', async () => {
     const rec = validRecord();
     delete rec.created_at;
 
-    db.query
-      .mockResolvedValueOnce({ rows: [{ balance: '10000.00' }] })
-      .mockResolvedValueOnce({ rows: [{ ...insertedRow }] });
+    setupSuccessfulDebit();
+    db.query.mockResolvedValueOnce({ rows: [{ ...insertedRow }] });
 
     await createPayoutRecord(rec);
 
-    // The INSERT call's 11th parameter ($11) should be a Date
-    const insertCall = db.query.mock.calls[1];
+    // The INSERT INTO payouts call's 11th parameter ($11) should be a Date
+    const insertCall = db.query.mock.calls[0];
     const createdAtParam = insertCall[1][10]; // 0-indexed, $11 is index 10
     expect(createdAtParam).toBeInstanceOf(Date);
   });
@@ -186,13 +237,12 @@ describe('createPayoutRecord', () => {
     const rec = validRecord();
     delete rec.status;
 
-    db.query
-      .mockResolvedValueOnce({ rows: [{ balance: '10000.00' }] })
-      .mockResolvedValueOnce({ rows: [insertedRow] });
+    setupSuccessfulDebit();
+    db.query.mockResolvedValueOnce({ rows: [insertedRow] });
 
     await createPayoutRecord(rec);
 
-    const insertCall = db.query.mock.calls[1];
+    const insertCall = db.query.mock.calls[0];
     const statusParam = insertCall[1][9]; // $10 = status
     expect(statusParam).toBe('pending');
   });
@@ -201,28 +251,80 @@ describe('createPayoutRecord', () => {
     const votes = [{ oracle: 'imd', vote: 'affirm' }, { oracle: 'nasa_gpm', vote: 'affirm' }];
     const rec = validRecord({ oracle_votes: votes });
 
-    db.query
-      .mockResolvedValueOnce({ rows: [{ balance: '10000.00' }] })
-      .mockResolvedValueOnce({ rows: [insertedRow] });
+    setupSuccessfulDebit();
+    db.query.mockResolvedValueOnce({ rows: [insertedRow] });
 
     await createPayoutRecord(rec);
 
-    const insertCall = db.query.mock.calls[1];
+    const insertCall = db.query.mock.calls[0];
     const oracleVotesParam = insertCall[1][5]; // $6 = oracle_votes
     expect(typeof oracleVotesParam).toBe('string');
     expect(JSON.parse(oracleVotesParam)).toEqual(votes);
   });
 
   test('INSERT SQL targets the payouts table', async () => {
-    db.query
-      .mockResolvedValueOnce({ rows: [{ balance: '10000.00' }] })
-      .mockResolvedValueOnce({ rows: [insertedRow] });
+    setupSuccessfulDebit();
+    db.query.mockResolvedValueOnce({ rows: [insertedRow] });
 
     await createPayoutRecord(validRecord());
 
-    const insertCall = db.query.mock.calls[1];
+    const insertCall = db.query.mock.calls[0];
     expect(insertCall[0]).toMatch(/INSERT INTO payouts/i);
     expect(insertCall[0]).toMatch(/RETURNING/i);
+  });
+});
+
+// ─── creditReserve — unit tests ──────────────────────────────────────────────
+
+describe('creditReserve', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockClientQuery.mockResolvedValue({ rows: [] });
+    db.connect.mockResolvedValue({ query: mockClientQuery, release: mockRelease });
+  });
+
+  test('credits reserve and returns new balance on success', async () => {
+    mockClientQuery
+      .mockResolvedValueOnce({ rows: [] })                          // BEGIN
+      .mockResolvedValueOnce({ rows: [] })                          // SELECT FOR UPDATE
+      .mockResolvedValueOnce({ rows: [] })                          // UPDATE RESERVE_MAIN
+      .mockResolvedValueOnce({ rows: [] })                          // UPDATE PREMIUM_INCOME
+      .mockResolvedValueOnce({ rows: [] })                          // INSERT ledger_entry
+      .mockResolvedValueOnce({ rows: [] });                         // COMMIT
+    db.query.mockResolvedValueOnce({ rows: [{ balance: '10500.00' }] }); // final SELECT
+
+    const balance = await creditReserve(500, 'mandate-debit-001');
+    expect(balance).toBe(10500);
+  });
+
+  test('releases client on success', async () => {
+    mockClientQuery.mockResolvedValue({ rows: [] });
+    db.query.mockResolvedValueOnce({ rows: [{ balance: '1000.00' }] });
+
+    await creditReserve(100, 'ref-001');
+    expect(mockRelease).toHaveBeenCalledTimes(1);
+  });
+
+  test('rolls back and rethrows on error', async () => {
+    const boom = new Error('constraint violation');
+    mockClientQuery
+      .mockResolvedValueOnce({ rows: [] })     // BEGIN
+      .mockRejectedValueOnce(boom)             // SELECT FOR UPDATE throws
+      .mockResolvedValueOnce({ rows: [] });    // ROLLBACK
+
+    await expect(creditReserve(100, 'ref-002')).rejects.toThrow('constraint violation');
+    const rollbackCall = mockClientQuery.mock.calls.find(c => c[0] && c[0].includes('ROLLBACK'));
+    expect(rollbackCall).toBeDefined();
+  });
+
+  test('releases client even after error', async () => {
+    mockClientQuery
+      .mockResolvedValueOnce({ rows: [] })
+      .mockRejectedValueOnce(new Error('db error'))
+      .mockResolvedValueOnce({ rows: [] }); // ROLLBACK
+
+    await expect(creditReserve(50, 'ref-003')).rejects.toThrow();
+    expect(mockRelease).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -323,8 +425,8 @@ describe('Property 26: Payout Record Completeness', () => {
             threw = true;
           }
 
-          // Must have thrown, and DB must not have been called at all
-          return threw && db.query.mock.calls.length === 0;
+          // Must have thrown, and neither db.connect nor db.query must be called
+          return threw && db.connect.mock.calls.length === 0 && db.query.mock.calls.length === 0;
         }
       ),
       { numRuns: 100 }
@@ -334,12 +436,14 @@ describe('Property 26: Payout Record Completeness', () => {
   test('PBT — checkReserveBalance throws for any amount exceeding balance', () => {
     // Feature: continuum-ml-pipelines, Property 26: Payout Record Completeness
     // Validates: Requirements 9.2
+    // checkReserveBalance queries ledger_accounts (primary path); one mock suffices.
     return fc.assert(
       fc.asyncProperty(
         fc.integer({ min: 0, max: 9999 }),   // balance (INR, integer for simplicity)
         fc.integer({ min: 1, max: 10000 }),  // amount
         async (balance, amount) => {
           jest.clearAllMocks();
+          // Mock the ledger_accounts primary query
           db.query.mockResolvedValueOnce({ rows: [{ balance: String(balance) }] });
 
           let threw = false;

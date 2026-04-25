@@ -319,11 +319,14 @@ describe('Property 19: RBAC Access Control', () => {
 'use strict';
 
 // Mock DB and Kafka before requiring app (idempotent — jest deduplicates)
-jest.mock('../src/db', () => ({ query: jest.fn() }));
+// db.connect() is used by policies.js for transactions (BEGIN/COMMIT).
+jest.mock('../src/db', () => ({ query: jest.fn(), connect: jest.fn() }));
 jest.mock('../src/services/kafka', () => ({
   publishEvent: jest.fn().mockResolvedValue(undefined),
   disconnect: jest.fn().mockResolvedValue(undefined),
 }));
+// Disable rate limiting — PBT runs 100+ requests which would hit the global limit
+jest.mock('express-rate-limit', () => () => (_req, _res, next) => next());
 
 const request = require('supertest');
 const app = require('../src/app');
@@ -337,6 +340,16 @@ const BILLING_CYCLE_MS      = 7 * 24 * 60 * 60 * 1000;   // 7 days
 function workerToken(workerId = 'worker-pbt') {
   return signToken({ worker_id: workerId, role: 'worker', platform: 'swiggy', tier: 'silver' });
 }
+
+// Shared mock client for db.connect() — used by policies.js transaction (BEGIN/COMMIT)
+const mockClientQuery = jest.fn().mockResolvedValue({ rows: [] });
+const mockRelease = jest.fn();
+
+// Configure connect() before each PBT test (cleared in beforeEach blocks)
+beforeEach(() => {
+  db.connect.mockResolvedValue({ query: mockClientQuery, release: mockRelease });
+  mockClientQuery.mockResolvedValue({ rows: [] });
+});
 
 // ─── Property 20: Policy Activation Delay ────────────────────────────────────
 // Feature: continuum-ml-pipelines, Property 20: Policy Activation Delay
@@ -368,6 +381,8 @@ describe('Property 20: Policy Activation Delay', () => {
               zone_id: 'MUM_ANDHERI_W',
               coverage_cap: 5000,
               weekly_premium: 149,
+              aadhaar_hash: `aadh_pbt_${pastOffsetMs}`,
+              device_fingerprint: `fp_pbt_${pastOffsetMs}`,
             });
 
           if (res.status !== 201) return false;
