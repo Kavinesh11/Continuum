@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 
 import httpx
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
 from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
 
@@ -22,6 +23,12 @@ unhandled_exceptions_total = Counter(
 RISK_PROFILER_URL = os.getenv("RISK_PROFILER_URL", "http://localhost:8001")
 CLAIMS_SCORING_URL = os.getenv("CLAIMS_SCORING_URL", "http://localhost:8002")
 
+# --- CORS allowed origins (V2: never wildcard) ---
+_raw_origins = os.getenv("ALLOWED_ORIGINS", "")
+ALLOWED_ORIGINS: list[str] = [
+    o.strip() for o in _raw_origins.split(",") if o.strip() and o.strip() != "*"
+]
+
 
 # --- App lifespan (shared async HTTP client) ---
 @asynccontextmanager
@@ -32,6 +39,15 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Continuum FastAPI Gateway", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+    allow_headers=["Content-Type", "Authorization"],
+    max_age=86400,
+)
 
 
 # --- Unhandled exception middleware ---

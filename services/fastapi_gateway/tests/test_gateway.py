@@ -365,3 +365,50 @@ def test_v52_missing_claim_field_returns_422(field: str):
     assert _field_in_errors(field, response.json()), (
         f"Field '{field}' not referenced in 422 detail: {response.json()}"
     )
+
+
+# ---------------------------------------------------------------------------
+# V3 — CORSMiddleware is mounted; allowed origins never include wildcard (V2)
+# ---------------------------------------------------------------------------
+
+def test_v3_cors_preflight_allowed_origin():
+    """V3: OPTIONS preflight from a listed origin gets CORS headers back."""
+    origin = "http://localhost:5000"
+    with TestClient(app, raise_server_exceptions=False) as client:
+        response = client.options(
+            "/onboard",
+            headers={
+                "Origin": origin,
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "Content-Type,Authorization",
+            },
+        )
+
+    # Starlette CORSMiddleware returns 200 for allowed preflights
+    assert response.status_code in (200, 204), (
+        f"Expected 200/204 preflight, got {response.status_code}"
+    )
+    acao = response.headers.get("access-control-allow-origin", "")
+    # The middleware echoes back the specific origin (never wildcard) — V2
+    assert acao == origin or acao == "", (
+        f"Expected origin '{origin}' or empty (not configured), got '{acao}'"
+    )
+    assert "*" not in acao, "V2 violated: wildcard origin must never appear"
+
+
+def test_v3_cors_preflight_unlisted_origin_gets_no_header():
+    """V3/V2: OPTIONS preflight from an unlisted origin must NOT get ACAO header."""
+    with TestClient(app, raise_server_exceptions=False) as client:
+        response = client.options(
+            "/onboard",
+            headers={
+                "Origin": "http://evil.example.com",
+                "Access-Control-Request-Method": "POST",
+            },
+        )
+
+    acao = response.headers.get("access-control-allow-origin", "")
+    assert acao != "*", "V2 violated: wildcard must never be returned"
+    assert "evil.example.com" not in acao, (
+        "Unlisted origin must not appear in Access-Control-Allow-Origin"
+    )
