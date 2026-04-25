@@ -616,11 +616,11 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
             borderRadius: BorderRadius.circular(AppTheme.radiusMd),
           ),
         ),
-        child: const Row(
+        child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.payment_rounded, color: Colors.white, size: 20),
-            SizedBox(width: 10),
+            const Icon(Icons.payment_rounded, color: Colors.white, size: 20),
+            const SizedBox(width: 10),
             Text(
               _profile?['weekly_premium'] != null
                   ? 'Pay Now — ₹${(_profile!['weekly_premium'] as num).toStringAsFixed(0)}'

@@ -7,7 +7,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
 
-/// Thrown when the server returns an HTTP 5xx response.
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 class ServerException implements Exception {
   final int statusCode;
   final String message;
@@ -24,10 +25,21 @@ class ApiService {
   ApiService._internal();
 
   // ── Base URLs ──────────────────────────────────────────────────────────────
-  static const String _apiHostOverride = String.fromEnvironment(
-    'API_HOST',
-    defaultValue: '192.168.1.10',
-  );
+  static bool get _useNginx {
+    final envVal = dotenv.env['USE_NGINX'];
+    if (envVal != null) {
+      return envVal.toLowerCase() == 'true';
+    }
+    return const bool.fromEnvironment('USE_NGINX', defaultValue: true);
+  }
+
+  static String get _apiHostOverride {
+    final envVal = dotenv.env['API_HOST'];
+    if (envVal != null && envVal.isNotEmpty) {
+      return envVal;
+    }
+    return const String.fromEnvironment('API_HOST', defaultValue: '57.159.30.7');
+  }
 
   // For physical phones, pass --dart-define=API_HOST=<laptop-lan-ip>
   // Example: --dart-define=API_HOST=192.168.1.23
@@ -38,8 +50,15 @@ class ApiService {
     return 'localhost';
   }
 
-  static String get _coreUrl => 'http://$_resolvedHost:3000';
-  static String get _fastapiUrl => 'http://$_resolvedHost:8000';
+  static String get _coreUrl {
+    if (_useNginx) return 'http://$_resolvedHost/api';
+    return 'http://$_resolvedHost:3000';
+  }
+
+  static String get _fastapiUrl {
+    if (_useNginx) return 'http://$_resolvedHost/ml';
+    return 'http://$_resolvedHost:8000';
+  }
 
   // ── Storage ────────────────────────────────────────────────────────────────
   final _secureStorage = const FlutterSecureStorage();

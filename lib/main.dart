@@ -16,6 +16,8 @@ import 'screens/new/status_tracker.dart';
 import 'sandbox/sandbox_selector_screen.dart';
 import 'services/api_service.dart';
 
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 Future<void> _registerFcmToken() async {
   try {
     // firebase_messaging is unavailable on web/desktop; guard with try/catch
@@ -49,6 +51,9 @@ void main() async {
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(statusBarColor: Colors.transparent),
   );
+
+  // Load environment variables
+  await dotenv.load(fileName: ".env");
 
   // Initialize Hive for offline cache
   await Hive.initFlutter();
