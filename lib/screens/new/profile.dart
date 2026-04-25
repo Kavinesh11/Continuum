@@ -1,6 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../routes/app_routes.dart';
+import '../../sandbox/driver_provider.dart';
+import '../../state/notification_state.dart';
 import '../../theme/app_theme.dart';
 import '../../main.dart';
 import '../../services/api_service.dart';
@@ -241,33 +243,77 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ],
                   ),
-                  GestureDetector(
-                    onTap: () async {
-                      await Navigator.pushNamed(context, AppRoutes.editProfile);
-                      if (!mounted) return;
-                      _loadProfile();
-                    },
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.2),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Notification bell
+                      AnimatedBuilder(
+                        animation: NotificationState.instance,
+                        builder: (ctx, _) {
+                          final provider = ctx.dependOnInheritedWidgetOfExactType<DriverProvider>();
+                          final partnerId = provider?.driver.partnerId ?? 'current_worker';
+                          final count = NotificationState.instance.notificationsFor(partnerId).length;
+                          return Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              GestureDetector(
+                                onTap: () => Navigator.pushNamed(context, AppRoutes.notifications),
+                                onLongPress: () => DemoOrchestrator.instance.seedDemoNotifications(),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: BackdropFilter(
+                                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.12),
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(color: Colors.white.withOpacity(0.2)),
+                                      ),
+                                      child: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 18),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              if (count > 0)
+                                Positioned(
+                                  right: 6,
+                                  top: 6,
+                                  child: Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: const BoxDecoration(color: AppTheme.dangerRed, shape: BoxShape.circle),
+                                  ),
+                                ),
+                            ],
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      // Edit button
+                      GestureDetector(
+                        onTap: () async {
+                          await Navigator.pushNamed(context, AppRoutes.editProfile);
+                          if (!mounted) return;
+                          _loadProfile();
+                        },
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: Colors.white.withOpacity(0.2)),
+                              ),
+                              child: const Icon(Icons.edit_rounded, color: Colors.white, size: 18),
                             ),
-                          ),
-                          child: const Icon(
-                            Icons.edit_rounded,
-                            color: Colors.white,
-                            size: 18,
                           ),
                         ),
                       ),
-                    ),
+                    ],
                   ),
                 ],
               ),

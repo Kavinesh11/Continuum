@@ -267,6 +267,7 @@ class DemoOrchestrator {
       'photos': photos,
       'audio': audioPath,
       '_killSwitchActive': DemoState.instance.killSwitchActive,
+      '_isManual': true,
     });
 
     _state.addManualClaim(result);
@@ -300,7 +301,60 @@ class DemoOrchestrator {
     return result;
   }
 
-  // ── 10. Seed 3 fresh notifications ────────────────────────────────────────
+  // ── 10. Bandh zero-touch scenario ────────────────────────────────────────
+
+  void bandhAlert() {
+    DemoState.instance.triggerAlerts[3] = true;
+    DemoState.instance.notifyListeners();
+
+    _notif.addNotification(
+      _partnerId,
+      NotificationItem(
+        id: 'notif_bandh_${DateTime.now().millisecondsSinceEpoch}',
+        title: 'Bandh advisory — Zone 4B',
+        detail:
+            'Municipal authorities declared general bandh in your delivery zone. Parametric coverage is now active.',
+        timeLabel: 'Just now',
+      ),
+    );
+
+    Future.delayed(const Duration(seconds: 4), () {
+      final claimId = DemoBackend.instance.generateClaimId();
+      const amount = 380.0;
+      final ref = DemoBackend.instance.generateUpiRef();
+      final claim = <String, dynamic>{
+        'id': claimId,
+        'claim_id': claimId,
+        'eventType': 'Bandh / General Strike',
+        'title': 'Bandh / General Strike',
+        'reason': 'Bandh / General Strike',
+        'amount': amount,
+        'status': 'Approved',
+        'statusCode': 'APPROVED',
+        'progressPct': 1.0,
+        'upiRef': ref,
+        'isAuto': true,
+        'date': DemoBackend.instance.todayLabel(),
+        'claim_description':
+            'Auto-triggered: Bandh detected in Zone 4B. Oracle consensus reached (3/4 sources).',
+        'submitted_at': DateTime.now().toIso8601String(),
+      };
+      DemoBackend.instance.injectClaim(claim);
+      _state.addAutoClaim(claim);
+      _notif.addNotification(
+        _partnerId,
+        NotificationItem(
+          id: 'notif_bandh_pay_${DateTime.now().millisecondsSinceEpoch}',
+          title: 'Bandh payout credited — ₹${amount.toStringAsFixed(0)}',
+          detail:
+              'Compensation for Zone 4B bandh disruption. UPI Ref: $ref',
+          timeLabel: 'Just now',
+        ),
+      );
+    });
+  }
+
+  // ── 11. Seed 3 fresh notifications ────────────────────────────────────────
 
   void seedDemoNotifications() {
     _notif.addNotification(
@@ -334,7 +388,7 @@ class DemoOrchestrator {
     );
   }
 
-  // ── 11. Force-approve a specific claim (status tracker easter egg) ────────
+  // ── 12. Force-approve a specific claim (status tracker easter egg) ────────
 
   void forceApprove(String claimId) {
     final ref = DemoBackend.instance.generateUpiRef();
@@ -376,7 +430,7 @@ class DemoOrchestrator {
     );
   }
 
-  // ── 12. Reset all ─────────────────────────────────────────────────────────
+  // ── 13. Reset all ─────────────────────────────────────────────────────────
 
   void resetAll() {
     _state.resetAll();

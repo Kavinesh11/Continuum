@@ -11,6 +11,7 @@ import '../../widgets/demo_banner.dart';
 import '../../widgets/easter_egg_detector.dart';
 import '../../widgets/notification_action.dart';
 import '../../services/api_service.dart';
+import '../../services/demo_backend.dart';
 import 'claim_flow.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -27,48 +28,58 @@ class _DashboardScreenState extends State<DashboardScreen>
   // ── Earnings trend ─────────────────────────────────────────────────────────
   String _selectedTrend = 'Monthly';
 
-  static const Map<String, _TrendSeries> _trendSeriesByRange = {
-    'Yearly': _TrendSeries(
-      labels: ['2022', '2023', '2024', '2025', '2026'],
-      payout: [15800, 18150, 20500, 24200, 27650],
-      premium: [1480, 1560, 1620, 1710, 1830],
-    ),
-    'Monthly': _TrendSeries(
-      labels: [
-        'Jan',
-        'Feb',
-        'Mar',
-        'Apr',
-        'May',
-        'Jun',
-        'Jul',
-        'Aug',
-        'Sep',
-        'Oct',
-        'Nov',
-        'Dec',
-      ],
-      payout: [
-        980,
-        1180,
-        1510,
-        1780,
-        2010,
-        1880,
-        2320,
-        2480,
-        2690,
-        2790,
-        3110,
-        2850,
-      ],
-      premium: [120, 132, 148, 138, 130, 166, 178, 170, 196, 220, 208, 170],
-    ),
-    'Weekly': _TrendSeries(
-      labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-      payout: [320, 410, 380, 460, 520, 610, 570],
-      premium: [24, 28, 26, 30, 33, 37, 35],
-    ),
+  static const Map<String, Map<String, _TrendSeries>> _trendByTier = {
+    'Platinum': {
+      'Yearly': _TrendSeries(
+        labels: ['2022', '2023', '2024', '2025', '2026'],
+        payout: [22400, 28600, 34200, 41500, 48900],
+        premium: [1820, 1920, 2040, 2180, 2340],
+      ),
+      'Monthly': _TrendSeries(
+        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+        payout: [3200, 2800, 3600, 3100, 4200, 4800, 3900, 4100, 3700, 4500, 5100, 5800],
+        premium: [180, 180, 192, 192, 204, 204, 204, 216, 216, 228, 228, 240],
+      ),
+      'Weekly': _TrendSeries(
+        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+        payout: [620, 580, 710, 490, 830, 950, 780],
+        premium: [36, 36, 36, 36, 36, 40, 40],
+      ),
+    },
+    'Gold': {
+      'Yearly': _TrendSeries(
+        labels: ['2022', '2023', '2024', '2025', '2026'],
+        payout: [14200, 17800, 21000, 25400, 29600],
+        premium: [1480, 1560, 1640, 1740, 1860],
+      ),
+      'Monthly': _TrendSeries(
+        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+        payout: [1980, 1740, 2200, 2050, 2600, 2900, 2400, 2650, 2300, 2800, 3100, 3500],
+        premium: [144, 144, 156, 156, 168, 168, 168, 180, 180, 192, 192, 204],
+      ),
+      'Weekly': _TrendSeries(
+        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+        payout: [380, 320, 450, 280, 520, 680, 490],
+        premium: [24, 24, 24, 24, 24, 28, 28],
+      ),
+    },
+    'Silver': {
+      'Yearly': _TrendSeries(
+        labels: ['2022', '2023', '2024', '2025', '2026'],
+        payout: [8600, 10200, 12400, 15100, 17800],
+        premium: [1120, 1180, 1240, 1320, 1420],
+      ),
+      'Monthly': _TrendSeries(
+        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+        payout: [1100, 920, 1280, 1050, 1480, 1650, 1300, 1420, 1180, 1580, 1720, 2100],
+        premium: [108, 108, 120, 120, 132, 132, 132, 144, 144, 156, 156, 168],
+      ),
+      'Weekly': _TrendSeries(
+        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+        payout: [210, 180, 260, 140, 310, 420, 290],
+        premium: [16, 16, 16, 16, 16, 20, 20],
+      ),
+    },
   };
 
   // ── Live trigger data ──────────────────────────────────────────────────────
@@ -411,6 +422,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       children: [
         GestureDetector(
           onTap: () => Navigator.pushNamed(context, AppRoutes.oracle),
+          onLongPress: () => DemoOrchestrator.instance.bandhAlert(),
           child: Row(
           children: [
             Expanded(
@@ -1220,8 +1232,9 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   Widget _buildEarningsTrendSection() {
-    final series =
-        _trendSeriesByRange[_selectedTrend] ?? _trendSeriesByRange['Monthly']!;
+    final tier = DemoBackend.instance.activeDriver.tier;
+    final tierData = _trendByTier[tier] ?? _trendByTier['Silver']!;
+    final series = tierData[_selectedTrend] ?? tierData['Monthly']!;
     final latestPayout = series.payout.last;
     final latestPremium = series.premium.last;
 

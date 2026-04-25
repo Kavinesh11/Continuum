@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
+import '../../services/demo_backend.dart';
 import '../../state/demo_orchestrator.dart';
 
 class PaymentsScreen extends StatefulWidget {
@@ -18,15 +19,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
   Map<String, dynamic>? _policyContent;
   List<Map<String, dynamic>> _payouts = [];
 
-  static const List<Map<String, dynamic>> _paymentMethods = [
-    {'id': 'upi_1', 'type': 'UPI', 'label': 'primary@upi', 'isDefault': true},
-    {
-      'id': 'card_1',
-      'type': 'Card',
-      'label': '•••• •••• •••• 4821',
-      'isDefault': false,
-    },
-  ];
+  String _filterTab = 'All';
 
   @override
   void initState() {
@@ -75,6 +68,108 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
     }
   }
 
+  List<Map<String, dynamic>> get _paymentMethods {
+    final driver = DemoBackend.instance.activeDriver;
+    final upiHandle =
+        '${driver.partnerId.toLowerCase().replaceAll('-', '')}@okaxis';
+    final lastFour =
+        ((driver.partnerId.hashCode.abs() % 9000) + 1000).toString();
+    return [
+      {'id': 'upi_1', 'type': 'UPI', 'label': upiHandle, 'isDefault': true},
+      {
+        'id': 'card_1',
+        'type': 'Card',
+        'label': '•••• •••• •••• $lastFour',
+        'isDefault': false,
+      },
+    ];
+  }
+
+  void _showAddMethodSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppTheme.dividerOf(context),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Add Payment Method',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: AppTheme.textPrimaryOf(context),
+              ),
+            ),
+            const SizedBox(height: 16),
+            for (final opt in [
+              (Icons.account_balance_rounded, 'UPI', 'Link a UPI ID instantly'),
+              (Icons.credit_card_rounded, 'Credit / Debit Card', 'Visa, Mastercard, RuPay'),
+              (Icons.account_balance_outlined, 'Net Banking', 'Link your bank account'),
+            ]) ...[
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(opt.$1, color: AppTheme.primary, size: 20),
+                ),
+                title: Text(
+                  opt.$2,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.textPrimaryOf(context),
+                  ),
+                ),
+                subtitle: Text(
+                  opt.$3,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.textSecondaryOf(context),
+                  ),
+                ),
+                trailing: Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppTheme.textHintOf(context),
+                ),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('${opt.$2} linking coming soon'),
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   Map<String, dynamic> _mapPayout(Map<String, dynamic> payout) {
     final amount =
         (payout['amount'] as num?)?.toDouble() ??
@@ -107,12 +202,16 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
           : '${months[date.month - 1]} ${date.day}, ${date.year}';
     }
 
+    final txnType = (payout['type'] ?? '').toString();
+    final isDebit = txnType.contains('debit') || txnType.contains('premium');
+
     return {
       'id': (payout['id'] ?? payout['payout_id'] ?? 'TXN-NA').toString(),
       'date': dateText,
       'amount': amount.round(),
       'method': (payout['payu_txn_ref'] ?? payout['method'] ?? 'Bank Transfer').toString(),
       'status': status,
+      'isDebit': isDebit,
     };
   }
 
@@ -382,17 +481,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: GestureDetector(
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text('Add method tapped'),
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  );
-                },
+                onTap: _showAddMethodSheet,
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -548,14 +637,18 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
       child: ElevatedButton(
         onPressed: () {
           DemoOrchestrator.instance.premiumDebited();
+          final driver = DemoBackend.instance.activeDriver;
+          final upiHandle =
+              '${driver.partnerId.toLowerCase().replaceAll('-', '')}@okaxis';
           setState(() {
             _payouts = [
               {
                 'id': 'TXN-${DateTime.now().millisecondsSinceEpoch % 100000}',
                 'date': _todayLabel(),
                 'amount': (_profile?['weekly_premium'] as num?)?.round() ?? 199,
-                'method': 'UPI • primary@upi',
+                'method': 'UPI • $upiHandle',
                 'status': 'Success',
+                'isDebit': true,
               },
               ..._payouts,
             ];
@@ -652,28 +745,84 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
     BuildContext context,
     List<Map<String, dynamic>> history,
   ) {
+    final filtered = history.where((txn) {
+      if (_filterTab == 'Credits') return txn['isDebit'] != true;
+      if (_filterTab == 'Debits') return txn['isDebit'] == true;
+      return true;
+    }).toList();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Payment History',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            color: AppTheme.textPrimaryOf(context),
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Payment History',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.textPrimaryOf(context),
+              ),
+            ),
+            Row(
+              children: [
+                for (final tab in ['All', 'Credits', 'Debits'])
+                  GestureDetector(
+                    onTap: () => setState(() => _filterTab = tab),
+                    child: Container(
+                      margin: const EdgeInsets.only(left: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: _filterTab == tab
+                            ? AppTheme.primary.withOpacity(0.12)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: _filterTab == tab
+                              ? AppTheme.primary.withOpacity(0.3)
+                              : AppTheme.dividerOf(context),
+                        ),
+                      ),
+                      child: Text(
+                        tab,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: _filterTab == tab
+                              ? AppTheme.primary
+                              : AppTheme.textSecondaryOf(context),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
         ),
         const SizedBox(height: 14),
-        ...history.asMap().entries.map((entry) {
+        if (filtered.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            child: Center(
+              child: Text(
+                'No ${_filterTab.toLowerCase()} transactions',
+                style: TextStyle(color: AppTheme.textHintOf(context), fontSize: 13),
+              ),
+            ),
+          ),
+        ...filtered.asMap().entries.map((entry) {
           final idx = entry.key;
           final txn = entry.value;
+          final isDebit = txn['isDebit'] == true;
           final isSuccess = txn['status'] == 'Success';
+          final amountColor = isDebit ? AppTheme.dangerRed : AppTheme.successGreen;
           final statusColor = isSuccess
               ? AppTheme.successGreen
               : AppTheme.dangerRed;
 
           return Container(
-            margin: EdgeInsets.only(bottom: idx < history.length - 1 ? 10 : 0),
+            margin: EdgeInsets.only(bottom: idx < filtered.length - 1 ? 10 : 0),
             decoration: BoxDecoration(
               color: AppTheme.cardOf(context),
               borderRadius: BorderRadius.circular(AppTheme.radiusMd),
@@ -700,10 +849,12 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Icon(
-                            isSuccess
-                                ? Icons.check_circle_outline_rounded
-                                : Icons.error_outline_rounded,
-                            color: statusColor,
+                            isDebit
+                                ? Icons.arrow_upward_rounded
+                                : isSuccess
+                                    ? Icons.arrow_downward_rounded
+                                    : Icons.error_outline_rounded,
+                            color: isDebit ? AppTheme.dangerRed : statusColor,
                             size: 18,
                           ),
                         ),
@@ -717,11 +868,11 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                                     MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
-                                    '₹${txn['amount']}',
+                                    '${isDebit ? '-' : '+'}₹${txn['amount']}',
                                     style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w800,
-                                      color: AppTheme.textPrimaryOf(context),
+                                      color: amountColor,
                                     ),
                                   ),
                                   Container(

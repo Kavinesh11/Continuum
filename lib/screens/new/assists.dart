@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
+import '../../services/gemini_service.dart';
 import '../../state/demo_orchestrator.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/notification_action.dart';
@@ -13,10 +14,13 @@ class AssistsScreen extends StatefulWidget {
 
 class _AssistsScreenState extends State<AssistsScreen> {
   final ApiService _api = ApiService();
+  final GeminiService _gemini = GeminiService();
   final TextEditingController _messageController = TextEditingController();
   final List<Map<String, dynamic>> _messages = [];
+  final List<Map<String, String>> _chatHistory = [];
   bool _isLoading = true;
   bool _isSending = false;
+  bool _isTyping = false;
   String? _error;
 
   // ── Shared easter egg counter for bot avatar taps ──────────────────────────
@@ -102,38 +106,27 @@ class _AssistsScreenState extends State<AssistsScreen> {
 
   Future<void> _sendMessage() async {
     final text = _messageController.text.trim();
-    if (text.isEmpty || _isSending) return;
+    if (text.isEmpty || _isSending || _isTyping) return;
 
     final now = _hhmm(DateTime.now());
     setState(() {
       _isSending = true;
+      _isTyping = true;
       _messages.add({'text': text, 'isBot': false, 'time': now});
       _messageController.clear();
     });
 
-    try {
-      final response = await _api.sendAssistMessage(text);
-      if (!mounted) return;
+    final reply = await _gemini.chat(text, List.from(_chatHistory));
 
-      final reply =
-          (response['content'] ??
-                  response['reply'] ??
-                  response['response'] ??
-                  response['message'] ??
-                  '')
-              .toString()
-              .trim();
-      if (reply.isNotEmpty) {
-        setState(() {
-          _messages.add({'text': reply, 'isBot': true, 'time': _hhmm(DateTime.now())});
-        });
-      }
+    _chatHistory.add({'role': 'user', 'content': text});
+    _chatHistory.add({'role': 'model', 'content': reply});
 
-      setState(() => _isSending = false);
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _isSending = false);
-    }
+    if (!mounted) return;
+    setState(() {
+      _isSending = false;
+      _isTyping = false;
+      _messages.add({'text': reply, 'isBot': true, 'time': _hhmm(DateTime.now())});
+    });
   }
 
   void _showCallSheet() {
@@ -207,8 +200,11 @@ class _AssistsScreenState extends State<AssistsScreen> {
                   )
                 : ListView.builder(
                     padding: const EdgeInsets.all(16.0),
-                    itemCount: _messages.length,
+                    itemCount: _messages.length + (_isTyping ? 1 : 0),
                     itemBuilder: (context, index) {
+                      if (_isTyping && index == _messages.length) {
+                        return _buildTypingIndicator(context);
+                      }
                       final msg = _messages[index];
                       return _buildMessageBubble(
                         context: context,
@@ -220,6 +216,48 @@ class _AssistsScreenState extends State<AssistsScreen> {
                   ),
           ),
           _buildChatInput(context),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTypingIndicator(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              gradient: AppTheme.primaryGradient,
+              shape: BoxShape.circle,
+              boxShadow: AppTheme.primaryGlow(0.2),
+            ),
+            child: const Icon(Icons.smart_toy_rounded, size: 16, color: Colors.white),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: AppTheme.cardOf(context),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+                bottomRight: Radius.circular(16),
+              ),
+              boxShadow: AppTheme.softShadowOf(context),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (int i = 0; i < 3; i++) ...[
+                  if (i > 0) const SizedBox(width: 4),
+                  _BouncingDot(delay: Duration(milliseconds: i * 160)),
+                ],
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -489,6 +527,61 @@ class _VoiceAgentSheetState extends State<_VoiceAgentSheet>
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Typing indicator dot ──────────────────────────────────────────────────────
+
+class _BouncingDot extends StatefulWidget {
+  final Duration delay;
+  const _BouncingDot({required this.delay});
+
+  @override
+  State<_BouncingDot> createState() => _BouncingDotState();
+}
+
+class _BouncingDotState extends State<_BouncingDot>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _anim;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _anim = Tween<double>(begin: 0, end: -6).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
+    );
+    Future.delayed(widget.delay, () {
+      if (mounted) _ctrl.repeat(reverse: true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _anim,
+      builder: (_, __) => Transform.translate(
+        offset: Offset(0, _anim.value),
+        child: Container(
+          width: 7,
+          height: 7,
+          decoration: BoxDecoration(
+            color: AppTheme.textHintOf(context),
+            shape: BoxShape.circle,
+          ),
+        ),
       ),
     );
   }

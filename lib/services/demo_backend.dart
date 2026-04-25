@@ -129,6 +129,7 @@ class DemoBackend {
     await _delay();
     final reason = (payload['reason'] as String? ?? '').toLowerCase();
     final killSwitch = payload['_killSwitchActive'] == true;
+    final isManual = payload['_isManual'] == true;
     final fraudFlag = fraudFlagActive;
 
     String status;
@@ -140,6 +141,17 @@ class DemoBackend {
       status = 'ESCALATED_TO_HUMAN';
       verificationMsg =
           'Crew-AI isolation-forest flagged anomalous claim pattern. Human review within 24h.';
+    } else if (isManual) {
+      // Manual form submissions always start as In Progress
+      status = 'REVIEW';
+      verificationMsg = killSwitch
+          ? 'Payouts paused — safety review in progress (PAYOUT_KILL_SWITCH active).'
+          : 'Claim submitted. Oracle network is verifying your report. Expected: 24h.';
+      if (reason.contains('vehicle') || reason.contains('breakdown')) {
+        status = 'REJECTED';
+        verificationMsg =
+            'GPS proximity log shows worker outside disruption zone during reported window.';
+      }
     } else if (reason.contains('rain') ||
         reason.contains('weather') ||
         reason.contains('flood')) {
