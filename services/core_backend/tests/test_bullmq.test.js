@@ -170,11 +170,19 @@ describe('Property 24: BullMQ Exponential Backoff', () => {
 describe('Property 25: DLQ Escalation Timeout', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   // Unit test: job finished exactly 24h ago is NOT escalated (boundary)
+  // Uses fake timers to freeze Date.now() so finishedOn === twentyFourHoursAgo (strict < is false)
   test('job finished exactly 24h ago is NOT escalated', async () => {
-    const finishedOn = Date.now() - 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    jest.setSystemTime(now);
+    const finishedOn = now - 24 * 60 * 60 * 1000;
     const mockQueueInstance = new Queue();
     mockQueueInstance.getFailed.mockResolvedValueOnce([
       { id: 'job-boundary', finishedOn, data: { worker_id: 'w1' } },

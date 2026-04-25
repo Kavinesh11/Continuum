@@ -77,7 +77,7 @@ router.post('/', authenticate, requireRole('worker'), async (req, res, next) => 
     );
     if (lockResult.rows.length > 0) {
       const lock = lockResult.rows[0];
-      return res.status(423).json({
+      return res.status(409).json({
         error: 'enrollment_locked',
         zone_id: lock.zone_id,
         reason: `Zone is under forecast-driven enrollment freeze until ${lock.expires_at}`,

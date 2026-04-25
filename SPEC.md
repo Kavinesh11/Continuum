@@ -209,6 +209,11 @@ Parametric income-protection insurance for gig delivery workers. Oracle consensu
 | T18 | `x` | Extend `tests/contracts/kafkaSchemas.test.js` — claim_decision, payout_authorized, adverse_selection_lock schemas | I.kafka |
 | T19 | `x` | Add pytest-cov `.coveragerc` to each Python service; fail_under=75 | C10 |
 | T20 | `x` | Add Jest coverage config (collectCoverage, threshold lines:80) to core_backend | C10 |
+| T21 | `x` | Fix `tests/test_payu.test.js` — mock `payoutGateway` adapter instead of `node-fetch` in `processPayoutDisbursement` suite | I.payu |
+| T22 | `x` | Fix `tests/test_bullmq.test.js` — freeze clock with `jest.useFakeTimers()` in "exactly 24h" boundary test | — |
+| T23 | `x` | Add `actuarial_lab` to `python-tests` matrix in `.github/workflows/ci.yml` | V24,V25,V26,V27,V28 |
+| T24 | `x` | Fix `src/routes/policies.js:80` — HTTP 423 → 409 for `enrollment_locked`; add §B2 | V31 |
+| T25 | `x` | Create `tests/test_payoutAuthorizedHandler.test.js` — kill switch, automation-disabled, zone pause, reserve floor, daily cap, happy path | V35,V36,V37,C8 |
 
 ---
 
@@ -217,3 +222,4 @@ Parametric income-protection insurance for gig delivery workers. Oracle consensu
 | id | date | cause | fix |
 |----|------|-------|-----|
 | B1 | 2026-04-25 | V26 spec said Brier>0.2 is warning-only; code adds it to `failures` → hard CI gate failure. Docstring omits this threshold. | Updated V26 to reflect hard failure. |
+| B2 | 2026-04-25 | V31 spec says HTTP 409 for `enrollment_locked`; `policies.js:80` returned HTTP 423. | Changed status code to 409. |

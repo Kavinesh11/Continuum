@@ -37,6 +37,7 @@ jobs:
       fail-fast: false
       matrix:
         service:
+          - actuarial_lab
           - fastapi_gateway
           - oracle_engine
           - crew_ai
