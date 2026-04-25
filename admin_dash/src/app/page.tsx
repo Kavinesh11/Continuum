@@ -12,7 +12,7 @@ export default function Home() {
     auditLogs, 
     bulkApproveWave, 
     reserveFloorBreach, 
-    fraudEscalation, 
+    fraudFlagging, 
     claimRejectionCascade 
   } = useDemo();
 
@@ -49,10 +49,10 @@ export default function Home() {
           </article>
         </EasterEggDetector>
 
-        <EasterEggDetector taps={3} onTrigger={() => fraudEscalation()}>
+        <EasterEggDetector taps={3} onTrigger={() => fraudFlagging()}>
           <article className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-teal-100 hover:bg-teal-50 transition-colors">
-            <p className="text-sm text-teal-700">Fraud Escalated</p>
-            <p className="mt-2 text-2xl font-semibold text-orange-500">{kpis.fraudEscalated}</p>
+            <p className="text-sm text-teal-700">Fraud Flagged</p>
+            <p className="mt-2 text-2xl font-semibold text-orange-500">{kpis.fraudFlagged}</p>
           </article>
         </EasterEggDetector>
 
@@ -108,7 +108,6 @@ export default function Home() {
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                         claim.status === 'Approved' ? 'bg-green-100 text-green-700' :
                         claim.status === 'Rejected' ? 'bg-red-100 text-red-700' :
-                        claim.status === 'Escalated' ? 'bg-orange-100 text-orange-700' :
                         claim.status.includes('Queued') ? 'bg-amber-100 text-amber-700' :
                         'bg-gray-100 text-gray-700'
                       }`}>

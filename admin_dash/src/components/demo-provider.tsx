@@ -26,16 +26,15 @@ type DemoState = {
   killSwitchActive: boolean;
   bulkApproveWave: () => void;
   reserveFloorBreach: () => void;
-  fraudEscalation: (driverName?: string) => void;
+  fraudFlagging: (driverName?: string) => void;
   zoneEnrollmentLock: (zone: string) => void;
   claimRejectionCascade: () => void;
   payoutAuditTrail: () => void;
   killSwitchTrip: () => void;
   seedDemoNotifications: () => void;
   resetAll: () => void;
-  approveClaim: (id: string) => void;
+  approveClaim: (id: string, message: string) => void;
   rejectClaim: (id: string, reason: string) => void;
-  escalateClaim: (id: string) => void;
 };
 
 const DemoContext = createContext<DemoState | null>(null);
@@ -85,24 +84,24 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     addNotification("⚠ Reserve runway 31 days — review autopay.");
   }, [addNotification]);
 
-  const fraudEscalation = useCallback((driverName?: string) => {
-    setKpis((prev) => ({ ...prev, fraudEscalated: prev.fraudEscalated + 1 }));
+  const fraudFlagging = useCallback((driverName?: string) => {
+    setKpis((prev) => ({ ...prev, fraudFlagged: prev.fraudFlagged + 1 }));
     if (driverName) {
       addNotification(`⚠ ${driverName} flagged — crew-AI isolation-forest score 0.81.`);
       setClaims((prev) => {
-        let escalated = false;
+        let flagged = false;
         return prev.map(c => {
-          if (!escalated && c.driver === driverName && c.status === "Pending") {
-            escalated = true;
-            return { ...c, status: "Escalated", fraudScore: 0.81 };
+          if (!flagged && c.driver === driverName && c.status === "Pending") {
+            flagged = true;
+            return { ...c, fraudScore: 0.81 };
           }
           return c;
         });
       });
     } else {
-      addNotification("⚠ CLM-9102-54 flagged — crew-AI isolation-forest score 0.71. Routed to human reviewer.");
+      addNotification("⚠ CLM-9102-54 flagged — crew-AI isolation-forest score 0.71.");
       setClaims((prev) =>
-        prev.map(c => (c.id === "CLM-9102-54" ? { ...c, status: "Escalated", fraudScore: 0.71 } : c))
+        prev.map(c => (c.id === "CLM-9102-54" ? { ...c, fraudScore: 0.71 } : c))
       );
     }
   }, [addNotification]);
@@ -149,10 +148,10 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     setKillSwitchActive(false);
   }, []);
 
-  const approveClaim = useCallback((id: string) => {
+  const approveClaim = useCallback((id: string, message: string) => {
     setClaims((prev) => prev.map(c => c.id === id ? { ...c, status: killSwitchActive ? "Approved (payout queued — kill switch active)" : "Approved" } : c));
     setKpis((prev) => ({ ...prev, pendingQueue: Math.max(0, prev.pendingQueue - 1), approvedToday: prev.approvedToday + 1 }));
-    addAuditLog("Preethi Nair", "APPROVED", id, killSwitchActive ? "Payout Queued" : "Approved");
+    addAuditLog("Preethi Nair", "APPROVED", id, killSwitchActive ? `Payout Queued: ${message}` : `Approved: ${message}`);
     if (!killSwitchActive) addNotification(`✅ ${id} approved.`);
   }, [killSwitchActive, addAuditLog, addNotification]);
 
@@ -162,11 +161,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     addAuditLog("Preethi Nair", "REJECTED", id, reason);
   }, [addAuditLog]);
 
-  const escalateClaim = useCallback((id: string) => {
-    setClaims((prev) => prev.map(c => c.id === id ? { ...c, status: "Escalated" } : c));
-    setKpis((prev) => ({ ...prev, pendingQueue: Math.max(0, prev.pendingQueue - 1), fraudEscalated: prev.fraudEscalated + 1 }));
-    addAuditLog("Preethi Nair", "ESCALATED", id, "Routed to human reviewer");
-  }, [addAuditLog]);
+
 
   return (
     <DemoContext.Provider
@@ -181,7 +176,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
         killSwitchActive,
         bulkApproveWave,
         reserveFloorBreach,
-        fraudEscalation,
+        fraudFlagging,
         zoneEnrollmentLock,
         claimRejectionCascade,
         payoutAuditTrail,
@@ -189,8 +184,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
         seedDemoNotifications,
         resetAll,
         approveClaim,
-        rejectClaim,
-        escalateClaim
+        rejectClaim
       }}
     >
       {children}

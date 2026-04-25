@@ -6,7 +6,7 @@ import { useDemo } from "@/components/demo-provider";
 import { EasterEggDetector } from "@/components/easter-egg-detector";
 
 export default function DriversPage() {
-  const { drivers, fraudEscalation, zoneEnrollmentLock } = useDemo();
+  const { drivers, fraudFlagging, zoneEnrollmentLock } = useDemo();
   
   const [searchTerm, setSearchTerm] = useState("");
   const [tierFilter, setTierFilter] = useState("All");
@@ -113,7 +113,7 @@ export default function DriversPage() {
                   </div>
                   <div>
                     <div className="font-bold text-lg text-teal-900">{selectedDriver.name}</div>
-                    <EasterEggDetector taps={4} onTrigger={() => fraudEscalation(selectedDriver.name)}>
+                    <EasterEggDetector taps={4} onTrigger={() => fraudFlagging(selectedDriver.name)}>
                       <div className="inline-block mt-1">
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                           selectedDriver.tier === 'Platinum' ? 'bg-slate-200 text-slate-800' :

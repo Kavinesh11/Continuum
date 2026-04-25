@@ -6,13 +6,14 @@ import { useDemo } from "@/components/demo-provider";
 import { EasterEggDetector } from "@/components/easter-egg-detector";
 
 export default function ClaimsPage() {
-  const { claims, approveClaim, rejectClaim, escalateClaim, lockedZones } = useDemo();
+  const { claims, approveClaim, rejectClaim, lockedZones } = useDemo();
   
   const [filterStatus, setFilterStatus] = useState("All");
   const [sortPriority, setSortPriority] = useState("High");
   const [selectedClaimId, setSelectedClaimId] = useState<string | null>(null);
+  const [actionReason, setActionReason] = useState("");
 
-  const statuses = ["All", "Pending", "Escalated", "Approved", "Rejected"];
+  const statuses = ["All", "Pending", "Approved", "Rejected"];
   const priorities = ["High", "Medium", "Low"];
 
   let filtered = claims;
@@ -90,7 +91,6 @@ export default function ClaimsPage() {
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                         claim.status.includes('Approved') ? 'bg-green-100 text-green-700' :
                         claim.status === 'Rejected' ? 'bg-red-100 text-red-700' :
-                        claim.status === 'Escalated' ? 'bg-orange-100 text-orange-700' :
                         'bg-teal-50 text-teal-700'
                       }`}>
                         {claim.status}
@@ -186,29 +186,36 @@ export default function ClaimsPage() {
                 </div>
 
                 {selectedClaim.status === "Pending" && (
-                  <div className="pt-4 flex flex-col gap-2">
-                    <button 
-                      onClick={() => { approveClaim(selectedClaim.id); setSelectedClaimId(null); }}
-                      className="w-full py-2 bg-teal-600 text-white font-medium rounded-lg hover:bg-teal-700"
-                    >
-                      Approve Payout
-                    </button>
-                    <div className="flex gap-2">
+                  <div className="pt-4 flex flex-col gap-2 border-t border-teal-100">
+                    <label className="text-teal-600 block text-xs uppercase tracking-wider mb-1">Reason / Note (Required)</label>
+                    <textarea 
+                      value={actionReason}
+                      onChange={(e) => setActionReason(e.target.value)}
+                      placeholder="Enter justification for approval or rejection..."
+                      className="w-full bg-teal-50 border-none rounded-lg p-2 text-sm text-teal-900 focus:ring-1 focus:ring-teal-500 min-h-[60px] resize-none"
+                    />
+                    <div className="flex gap-2 mt-2">
+                      <button 
+                        onClick={() => { 
+                          if (!actionReason) return alert("Please enter a reason.");
+                          approveClaim(selectedClaim.id, actionReason); 
+                          setSelectedClaimId(null); 
+                          setActionReason("");
+                        }}
+                        className="flex-1 py-2 bg-teal-600 text-white font-medium rounded-lg hover:bg-teal-700"
+                      >
+                        Approve Payout
+                      </button>
                       <button 
                         onClick={() => {
-                          const reason = selectedClaim.reason === "Vehicle Breakdown" ? "GPS proximity log shows worker outside disruption zone." : "Manual rejection.";
-                          rejectClaim(selectedClaim.id, reason);
+                          if (!actionReason) return alert("Please enter a reason.");
+                          rejectClaim(selectedClaim.id, actionReason);
                           setSelectedClaimId(null);
+                          setActionReason("");
                         }}
                         className="flex-1 py-2 border border-red-200 text-red-700 font-medium rounded-lg hover:bg-red-50"
                       >
                         Reject
-                      </button>
-                      <button 
-                        onClick={() => { escalateClaim(selectedClaim.id); setSelectedClaimId(null); }}
-                        className="flex-1 py-2 border border-orange-200 text-orange-700 font-medium rounded-lg hover:bg-orange-50"
-                      >
-                        Escalate
                       </button>
                     </div>
                   </div>
