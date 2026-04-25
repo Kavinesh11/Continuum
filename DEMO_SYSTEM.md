@@ -305,3 +305,135 @@ Date strings from seeded data are pre-formatted ("Apr 2, 2026") — they are not
 **Full reset:** Long-press the gradient header on the Profile screen → `resetAll()` — all flags cleared, all injected claims gone, notification inbox back to 2 seed items, persona data restored to original.
 
 **Partial reset:** Navigate to Sandbox Selector (accessible from the app's debug/sandbox entry point) and tap any persona to reseed that persona's data without changing which persona is active.
+
+---
+
+## How to run the demo (mock-only)
+
+### The mock is always on — no toggle needed
+
+`ApiService` delegates **every** public method directly to `DemoBackend.instance`. There is no feature flag, no environment switch, no `USE_MOCK=true`. The HTTP layer (`_get`, `_post`, `_put`) still compiles but is completely unreachable — no method calls it. You do not need a server, a VPN, or a working `.env` to run the demo.
+
+### Prerequisites
+
+```bash
+# Flutter SDK (any recent stable)
+flutter --version   # 3.x or later
+
+# Dependencies
+flutter pub get
+```
+
+You need a `.env` file at the project root (Flutter reads it as an asset). It does not need real values for the demo. Copy the example:
+
+```bash
+cp .env.example .env
+# No edits required — all backend vars are ignored by the mock layer
+```
+
+### Running on a device or emulator
+
+**Android emulator:**
+```bash
+flutter run
+```
+
+**Physical Android device (USB):**
+```bash
+flutter run
+```
+
+**iOS simulator (macOS only):**
+```bash
+flutter run -d "iPhone 15"
+```
+
+**Flutter web (browser):**
+```bash
+flutter run -d chrome
+# or for a specific port:
+flutter run -d chrome --web-port 5000
+```
+
+No `--dart-define` flags are needed. The `API_HOST` and `USE_NGINX` variables in `.env` are read by `ApiService` but never reached because every call short-circuits into `DemoBackend` before the HTTP helpers are called.
+
+### Confirming the mock is active
+
+On the login screen, enter **any non-empty credentials** (e.g. `test` / `test`) and tap Login. If you land on the dashboard with Sudarshan's data (Platinum tier, HSR Layout, Bangalore), the mock layer is active. No network request is made.
+
+Alternatively, 4-tap the logo on the login screen to skip the form entirely and land directly on Sudarshan's dashboard.
+
+---
+
+## Suggested demo walkthrough
+
+Run this in order for a clean investor/stakeholder presentation. Total time: ~8–10 minutes.
+
+### 1. Boot and choose a persona (30s)
+
+- Launch the app. The login screen appears.
+- **4-tap the Continuum logo** → jumps straight to Sudarshan's dashboard (Platinum, Bangalore).
+- Or enter any credentials and tap Login.
+
+### 2. Dashboard tour (1 min)
+
+- Point out the coverage card (Platinum Shield Plan, coverage limit, next renewal).
+- Point out the DemoBanner area — it is empty, which is the "everything nominal" state.
+- Show the recent claims section and weekly earnings.
+
+### 3. Trigger a flood alert + auto-payout (2 min)
+
+- **4-tap the avatar** (top-left of the dashboard header).
+- A red "Flood Advisory" notification appears immediately in the bell.
+- Wait 4 seconds — a second notification arrives: "₹450 credited to your UPI".
+- Navigate to the **Claims** tab → the new Auto-Approved claim appears in indigo with the lightning bolt badge and the UPI reference.
+- Tap the claim → Status Tracker shows all four stages completed.
+
+### 4. Submit a manual claim (2 min)
+
+- Tap **Apply Claim** on the dashboard.
+- Enter reason: "Heavy rain flooding in delivery zone" → tap Next through the steps → Submit.
+- The form navigates to Status Tracker. Watch the stepper advance every 4 seconds: SUBMITTED → REVIEW → APPROVED → PAYOUT (UPI ref appears).
+- The bell shows a new "Claim approved" notification.
+
+### 5. Kill-switch demo (1 min)
+
+- Go back to the dashboard.
+- **3-tap the weekly premium pill** → the red "PAYOUT_KILL_SWITCH active" banner appears at the top.
+- Tap Apply Claim again, enter any weather reason, submit → Status Tracker shows REVIEW (not auto-approved) because the kill switch is active.
+
+### 6. Fraud escalation (1 min)
+
+- Navigate to **Profile**.
+- **4-tap the avatar** → the latest in-review claim mutates to "Under Review — Fraud Queue".
+- Bell shows "Claim routed to specialist review".
+- Go to Claims → the affected claim shows the escalated status.
+
+### 7. Assist chat (1 min)
+
+- Navigate to **Assist**.
+- Show the seeded conversation history.
+- Type "how does payout work?" — the bot replies with the UPI eNACH details.
+- **4-tap the bot avatar** → instant ₹247 auto-claim fires in the background; bell badge increments.
+
+### 8. Persona switch (1 min)
+
+- Navigate to the Sandbox Selector (debug entry point or via route `/sandbox`).
+- Tap **Dakshina Moorthy (Gold, Chennai)** → all data reseeds immediately.
+- Return to dashboard — plan shows Gold tier, ₹99 weekly premium, Chennai zone.
+- Claims tab shows Dakshina's history including the rejected vehicle breakdown claim.
+
+### 9. Reset (30s)
+
+- Navigate to **Profile**.
+- **Long-press the gradient header** → `resetAll()` fires.
+- All flags clear, all injected claims gone, notifications back to 2 seed items.
+- App is clean and ready for the next presenter.
+
+---
+
+## What NOT to do before a demo
+
+- Do not set `API_HOST` to a live server IP in `.env`. It will have no effect on the mock, but the FCM token registration call at startup does use the real `isTokenValid()` check — if a stale token is stored in secure storage from a previous real-login session, the app will attempt one real HTTP call on launch. Clear secure storage if this is a concern (uninstall and reinstall the app).
+- Do not run `flutter clean` right before presenting — it forces a full rebuild which takes several minutes.
+- Do not leave the kill switch or zone lock banners active between demo segments unless intentional — use the Profile long-press reset between segments.
