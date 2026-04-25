@@ -284,6 +284,79 @@ class DemoBackend {
     };
   }
 
+  // ── Oracle network status ──────────────────────────────────────────────────
+
+  Future<Map<String, dynamic>> getOracleStatus() async {
+    await _delay();
+    final d = _driver;
+    final hasAlert = fraudFlagActive ||
+        _claims.any((c) => (c['statusCode'] as String? ?? '') == 'APPROVED' &&
+            c['isAuto'] == true);
+    final platformStatus = fraudFlagActive ? 'Alert' : 'Nominal';
+    final platformReading = fraudFlagActive
+        ? '${d.platform}: 3,741 anomaly reports'
+        : '${d.platform}: 0 reports';
+
+    final autoEvents = _claims
+        .where((c) => c['isAuto'] == true)
+        .take(3)
+        .toList();
+
+    return {
+      'consensus_reached': hasAlert,
+      'oracles': [
+        {
+          'name': 'IMD India',
+          'type': 'Weather',
+          'icon_key': 'cloud',
+          'status': hasAlert ? 'Alert' : 'Nominal',
+          'reading': hasAlert
+              ? 'Red Alert — Zone 4B, ${d.city}'
+              : 'No active advisories',
+          'confidence': hasAlert ? 0.94 : 0.72,
+        },
+        {
+          'name': 'AccuWeather',
+          'type': 'Weather',
+          'icon_key': 'wb_cloudy',
+          'status': hasAlert ? 'Alert' : 'Nominal',
+          'reading': hasAlert
+              ? 'Extreme rain >100mm/h'
+              : 'Clear conditions',
+          'confidence': hasAlert ? 0.91 : 0.68,
+        },
+        {
+          'name': 'NASA-GPM',
+          'type': 'Rainfall',
+          'icon_key': 'water_drop',
+          'status': hasAlert ? 'Alert' : 'Nominal',
+          'reading': hasAlert
+              ? 'GPM IMERG: High intensity detected'
+              : 'IMERG: Low precipitation',
+          'confidence': hasAlert ? 0.88 : 0.61,
+        },
+        {
+          'name': 'CPCB AQI',
+          'type': 'Air Quality',
+          'icon_key': 'air',
+          'status': 'Nominal',
+          'reading': 'AQI 142 — Moderate',
+          'confidence': 0.72,
+        },
+        {
+          'name': 'DownDetector',
+          'type': 'Platform',
+          'icon_key': 'signal_wifi_off',
+          'status': platformStatus,
+          'reading': platformReading,
+          'confidence': fraudFlagActive ? 0.89 : 0.85,
+        },
+      ],
+      'last_consensus': hasAlert ? todayLabel() : 'No recent consensus',
+      'auto_events': autoEvents,
+    };
+  }
+
   // ── Registration ───────────────────────────────────────────────────────────
 
   Future<void> requestOtp({

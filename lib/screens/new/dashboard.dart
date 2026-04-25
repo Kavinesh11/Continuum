@@ -320,32 +320,29 @@ class _DashboardScreenState extends State<DashboardScreen>
           onLongPress: _fireDemoSequence,
           child: const Text('CONTINUUM'),
         ),
-        leading: EasterEggDetector(
-          taps: 4,
-          onTrigger: () => DemoOrchestrator.instance.floodAlert(),
-          child: GestureDetector(
-            onTap: () async {
-              await Navigator.pushNamed(context, AppRoutes.profile);
-              if (!mounted) return;
-              _loadDashboardData();
-            },
-            child: Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: AppTheme.accentGradient,
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppTheme.primary.withOpacity(0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: const Center(
-                  child: Icon(Icons.person, color: Colors.white, size: 16),
-                ),
+        leading: GestureDetector(
+          onTap: () async {
+            await Navigator.pushNamed(context, AppRoutes.profile);
+            if (!mounted) return;
+            _loadDashboardData();
+          },
+          onLongPress: () => DemoOrchestrator.instance.floodAlert(),
+          child: Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: AppTheme.accentGradient,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.primary.withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: const Center(
+                child: Icon(Icons.person, color: Colors.white, size: 16),
               ),
             ),
           ),
@@ -364,9 +361,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                   children: [
                     _buildGreeting(),
                     const SizedBox(height: 20),
-                    EasterEggDetector(
-                      taps: 4,
-                      onTrigger: () => DemoOrchestrator.instance.reserveFloorBreach(),
+                    GestureDetector(
+                      onLongPress: () => DemoOrchestrator.instance.reserveFloorBreach(),
                       child: _buildPlanStatusCard(),
                     ),
                     const SizedBox(height: 16),
@@ -413,17 +409,29 @@ class _DashboardScreenState extends State<DashboardScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
+        GestureDetector(
+          onTap: () => Navigator.pushNamed(context, AppRoutes.oracle),
+          child: Row(
           children: [
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Live Triggers',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        'Live Triggers',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        size: 18,
+                        color: AppTheme.textHintOf(context),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -487,7 +495,8 @@ class _DashboardScreenState extends State<DashboardScreen>
               ),
             ),
           ],
-        ),
+        ),  // Row
+        ),  // GestureDetector
         const SizedBox(height: 14),
         // 5 trigger cards
         for (int i = 0; i < 5; i++) _buildTriggerCard(i),
@@ -1024,14 +1033,7 @@ class _DashboardScreenState extends State<DashboardScreen>
           AppRoutes.policy,
           true,
         ),
-        _buildActionButton(
-          context,
-          Icons.track_changes_rounded,
-          'Track Claim',
-          AppTheme.primary,
-          AppRoutes.claimStatus,
-          true,
-        ),
+        _buildTrackClaimButton(context),
       ],
     );
   }
@@ -1082,6 +1084,75 @@ class _DashboardScreenState extends State<DashboardScreen>
           const SizedBox(height: 8),
           Text(
             label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.textPrimaryOf(context),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTrackClaimButton(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        // Use the most recent claim's ID so Status Tracker has valid data
+        final allClaims = [
+          ...DemoState.instance.autoClaims,
+          ...DemoState.instance.manualClaims,
+          ..._claims,
+        ];
+        if (allClaims.isNotEmpty) {
+          final claimId =
+              (allClaims.first['id'] ?? allClaims.first['claim_id'] ?? '')
+                  .toString();
+          if (claimId.isNotEmpty) {
+            Navigator.pushNamed(
+              context,
+              AppRoutes.claimStatus,
+              arguments: claimId,
+            );
+            return;
+          }
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No claims yet — submit a claim first.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      },
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [AppTheme.primary, AppTheme.primary.withOpacity(0.7)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.primary.withOpacity(0.3),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: const Icon(
+              Icons.track_changes_rounded,
+              color: Colors.white,
+              size: 24,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Track Claim',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 11,
@@ -1340,7 +1411,9 @@ class _DashboardScreenState extends State<DashboardScreen>
         {
           'title':
               'Latest claim: ${(_claims.first['status'] ?? 'processing').toString()}',
-          'subtitle': (_claims.first['event_type'] ?? 'Claim submitted')
+          'subtitle': (_claims.first['eventType'] ??
+                  _claims.first['event_type'] ??
+                  'Claim submitted')
               .toString(),
           'time': 'Recent',
         },

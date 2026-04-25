@@ -334,7 +334,49 @@ class DemoOrchestrator {
     );
   }
 
-  // ── 11. Reset all ─────────────────────────────────────────────────────────
+  // ── 11. Force-approve a specific claim (status tracker easter egg) ────────
+
+  void forceApprove(String claimId) {
+    final ref = DemoBackend.instance.generateUpiRef();
+    final existing = DemoBackend.instance.claims.firstWhere(
+      (c) => c['id'] == claimId,
+      orElse: () => const <String, dynamic>{},
+    );
+    final existingAmount = (existing['amount'] as num?)?.toDouble() ?? 0;
+    DemoBackend.instance.updateClaim(claimId, {
+      'status': 'Approved',
+      'statusCode': 'APPROVED',
+      'progressPct': 1.0,
+      'upiRef': ref,
+      'amount': existingAmount > 0 ? existingAmount : 247.0,
+    });
+
+    // Mirror into DemoState manual claims if present
+    final idx = DemoState.instance.manualClaims
+        .indexWhere((c) => c['id'] == claimId);
+    if (idx != -1) {
+      DemoState.instance.manualClaims[idx] = {
+        ...DemoState.instance.manualClaims[idx],
+        'statusCode': 'APPROVED',
+        'status': 'Approved',
+        'upiRef': ref,
+        'progressPct': 1.0,
+      };
+      DemoState.instance.notifyListeners();
+    }
+
+    _notif.addNotification(
+      _partnerId,
+      NotificationItem(
+        id: 'notif_force_${DateTime.now().millisecondsSinceEpoch}',
+        title: 'Claim approved',
+        detail: 'Claim $claimId approved. Ref: $ref',
+        timeLabel: 'Just now',
+      ),
+    );
+  }
+
+  // ── 12. Reset all ─────────────────────────────────────────────────────────
 
   void resetAll() {
     _state.resetAll();

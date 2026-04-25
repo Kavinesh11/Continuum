@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../routes/app_routes.dart';
 import '../../theme/app_theme.dart';
 import '../../state/demo_state.dart';
+import '../../state/demo_orchestrator.dart';
 import '../../widgets/notification_action.dart';
 import '../../services/api_service.dart';
 import 'claim_detail_sheet.dart';
@@ -184,11 +185,19 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
   }
 
   List<Map<String, dynamic>> get _allClaims {
-    return [
+    final demoIds = <String>{};
+    final demoClaims = [
       ...DemoState.instance.autoClaims.map(_normalizeClaim),
       ...DemoState.instance.manualClaims.map(_normalizeClaim),
-      ..._liveClaims,
     ];
+    for (final c in demoClaims) {
+      final id = c['id']?.toString() ?? '';
+      if (id.isNotEmpty) demoIds.add(id);
+    }
+    final liveOnly = _liveClaims
+        .where((c) => !demoIds.contains(c['id']?.toString() ?? ''))
+        .toList();
+    return [...demoClaims, ...liveOnly];
   }
 
   int get _totalClaimsCount => _allClaims.length;
@@ -242,9 +251,13 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'My Claims',
-                            style: Theme.of(context).textTheme.displayLarge,
+                          GestureDetector(
+                            onLongPress: () =>
+                                DemoOrchestrator.instance.autoClaimAndPayout(),
+                            child: Text(
+                              'My Claims',
+                              style: Theme.of(context).textTheme.displayLarge,
+                            ),
                           ),
                           const SizedBox(height: 4),
                           Text(

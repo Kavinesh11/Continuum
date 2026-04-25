@@ -334,6 +334,9 @@ class ApiService {
 
   Future<void> clearAssistHistory() => _mock.clearAssistHistory();
 
+  Future<Map<String, dynamic>> getOracleStatus() =>
+      _mock.getOracleStatus();
+
   Future<void> requestOtp({
     required String phone,
     required String email,

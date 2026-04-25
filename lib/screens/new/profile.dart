@@ -5,7 +5,6 @@ import '../../theme/app_theme.dart';
 import '../../main.dart';
 import '../../services/api_service.dart';
 import '../../state/demo_orchestrator.dart';
-import '../../widgets/easter_egg_detector.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -275,9 +274,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 24),
               Row(
                 children: [
-                  EasterEggDetector(
-                    taps: 4,
-                    onTrigger: () => DemoOrchestrator.instance.fraudQueueEscalation(),
+                  GestureDetector(
+                    onLongPress: () => DemoOrchestrator.instance.fraudQueueEscalation(),
                     child: Container(
                       width: 68,
                       height: 68,

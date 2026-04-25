@@ -3,6 +3,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
+import '../../state/demo_orchestrator.dart';
+import '../../widgets/notification_action.dart';
 
 class StatusTrackerScreen extends StatefulWidget {
   const StatusTrackerScreen({Key? key}) : super(key: key);
@@ -140,7 +142,8 @@ class _StatusTrackerScreenState extends State<StatusTrackerScreen> {
       'isAuto': mapArgs?['isAuto'] == true,
       'isApproved': status == 'Approved',
       'reason':
-          (source['event_type'] ??
+          (source['eventType'] ??
+                  source['event_type'] ??
                   source['title'] ??
                   source['reason'] ??
                   'Claim')
@@ -190,23 +193,7 @@ class _StatusTrackerScreenState extends State<StatusTrackerScreen> {
             }
           },
         ),
-        actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 8),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Theme.of(context).scaffoldBackgroundColor,
-            ),
-            child: IconButton(
-              onPressed: () {},
-              icon: Icon(
-                Icons.notifications_none_rounded,
-                color: AppTheme.textSecondaryOf(context),
-                size: 22,
-              ),
-            ),
-          ),
-        ],
+        actions: [const NotificationAction()],
       ),
       body: Column(
         children: [
@@ -238,7 +225,18 @@ class _StatusTrackerScreenState extends State<StatusTrackerScreen> {
                           const SizedBox(height: 22),
                           _buildClaimDetailsCard(context, data),
                           const SizedBox(height: 16),
-                          _buildPayoutCard(context, data),
+                          GestureDetector(
+                            onLongPress: () {
+                              if (_claimId != null) {
+                                DemoOrchestrator.instance.forceApprove(_claimId!);
+                                Future.delayed(
+                                  const Duration(milliseconds: 600),
+                                  _loadStatus,
+                                );
+                              }
+                            },
+                            child: _buildPayoutCard(context, data),
+                          ),
                           const SizedBox(height: 16),
                           _buildTimelineCard(context, data),
                           const SizedBox(height: 16),

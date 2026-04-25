@@ -70,21 +70,27 @@ Switching persona (via Sandbox Selector or Registration flow) re-seeds all claim
 
 ## Easter egg gestures (trigger map)
 
-All triggers are invisible — no UI affordance is shown to the audience.
+All triggers are invisible — no UI affordance is shown to the audience. All tap-based gestures have a 3-second window.
 
 | Location | Gesture | Action |
 |---|---|---|
 | Login screen logo | 4-tap | Fast-login as Sudarshan (Platinum) |
 | Login screen logo | Long-press | Login prompt with partner ID field |
-| Dashboard avatar (top-left) | 4-tap | `floodAlert()` — flood advisory notification + auto-payout after 4s |
-| Dashboard plan status card | 4-tap | `reserveFloorBreach()` — reserve runway banner + notification |
+| Dashboard avatar (top-left) | Long-press | `floodAlert()` — flood advisory notification + auto-payout after 4s |
+| Dashboard plan status card | Long-press | `reserveFloorBreach()` — reserve runway banner + notification |
 | Dashboard weekly premium pill | 3-tap | `killSwitchTrip()` — kill switch banner + payout-paused notification |
 | Dashboard "CONTINUUM" title | Long-press | Fire 5 scenarios sequentially (flood → outage → auto-claim → fraud → kill switch) |
-| Assist bot avatar | 4-tap | `autoClaimAndPayout()` — instant ₹247 auto-approved claim |
+| Dashboard "Live Triggers" header | Tap | Navigate to Oracle Engine screen |
+| Dashboard "Track Claim" button | Tap | Navigate to Status Tracker with most recent claim ID |
+| Assist bot avatar (any, shared counter) | 4-tap total | `autoClaimAndPayout()` — instant ₹247 auto-approved claim. Single shared counter prevents double-fire |
+| Assist phone icon (AppBar) | Tap | Voice Agent call bottom sheet |
+| Status tracker payout card | Long-press | `forceApprove(claimId)` — instantly advances claim to APPROVED+PAYOUT |
+| Claims "My Claims" heading | Long-press | `autoClaimAndPayout()` — injects new auto-approved claim |
 | Profile screen header | Long-press | `resetAll()` — wipe all flags, claims, notifications; reseed persona |
-| Profile screen avatar | 4-tap | `fraudQueueEscalation()` — activate fraud flag, escalate latest in-review claim |
+| Profile screen avatar | Long-press | `fraudQueueEscalation()` — activate fraud flag, escalate latest in-review claim |
 | Profile screen zone row | Long-press | `zoneEnrollmentLock()` — zone lock banner + notification |
-| Notification bell | 3-tap | `seedDemoNotifications()` — inject 3 fresh notifications |
+| Notification bell | Tap | Navigate to full Notifications screen |
+| Notification bell | Long-press | `seedDemoNotifications()` — inject 3 fresh notifications |
 
 ---
 

@@ -10,4 +10,6 @@ class AppRoutes {
   static const String planDetails = '/plan-details';
   static const String editProfile = '/editProfile';
   static const String payments = '/payments';
+  static const String oracle = '/oracle';
+  static const String notifications = '/notifications';
 }
