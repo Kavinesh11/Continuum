@@ -31,6 +31,8 @@ fn make_inputs(
         spatial: SpatialResult {
             score: spatial_score,
             zone_mismatch,
+            adjacency_grace: false,
+            adjacent_zone_id: None,
         },
         frequency: FrequencyResult {
             score: frequency_score,
@@ -42,6 +44,9 @@ fn make_inputs(
         spatial_penalty,
         soak_period_failed,
         platform_activity_veto,
+        coverage_cap: 1000.0,
+        payout_cap: 0.75,
+        adjacency_factor: 1.0,
     }
 }
 
