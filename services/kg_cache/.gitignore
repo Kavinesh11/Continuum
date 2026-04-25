@@ -1,6 +1,3 @@
-# Rust build artifacts
-/target
-
 # Python
 __pycache__/
 *.pyc

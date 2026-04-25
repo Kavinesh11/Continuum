@@ -1,17 +1,14 @@
-FROM golang:1.22-alpine AS builder
+FROM python:3.12-slim
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
+
+RUN groupadd -r appgroup && useradd -r -g appgroup appuser
 
 WORKDIR /app
+COPY requirements.txt .
+RUN uv pip install --system -r requirements.txt
 
-COPY go.mod go.sum ./
-RUN go mod download
-
-COPY . .
-RUN go build -o kg_cache main.go handlers.go cache.go
-
-FROM alpine:latest
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-WORKDIR /app
-COPY --from=builder /app/kg_cache .
+COPY main.py cache.py ./
 USER appuser
 EXPOSE 8080
-CMD ["./kg_cache"]
+CMD ["python", "main.py"]

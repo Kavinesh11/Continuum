@@ -20,7 +20,7 @@ unhandled_exceptions_total = Counter(
 
 # --- Service URLs (from environment) ---
 RISK_PROFILER_URL = os.getenv("RISK_PROFILER_URL", "http://localhost:8001")
-CLAIMS_SCORING_URL = os.getenv("CLAIMS_SCORING_URL", "http://localhost:8002")
+CLAIMS_SCORING_URL = os.getenv("CLAIMS_SCORING_URL", "http://localhost:8080")
 
 
 # --- App lifespan (shared async HTTP client) ---

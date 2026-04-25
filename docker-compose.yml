@@ -23,6 +23,8 @@ services:
       - .env
     environment:
       - CORE_BACKEND_URL=http://core_backend:3000
+      - CLAIMS_SCORING_URL=http://claims_scoring:8080
+      - RISK_PROFILER_URL=http://risk_profiler:8001
 
   rag_orchestrator:
     build:
@@ -75,20 +77,22 @@ services:
       - kafka
 
   # ==========================================
-  # RUST & GO MICROSERVICES
+  # PYTHON MICROSERVICES
   # ==========================================
   claims_scoring:
     build:
       context: ./services/claims_scoring
     ports:
-      - "8081:8080" # Mapped to 8081 to avoid Docker daemon conflict on macOS
+      - "8081:8080"
     networks:
       - continuum_net
     volumes:
       - continuum_shared_temps:/tmp
     environment:
+      - PORT=8080
       - ISOLATION_FOREST_SOCKET=/tmp/isolation_forest.sock
       - DATABASE_URL=postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/continuum
+      - KAFKA_BROKERS=kafka:9092
     depends_on:
       - postgres
 
