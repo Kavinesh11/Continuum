@@ -37,7 +37,7 @@ class _LoginScreenState extends State<LoginScreen>
 
   Future<void> _login() async {
     final workerId = _emailController.text.trim();
-    final password = _passwordController.text;
+    final password = _passwordController.text.trim();
 
     if (workerId.isEmpty || password.isEmpty) {
       _showError('Please enter your credentials');
@@ -45,18 +45,19 @@ class _LoginScreenState extends State<LoginScreen>
     }
 
     setState(() => _isLoading = true);
-    try {
-      final result = await ApiService().login(workerId, password);
-      if (!mounted) return;
 
-      await ApiService().saveToken(
-        result['token'] as String? ?? 'demo.token.exp9999',
-        result['expires_at'] as String? ?? '2099-12-31T23:59:59Z',
-      );
+    await Future.delayed(const Duration(milliseconds: 700));
+
+    if (!mounted) return;
+
+    if (workerId == 'SWG-9284' && password == 'Continuum@2026') {
+      DemoBackend.instance.setDriver(sandboxDriverSudarshan);
+      DemoOrchestrator.instance.seedInitialNotifications();
+      DriverProvider.of(context).switchDriver(sandboxDriverSudarshan);
       Navigator.of(context).pushReplacementNamed(AppRoutes.home);
-    } catch (_) {
-      if (!mounted) return;
+    } else {
       setState(() => _isLoading = false);
+      _showError('Invalid credentials. Please check your Worker ID and password.');
     }
   }
 
@@ -257,7 +258,17 @@ class _LoginScreenState extends State<LoginScreen>
                             ),
                     ),
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Demo: SWG-9284 / Continuum@2026',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.white.withOpacity(0.3),
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
 
                   // ── OR Divider ──
                   Row(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/notification_toast.dart';
 import 'dashboard.dart';
 import 'claims.dart';
 import 'assists.dart';
@@ -20,8 +21,9 @@ class _HomeShellState extends State<HomeShell> {
   Widget build(BuildContext context) {
     final cardColor = AppTheme.cardOf(context);
 
-    return Scaffold(
-      body: IndexedStack(
+    return NotificationToastLayer(
+      child: Scaffold(
+        body: IndexedStack(
         index: _selectedTab,
         children: [
           DashboardScreen(refreshToken: _dashboardRefreshToken),
@@ -108,6 +110,7 @@ class _HomeShellState extends State<HomeShell> {
           ),
         ),
       ),
-    );
+      ),
+    ); // NotificationToastLayer
   }
 }

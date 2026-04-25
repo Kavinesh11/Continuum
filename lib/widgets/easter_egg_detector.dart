@@ -15,7 +15,7 @@ class EasterEggDetector extends StatefulWidget {
     required this.child,
     required this.onTrigger,
     this.taps = 4,
-    this.window = const Duration(seconds: 2),
+    this.window = const Duration(seconds: 3),
     this.onLongPress,
     this.behavior = HitTestBehavior.translucent,
   }) : super(key: key);

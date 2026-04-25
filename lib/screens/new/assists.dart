@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
+import '../../services/gemini_service.dart';
 import '../../state/demo_orchestrator.dart';
 import '../../theme/app_theme.dart';
-import '../../widgets/easter_egg_detector.dart';
 import '../../widgets/notification_action.dart';
 
 class AssistsScreen extends StatefulWidget {
@@ -14,11 +14,33 @@ class AssistsScreen extends StatefulWidget {
 
 class _AssistsScreenState extends State<AssistsScreen> {
   final ApiService _api = ApiService();
+  final GeminiService _gemini = GeminiService();
   final TextEditingController _messageController = TextEditingController();
   final List<Map<String, dynamic>> _messages = [];
+  final List<Map<String, String>> _chatHistory = [];
   bool _isLoading = true;
   bool _isSending = false;
+  bool _isTyping = false;
   String? _error;
+
+  // ── Shared easter egg counter for bot avatar taps ──────────────────────────
+  int _eggCount = 0;
+  DateTime? _eggFirst;
+
+  void _onBotAvatarTap() {
+    final now = DateTime.now();
+    if (_eggFirst == null || now.difference(_eggFirst!) > const Duration(seconds: 3)) {
+      _eggCount = 1;
+      _eggFirst = now;
+    } else {
+      _eggCount++;
+    }
+    if (_eggCount >= 4) {
+      _eggCount = 0;
+      _eggFirst = null;
+      DemoOrchestrator.instance.autoClaimAndPayout();
+    }
+  }
 
   @override
   void initState() {
@@ -67,15 +89,10 @@ class _AssistsScreenState extends State<AssistsScreen> {
 
     String timeLabel;
     if (timeRaw == null) {
-      final now = DateTime.now();
-      timeLabel = _hhmm(now);
+      timeLabel = _hhmm(DateTime.now());
     } else {
       final parsed = DateTime.tryParse(timeRaw.toString());
-      if (parsed != null) {
-        timeLabel = _hhmm(parsed.toLocal());
-      } else {
-        timeLabel = timeRaw.toString();
-      }
+      timeLabel = parsed != null ? _hhmm(parsed.toLocal()) : timeRaw.toString();
     }
 
     return {'text': text, 'isBot': isBot, 'time': timeLabel};
@@ -89,43 +106,39 @@ class _AssistsScreenState extends State<AssistsScreen> {
 
   Future<void> _sendMessage() async {
     final text = _messageController.text.trim();
-    if (text.isEmpty || _isSending) return;
+    if (text.isEmpty || _isSending || _isTyping) return;
 
-    final now = TimeOfDay.now().format(context);
+    final now = _hhmm(DateTime.now());
     setState(() {
       _isSending = true;
+      _isTyping = true;
       _messages.add({'text': text, 'isBot': false, 'time': now});
       _messageController.clear();
     });
 
-    try {
-      final response = await _api.sendAssistMessage(text);
-      if (!mounted) return;
+    final reply = await _gemini.chat(text, List.from(_chatHistory));
 
-      final reply =
-          (response['content'] ??
-                  response['reply'] ??
-                  response['response'] ??
-                  response['message'] ??
-                  '')
-              .toString()
-              .trim();
-      if (reply.isNotEmpty) {
-        final replyTime = TimeOfDay.now().format(context);
-        setState(() {
-          _messages.add({'text': reply, 'isBot': true, 'time': replyTime});
-        });
-      }
+    _chatHistory.add({'role': 'user', 'content': text});
+    _chatHistory.add({'role': 'model', 'content': reply});
 
-      setState(() {
-        _isSending = false;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _isSending = false;
-      });
-    }
+    if (!mounted) return;
+    setState(() {
+      _isSending = false;
+      _isTyping = false;
+      _messages.add({'text': reply, 'isBot': true, 'time': _hhmm(DateTime.now())});
+    });
+  }
+
+  void _showCallSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => _VoiceAgentSheet(
+        driverName: 'Partner',
+        onEnd: () => Navigator.pop(ctx),
+      ),
+    );
   }
 
   @override
@@ -155,7 +168,15 @@ class _AssistsScreenState extends State<AssistsScreen> {
             ),
           ),
         ),
-        actions: [const NotificationAction()],
+        actions: [
+          IconButton(
+            onPressed: _showCallSheet,
+            icon: const Icon(Icons.phone_rounded),
+            color: AppTheme.primary,
+            tooltip: 'Voice Agent',
+          ),
+          const NotificationAction(),
+        ],
       ),
       body: Column(
         children: [
@@ -179,8 +200,11 @@ class _AssistsScreenState extends State<AssistsScreen> {
                   )
                 : ListView.builder(
                     padding: const EdgeInsets.all(16.0),
-                    itemCount: _messages.length,
+                    itemCount: _messages.length + (_isTyping ? 1 : 0),
                     itemBuilder: (context, index) {
+                      if (_isTyping && index == _messages.length) {
+                        return _buildTypingIndicator(context);
+                      }
                       final msg = _messages[index];
                       return _buildMessageBubble(
                         context: context,
@@ -192,6 +216,48 @@ class _AssistsScreenState extends State<AssistsScreen> {
                   ),
           ),
           _buildChatInput(context),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTypingIndicator(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              gradient: AppTheme.primaryGradient,
+              shape: BoxShape.circle,
+              boxShadow: AppTheme.primaryGlow(0.2),
+            ),
+            child: const Icon(Icons.smart_toy_rounded, size: 16, color: Colors.white),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: AppTheme.cardOf(context),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+                bottomRight: Radius.circular(16),
+              ),
+              boxShadow: AppTheme.softShadowOf(context),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (int i = 0; i < 3; i++) ...[
+                  if (i > 0) const SizedBox(width: 4),
+                  _BouncingDot(delay: Duration(milliseconds: i * 160)),
+                ],
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -212,9 +278,8 @@ class _AssistsScreenState extends State<AssistsScreen> {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (isBot) ...[
-            EasterEggDetector(
-              taps: 4,
-              onTrigger: () => DemoOrchestrator.instance.autoClaimAndPayout(),
+            GestureDetector(
+              onTap: _onBotAvatarTap,
               child: Container(
                 margin: const EdgeInsets.only(right: 8),
                 padding: const EdgeInsets.all(8),
@@ -334,6 +399,189 @@ class _AssistsScreenState extends State<AssistsScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Voice agent call sheet ─────────────────────────────────────────────────────
+
+class _VoiceAgentSheet extends StatefulWidget {
+  final String driverName;
+  final VoidCallback onEnd;
+  const _VoiceAgentSheet({required this.driverName, required this.onEnd});
+
+  @override
+  State<_VoiceAgentSheet> createState() => _VoiceAgentSheetState();
+}
+
+class _VoiceAgentSheetState extends State<_VoiceAgentSheet>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+      padding: const EdgeInsets.all(28),
+      decoration: BoxDecoration(
+        color: AppTheme.cardOf(context),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: AppTheme.softShadowOf(context),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 4,
+            height: 4,
+            decoration: BoxDecoration(
+              color: AppTheme.dividerOf(context),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 24),
+          AnimatedBuilder(
+            animation: _pulse,
+            builder: (_, __) => Container(
+              width: 90,
+              height: 90,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: AppTheme.accentGradient,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.primary.withOpacity(0.2 + _pulse.value * 0.25),
+                    blurRadius: 20 + _pulse.value * 20,
+                    spreadRadius: _pulse.value * 6,
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.support_agent_rounded,
+                color: Colors.white,
+                size: 42,
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'Voice Agent',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Connecting you to a live voice agent...',
+            style: TextStyle(
+              fontSize: 13,
+              color: AppTheme.textSecondaryOf(context),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Continuum Assist • Secured',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.successGreen,
+            ),
+          ),
+          const SizedBox(height: 32),
+          GestureDetector(
+            onTap: widget.onEnd,
+            child: Container(
+              width: 64,
+              height: 64,
+              decoration: const BoxDecoration(
+                color: AppTheme.dangerRed,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.call_end_rounded,
+                color: Colors.white,
+                size: 28,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'End Call',
+            style: TextStyle(
+              fontSize: 12,
+              color: AppTheme.textSecondaryOf(context),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Typing indicator dot ──────────────────────────────────────────────────────
+
+class _BouncingDot extends StatefulWidget {
+  final Duration delay;
+  const _BouncingDot({required this.delay});
+
+  @override
+  State<_BouncingDot> createState() => _BouncingDotState();
+}
+
+class _BouncingDotState extends State<_BouncingDot>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _anim;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _anim = Tween<double>(begin: 0, end: -6).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
+    );
+    Future.delayed(widget.delay, () {
+      if (mounted) _ctrl.repeat(reverse: true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _anim,
+      builder: (_, __) => Transform.translate(
+        offset: Offset(0, _anim.value),
+        child: Container(
+          width: 7,
+          height: 7,
+          decoration: BoxDecoration(
+            color: AppTheme.textHintOf(context),
+            shape: BoxShape.circle,
+          ),
+        ),
       ),
     );
   }

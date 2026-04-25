@@ -21,6 +21,11 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
   static const List<String> _claimReasons = [
     'Select a reason',
     'Heavy Rain / Waterlogging',
+    'Bandh / General Strike',
+    'Roadblock / Road Closure',
+    'Cyclone / Severe Storm',
+    'Municipal Advisory',
+    'Curfew / Section 144',
     'App Outage (Swiggy / Zomato)',
     'Network Failure',
     'Vehicle Breakdown',
@@ -58,6 +63,18 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
     );
   }
 
+  void _prefillDemoData() {
+    final now = DateTime.now();
+    setState(() {
+      _selectedReason = 'Heavy Rain / Waterlogging';
+      _dateController.text = '${now.day}/${now.month}/${now.year}';
+      _descriptionController.text =
+          'Heavy rainfall caused waterlogging in my delivery zone. '
+          'Unable to complete deliveries due to flooded roads in Zone 4B. '
+          'Streets impassable since 09:00 AM. Orders cancelled by platform.';
+    });
+  }
+
   @override
   void dispose() {
     _audioRecorder.dispose();
@@ -70,7 +87,10 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.existingClaim != null ? 'Edit Claim' : 'New Claim'),
+        title: GestureDetector(
+          onLongPress: _prefillDemoData,
+          child: Text(widget.existingClaim != null ? 'Edit Claim' : 'New Claim'),
+        ),
       ),
       body: SingleChildScrollView(
         child: Padding(

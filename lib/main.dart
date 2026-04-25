@@ -15,6 +15,8 @@ import 'screens/new/plan_details.dart';
 import 'screens/new/policy.dart';
 import 'screens/new/registration.dart';
 import 'screens/new/status_tracker.dart';
+import 'screens/new/oracle_engine.dart';
+import 'screens/new/notifications_screen.dart';
 import 'sandbox/sandbox_selector_screen.dart';
 import 'sandbox/driver_provider.dart';
 import 'services/api_service.dart';
@@ -114,6 +116,8 @@ class _ContinuumAppState extends State<ContinuumApp> {
               AppRoutes.registration: (context) => const RegistrationScreen(),
               AppRoutes.editProfile: (context) => const EditProfileScreen(),
               AppRoutes.payments: (context) => const PaymentsScreen(),
+              AppRoutes.oracle: (context) => const OracleEngineScreen(),
+              AppRoutes.notifications: (context) => const NotificationsScreen(),
             },
           ),
         );

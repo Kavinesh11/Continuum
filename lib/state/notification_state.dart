@@ -20,6 +20,16 @@ class NotificationState extends ChangeNotifier {
 
   final Map<String, List<NotificationItem>> _unreadByPartner = {};
 
+  // ── Toast support ──────────────────────────────────────────────────────────
+  // Increments each time a new notification arrives; toast layer watches this.
+  int _toastSeq = 0;
+  NotificationItem? _toastItem;
+
+  int get toastSeq => _toastSeq;
+  NotificationItem? get toastItem => _toastItem;
+
+  // ── Inbox ──────────────────────────────────────────────────────────────────
+
   List<NotificationItem> notificationsFor(String partnerId) {
     return List<NotificationItem>.unmodifiable(
       _unreadByPartner[partnerId] ?? const [],
@@ -37,13 +47,14 @@ class NotificationState extends ChangeNotifier {
   void addNotification(String partnerId, NotificationItem item) {
     final list = _unreadByPartner.putIfAbsent(partnerId, () => []);
     list.insert(0, item);
+    _toastSeq++;
+    _toastItem = item;
     notifyListeners();
   }
 
   void markAsRead({required String partnerId, required String notificationId}) {
     final items = _unreadByPartner[partnerId];
     if (items == null || items.isEmpty) return;
-
     items.removeWhere((n) => n.id == notificationId);
     notifyListeners();
   }
