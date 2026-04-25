@@ -4,10 +4,10 @@ import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
-import 'package:uuid/uuid.dart';
 import '../../routes/app_routes.dart';
+import '../../state/demo_state.dart';
+import '../../state/demo_orchestrator.dart';
 import '../../theme/app_theme.dart';
-import '../../services/api_service.dart';
 
 class ApplyFormScreen extends StatefulWidget {
   final Map<String, dynamic>? existingClaim;
@@ -603,45 +603,43 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
       return;
     }
 
-    setState(() => _isSubmitting = true);
-    try {
-      final claimId = const Uuid().v4();
-      final workerId = await ApiService().getCurrentWorkerId();
-      final profile = await ApiService().getWorkerProfileCurrent();
-      final zoneId = (profile['zone_id'] as String?) ?? 'default';
-      final payload = {
-        'claim_id': claimId,
-        'worker_id': workerId,
-        'event_type': _selectedReason,
-        'event_timestamp': DateTime.now().toIso8601String(),
-        'verification_message': _descriptionController.text.trim(),
-        'claim_description': _descriptionController.text.trim(),
-        'zone_id': zoneId,
-      };
-
-      final result = await ApiService().submitClaim(payload);
-      if (!mounted) return;
-      Navigator.pushReplacementNamed(
-        context,
-        AppRoutes.claimStatus,
-        arguments: (result['claim_id'] ?? claimId).toString(),
-      );
-    } on ServerException {
-      if (!mounted) return;
+    // Zone enrollment lock — adverse selection guard
+    if (DemoState.instance.zoneEnrollmentLocked) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text(
-            'Service temporarily unavailable. Please try again.',
+            'Zone temporarily closed for new policies — adverse selection lock active.',
           ),
+          backgroundColor: AppTheme.warningOrange,
           behavior: SnackBarBehavior.floating,
-          action: SnackBarAction(label: 'Retry', onPressed: _submitForm),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
+      );
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+    try {
+      final result = await DemoOrchestrator.instance.submitManualClaim(
+        _selectedReason,
+        _descriptionController.text.trim(),
+        _capturedPhotos.map((f) => f.path).toList(),
+        _audioPaths.isNotEmpty ? _audioPaths.last : null,
+      );
+      if (!mounted) return;
+      final claimId = (result['id'] ?? result['claim_id'] ?? '').toString();
+      Navigator.pushReplacementNamed(
+        context,
+        AppRoutes.claimStatus,
+        arguments: claimId,
       );
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Network error. Please check your connection.'),
+          content: const Text('Could not submit claim. Please try again.'),
           backgroundColor: AppTheme.dangerRed,
           behavior: SnackBarBehavior.floating,
         ),

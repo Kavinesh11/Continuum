@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import '../../routes/app_routes.dart';
-import '../../theme/app_theme.dart';
+import '../../sandbox/driver_provider.dart';
+import '../../sandbox/sandbox_drivers.dart';
 import '../../services/api_service.dart';
+import '../../services/demo_backend.dart';
+import '../../state/demo_orchestrator.dart';
+import '../../theme/app_theme.dart';
+import '../../widgets/easter_egg_detector.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -44,28 +49,26 @@ class _LoginScreenState extends State<LoginScreen>
       final result = await ApiService().login(workerId, password);
       if (!mounted) return;
 
-      if (result.containsKey('token')) {
-        await ApiService().saveToken(
-          result['token'] as String,
-          result['expires_at'] as String,
-        );
-        Navigator.of(context).pushReplacementNamed(AppRoutes.home);
-      } else {
-        _showError(result['error']?.toString() ?? 'Login failed');
-      }
-    } on ServerException catch (_) {
-      if (!mounted) return;
-      _showError('Service temporarily unavailable. Please try again.');
+      await ApiService().saveToken(
+        result['token'] as String? ?? 'demo.token.exp9999',
+        result['expires_at'] as String? ?? '2099-12-31T23:59:59Z',
+      );
+      Navigator.of(context).pushReplacementNamed(AppRoutes.home);
     } catch (_) {
       if (!mounted) return;
-      _showError('Login failed. Please check your ID and password.');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+      setState(() => _isLoading = false);
     }
   }
 
   void _loginWithPartner() {
     Navigator.of(context).pushReplacementNamed(AppRoutes.sandboxSelect);
+  }
+
+  void _loginAsSudarshan() {
+    DemoBackend.instance.setDriver(sandboxDriverSudarshan);
+    DemoOrchestrator.instance.seedInitialNotifications();
+    DriverProvider.of(context).switchDriver(sandboxDriverSudarshan);
+    Navigator.of(context).pushReplacementNamed(AppRoutes.home);
   }
 
   void _showError(String message) {
@@ -113,31 +116,36 @@ class _LoginScreenState extends State<LoginScreen>
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // ── Logo with animated glow ──
-                  AnimatedBuilder(
-                    animation: _glowAnimation,
-                    builder: (context, child) {
-                      return Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppTheme.primary.withOpacity(
-                                _glowAnimation.value * 0.4,
+                  EasterEggDetector(
+                    taps: 4,
+                    onTrigger: _loginAsSudarshan,
+                    onLongPress: _loginWithPartner,
+                    child: AnimatedBuilder(
+                      animation: _glowAnimation,
+                      builder: (context, child) {
+                        return Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppTheme.primary.withOpacity(
+                                  _glowAnimation.value * 0.4,
+                                ),
+                                blurRadius: 60,
+                                spreadRadius: 20,
                               ),
-                              blurRadius: 60,
-                              spreadRadius: 20,
-                            ),
-                          ],
+                            ],
+                          ),
+                          child: child,
+                        );
+                      },
+                      child: SizedBox(
+                        height: 140,
+                        width: 140,
+                        child: Image.asset(
+                          'assets/Logo2.png',
+                          fit: BoxFit.contain,
                         ),
-                        child: child,
-                      );
-                    },
-                    child: SizedBox(
-                      height: 140,
-                      width: 140,
-                      child: Image.asset(
-                        'assets/Logo2.png',
-                        fit: BoxFit.contain,
                       ),
                     ),
                   ),

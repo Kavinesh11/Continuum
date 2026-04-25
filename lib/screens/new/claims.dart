@@ -87,7 +87,8 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
         : double.tryParse(rawAmount?.toString() ?? '') ?? 0;
     return {
       'id': (claim['claim_id'] ?? claim['id'] ?? '').toString(),
-      'title': (claim['title'] ?? claim['event_type'] ?? 'Claim').toString(),
+      // DemoBackend uses 'eventType' (camelCase); backend uses 'event_type'
+      'title': (claim['title'] ?? claim['eventType'] ?? claim['event_type'] ?? claim['reason'] ?? 'Claim').toString(),
       'date': _formatDate(
         claim['event_date']?.toString() ??
             claim['date']?.toString() ??
@@ -100,8 +101,9 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
           (claim['progressPct'] as num?)?.toDouble() ??
           (claim['progress_pct'] as num?)?.toDouble() ??
           _statusProgress(statusRaw),
-      'isAuto': false,
-      'claim_description': 'Submitted via app',
+      'isAuto': claim['isAuto'] == true,
+      'upiRef': claim['upiRef'],
+      'claim_description': (claim['claim_description'] ?? claim['description'] ?? '').toString(),
     };
   }
 
@@ -150,7 +152,7 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
   String _formatDate(String? iso) {
     if (iso == null || iso.isEmpty) return 'Today';
     final dt = DateTime.tryParse(iso);
-    if (dt == null) return 'Today';
+    if (dt == null) return iso; // already a formatted string (e.g. "Apr 2, 2026")
     const months = [
       'Jan',
       'Feb',
@@ -169,10 +171,22 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
+
+  /// Ensures every claim map has the fields the card widgets expect.
+  Map<String, dynamic> _normalizeClaim(Map<String, dynamic> claim) {
+    final statusRaw = (claim['status'] ?? '').toString().toLowerCase();
+    return {
+      ...claim,
+      'title': claim['title'] ?? claim['eventType'] ?? claim['event_type'] ?? claim['reason'] ?? 'Claim',
+      'statusColor': claim['statusColor'] ?? _statusColor(statusRaw),
+      'date': claim['date'] ?? _formatDate(claim['submitted_at']?.toString() ?? claim['event_timestamp']?.toString()),
+    };
+  }
+
   List<Map<String, dynamic>> get _allClaims {
     return [
-      ...DemoState.instance.autoClaims,
-      ...DemoState.instance.manualClaims,
+      ...DemoState.instance.autoClaims.map(_normalizeClaim),
+      ...DemoState.instance.manualClaims.map(_normalizeClaim),
       ..._liveClaims,
     ];
   }
@@ -482,7 +496,8 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
     Map<String, dynamic> claim,
     BuildContext context,
   ) {
-    final statusColor = claim['statusColor'] as Color;
+    final statusColor = (claim['statusColor'] as Color?) ??
+        _statusColor((claim['status'] ?? '').toString().toLowerCase());
     return GestureDetector(
       onTap: () => ClaimDetailSheet.show(context, claim),
       child: Container(

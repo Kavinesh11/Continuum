@@ -1,92 +1,119 @@
 import 'package:flutter/material.dart';
+import '../../services/api_service.dart';
+import '../../services/demo_backend.dart';
 import '../../theme/app_theme.dart';
 
-class PlanDetailsScreen extends StatelessWidget {
+class PlanDetailsScreen extends StatefulWidget {
   const PlanDetailsScreen({Key? key}) : super(key: key);
 
   @override
+  State<PlanDetailsScreen> createState() => _PlanDetailsScreenState();
+}
+
+class _PlanDetailsScreenState extends State<PlanDetailsScreen>
+    with SingleTickerProviderStateMixin {
+  Map<String, dynamic>? _content;
+  bool _isLoading = true;
+  late AnimationController _slideController;
+  late Animation<double> _slideAnim;
+
+  static const _sectionIcons = {
+    'Coverage': Icons.shield_outlined,
+    'Eligibility': Icons.verified_user_outlined,
+    'Claim Process': Icons.description_outlined,
+    'Payouts': Icons.account_balance_wallet_outlined,
+    'Exclusions': Icons.block_outlined,
+    'Renewal': Icons.autorenew_rounded,
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _slideController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    )..forward();
+    _slideAnim = CurvedAnimation(
+      parent: _slideController,
+      curve: Curves.easeOutCubic,
+    );
+    _loadContent();
+  }
+
+  @override
+  void dispose() {
+    _slideController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadContent() async {
+    try {
+      final content = await ApiService().getPolicyContent();
+      if (!mounted) return;
+      setState(() {
+        _content = content;
+        _isLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final driver = DemoBackend.instance.activeDriver;
+    final hero = (_content?['hero'] as Map?)?.cast<String, dynamic>() ?? {};
+    final sections = (_content?['sections'] as List? ?? [])
+        .cast<Map<String, dynamic>>();
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Policy')),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeroCard(),
-              const SizedBox(height: 24),
-              _buildSection(
-                context,
-                number: 1,
-                title: 'Coverage',
-                icon: Icons.shield_outlined,
-                body:
-                    'This plan covers income loss due to weather disruptions, '
-                    'platform app outages, and verified accidents during active '
-                    'delivery shifts.',
+      appBar: AppBar(title: const Text('Policy Details')),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : AnimatedBuilder(
+              animation: _slideAnim,
+              builder: (context, child) => Opacity(
+                opacity: _slideAnim.value,
+                child: Transform.translate(
+                  offset: Offset(0, 20 * (1 - _slideAnim.value)),
+                  child: child,
+                ),
               ),
-              const SizedBox(height: 16),
-              _buildSection(
-                context,
-                number: 2,
-                title: 'Eligibility',
-                icon: Icons.verified_user_outlined,
-                body:
-                    'Active gig workers on supported platforms (Swiggy, Zomato, etc.) '
-                    'who have completed at least 30 days on the platform.',
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildHeroCard(driver, hero),
+                    const SizedBox(height: 24),
+                    ...sections.asMap().entries.map((e) {
+                      final i = e.key;
+                      final s = e.value;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 14),
+                        child: _buildSection(
+                          context,
+                          number: i + 1,
+                          title: s['title'] as String? ?? '',
+                          icon: _sectionIcons[s['title']] ?? Icons.info_outline,
+                          body: s['body'] as String? ?? '',
+                          delay: i * 80,
+                        ),
+                      );
+                    }),
+                  ],
+                ),
               ),
-              const SizedBox(height: 16),
-              _buildSection(
-                context,
-                number: 3,
-                title: 'Claim Process',
-                icon: Icons.description_outlined,
-                body:
-                    'File a claim within 48 hours of the incident. '
-                    'Provide live photo evidence and a brief description. '
-                    'Claims are reviewed within 2-3 business days.',
-              ),
-              const SizedBox(height: 16),
-              _buildSection(
-                context,
-                number: 4,
-                title: 'Payouts',
-                icon: Icons.account_balance_wallet_outlined,
-                body:
-                    'Approved payouts are disbursed to your linked UPI or bank '
-                    'account within 1 business day after approval.',
-              ),
-              const SizedBox(height: 16),
-              _buildSection(
-                context,
-                number: 5,
-                title: 'Exclusions',
-                icon: Icons.block_outlined,
-                body:
-                    'Claims for incidents outside active shift hours, '
-                    'self-inflicted damage, or fraudulent submissions '
-                    'are not covered.',
-              ),
-              const SizedBox(height: 16),
-              _buildSection(
-                context,
-                number: 6,
-                title: 'Renewal',
-                icon: Icons.autorenew_rounded,
-                body:
-                    'Plan auto-renews weekly. You can cancel anytime '
-                    'from Profile → Payments & Subscription.',
-              ),
-              const SizedBox(height: 20),
-            ],
-          ),
-        ),
-      ),
+            ),
     );
   }
 
-  Widget _buildHeroCard() {
+  Widget _buildHeroCard(dynamic driver, Map<String, dynamic> hero) {
+    final badge = hero['badge'] as String? ?? '${driver.tier} TIER';
+    final title = hero['title'] as String? ?? '${driver.tier} Shield Plan';
+    final subtitle = hero['subtitle'] as String? ?? 'Coverage active in ${driver.zone}';
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(22),
@@ -110,17 +137,14 @@ class PlanDetailsScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 5,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Text(
-                  'COMPREHENSIVE',
-                  style: TextStyle(
+                child: Text(
+                  badge,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
@@ -129,9 +153,9 @@ class PlanDetailsScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 14),
-              const Text(
-                'Gig Worker Protection Plan',
-                style: TextStyle(
+              Text(
+                title,
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
@@ -139,10 +163,10 @@ class PlanDetailsScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'Complete coverage for disruptions, outages, and accidents on platform.',
+                subtitle,
                 style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.white.withOpacity(0.7),
+                  fontSize: 13,
+                  color: Colors.white.withOpacity(0.75),
                   height: 1.4,
                 ),
               ),
@@ -159,64 +183,72 @@ class PlanDetailsScreen extends StatelessWidget {
     required String title,
     required IconData icon,
     required String body,
+    int delay = 0,
   }) {
-    return Container(
-      decoration: AppTheme.cardDecorationOf(context),
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                gradient: AppTheme.accentGradient,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Center(
-                child: Text(
-                  number.toString(),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 14,
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: Duration(milliseconds: 500 + delay),
+      curve: Curves.easeOutCubic,
+      builder: (context, v, child) =>
+          Opacity(opacity: v, child: Transform.translate(offset: Offset(20 * (1 - v), 0), child: child)),
+      child: Container(
+        decoration: AppTheme.cardDecorationOf(context),
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  gradient: AppTheme.accentGradient,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Center(
+                  child: Text(
+                    number.toString(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(icon, size: 16, color: AppTheme.primary),
-                      const SizedBox(width: 6),
-                      Text(
-                        title,
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                          color: AppTheme.textPrimaryOf(context),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(icon, size: 15, color: AppTheme.primary),
+                        const SizedBox(width: 6),
+                        Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: AppTheme.textPrimaryOf(context),
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    body,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: AppTheme.textSecondaryOf(context),
-                      height: 1.5,
+                      ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 8),
+                    Text(
+                      body,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppTheme.textSecondaryOf(context),
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

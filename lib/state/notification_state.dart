@@ -34,6 +34,12 @@ class NotificationState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void addNotification(String partnerId, NotificationItem item) {
+    final list = _unreadByPartner.putIfAbsent(partnerId, () => []);
+    list.insert(0, item);
+    notifyListeners();
+  }
+
   void markAsRead({required String partnerId, required String notificationId}) {
     final items = _unreadByPartner[partnerId];
     if (items == null || items.isEmpty) return;

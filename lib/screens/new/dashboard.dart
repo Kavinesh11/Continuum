@@ -6,6 +6,9 @@ import 'package:flutter/material.dart';
 import '../../routes/app_routes.dart';
 import '../../theme/app_theme.dart';
 import '../../state/demo_state.dart';
+import '../../state/demo_orchestrator.dart';
+import '../../widgets/demo_banner.dart';
+import '../../widgets/easter_egg_detector.dart';
 import '../../widgets/notification_action.dart';
 import '../../services/api_service.dart';
 import 'claim_flow.dart';
@@ -72,21 +75,21 @@ class _DashboardScreenState extends State<DashboardScreen>
   static final _triggerData = [
     {
       'title': 'Weather Oracle',
-      'source': 'IMD API',
+      'source': 'IMD / NASA-GPM',
       'alertMsg':
-          'Rainfall: 62mm detected in Chennai Zone 4 — exceeds 50mm threshold',
+          'Rainfall: 62mm in your zone — exceeds 50mm eligibility threshold',
       'icon': Icons.cloud_outlined,
     },
     {
       'title': 'Platform Outage',
-      'source': 'Swiggy API ping',
-      'alertMsg': 'Order routing API returning 503 in your zone',
+      'source': 'Platform API ping',
+      'alertMsg': 'Order routing API returning 503 errors in your zone',
       'icon': Icons.wifi_off_outlined,
     },
     {
       'title': 'Municipal Advisory',
       'source': 'Corporation RSS',
-      'alertMsg': 'Chennai Corporation: Red Alert flood advisory active',
+      'alertMsg': 'Red Alert flood advisory active in your registered zone',
       'icon': Icons.warning_amber_outlined,
     },
     {
@@ -98,7 +101,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     {
       'title': 'Road Closure',
       'source': 'Traffic API',
-      'alertMsg': 'Anna Salai, GST Road blocked — 3 major routes inaccessible',
+      'alertMsg': '3 major arterial routes blocked — coverage window active',
       'icon': Icons.block_outlined,
     },
   ];
@@ -317,28 +320,32 @@ class _DashboardScreenState extends State<DashboardScreen>
           onLongPress: _fireDemoSequence,
           child: const Text('CONTINUUM'),
         ),
-        leading: GestureDetector(
-          onTap: () async {
-            await Navigator.pushNamed(context, AppRoutes.profile);
-            if (!mounted) return;
-            _loadDashboardData();
-          },
-          child: Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: AppTheme.accentGradient,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.primary.withOpacity(0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: const Center(
-                child: Icon(Icons.person, color: Colors.white, size: 16),
+        leading: EasterEggDetector(
+          taps: 4,
+          onTrigger: () => DemoOrchestrator.instance.floodAlert(),
+          child: GestureDetector(
+            onTap: () async {
+              await Navigator.pushNamed(context, AppRoutes.profile);
+              if (!mounted) return;
+              _loadDashboardData();
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: AppTheme.accentGradient,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.primary.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: const Center(
+                  child: Icon(Icons.person, color: Colors.white, size: 16),
+                ),
               ),
             ),
           ),
@@ -347,6 +354,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       ),
       body: Column(
         children: [
+          const DemoBanner(),
           Expanded(
             child: SingleChildScrollView(
               child: Padding(
@@ -356,7 +364,11 @@ class _DashboardScreenState extends State<DashboardScreen>
                   children: [
                     _buildGreeting(),
                     const SizedBox(height: 20),
-                    _buildPlanStatusCard(),
+                    EasterEggDetector(
+                      taps: 4,
+                      onTrigger: () => DemoOrchestrator.instance.reserveFloorBreach(),
+                      child: _buildPlanStatusCard(),
+                    ),
                     const SizedBox(height: 16),
                     _buildTwoPillsRow(),
                     const SizedBox(height: 24),
@@ -903,12 +915,16 @@ class _DashboardScreenState extends State<DashboardScreen>
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: _buildInfoPill(
-            label: 'WEEKLY PREMIUM',
-            value: premium,
-            subtitle: 'Paid via Razorpay',
-            subtitleColor: AppTheme.textSecondaryOf(context),
-            accentColor: AppTheme.primary,
+          child: EasterEggDetector(
+            taps: 3,
+            onTrigger: () => DemoOrchestrator.instance.killSwitchTrip(),
+            child: _buildInfoPill(
+              label: 'WEEKLY PREMIUM',
+              value: premium,
+              subtitle: 'Auto-pay active',
+              subtitleColor: AppTheme.textSecondaryOf(context),
+              accentColor: AppTheme.primary,
+            ),
           ),
         ),
       ],

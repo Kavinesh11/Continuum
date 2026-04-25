@@ -4,6 +4,8 @@ import '../../routes/app_routes.dart';
 import '../../theme/app_theme.dart';
 import '../../main.dart';
 import '../../services/api_service.dart';
+import '../../state/demo_orchestrator.dart';
+import '../../widgets/easter_egg_detector.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -145,7 +147,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     String since,
     String tier,
   ) {
-    return Container(
+    return GestureDetector(
+      onLongPress: () => DemoOrchestrator.instance.resetAll(),
+      child: Container(
       padding: EdgeInsets.fromLTRB(
         20,
         MediaQuery.of(context).padding.top + 16,
@@ -214,23 +218,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      // Sandbox badge in header
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 8,
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.amber.withOpacity(0.2),
+                          color: Colors.white.withOpacity(0.15),
                           borderRadius: BorderRadius.circular(6),
                           border: Border.all(
-                            color: Colors.amber.withOpacity(0.4),
+                            color: Colors.white.withOpacity(0.25),
                           ),
                         ),
                         child: Text(
-                          '🧪 SANDBOX — $tier tier',
+                          '$tier Shield',
                           style: const TextStyle(
-                            color: Colors.amber,
+                            color: Colors.white,
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 0.8,
@@ -272,31 +275,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 24),
               Row(
                 children: [
-                  Container(
-                    width: 68,
-                    height: 68,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white.withOpacity(0.2),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.4),
-                        width: 3,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.15),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
+                  EasterEggDetector(
+                    taps: 4,
+                    onTrigger: () => DemoOrchestrator.instance.fraudQueueEscalation(),
+                    child: Container(
+                      width: 68,
+                      height: 68,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withOpacity(0.2),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.4),
+                          width: 3,
                         ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Text(
-                        initials,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 20,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.15),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(
+                          initials,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 20,
+                          ),
                         ),
                       ),
                     ),
@@ -360,6 +367,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ],
       ),
+    ),  // end GestureDetector (long-press header → resetAll)
     );
   }
 
@@ -429,7 +437,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           platform,
         ),
         const SizedBox(height: 8),
-        _buildDataRow(context, Icons.location_on_outlined, 'Zone', zone),
+        GestureDetector(
+          onLongPress: () => DemoOrchestrator.instance.zoneEnrollmentLock(),
+          child: _buildDataRow(context, Icons.location_on_outlined, 'Zone', zone),
+        ),
         const SizedBox(height: 8),
         _buildDataRow(
           context,

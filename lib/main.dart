@@ -11,10 +11,15 @@ import 'screens/new/profile.dart';
 import 'screens/new/edit_profile.dart';
 import 'screens/new/payments.dart';
 import 'screens/new/apply_form.dart';
+import 'screens/new/plan_details.dart';
 import 'screens/new/policy.dart';
+import 'screens/new/registration.dart';
 import 'screens/new/status_tracker.dart';
 import 'sandbox/sandbox_selector_screen.dart';
+import 'sandbox/driver_provider.dart';
 import 'services/api_service.dart';
+import 'services/demo_backend.dart';
+import 'state/demo_orchestrator.dart';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -59,6 +64,10 @@ void main() async {
   await Hive.initFlutter();
   await Hive.openBox('api_cache');
 
+  // Boot mock layer before UI renders
+  DemoBackend.instance.bootstrap();
+  DemoOrchestrator.instance.bootstrap();
+
   // Register FCM token on every app launch (best-effort)
   _registerFcmToken();
 
@@ -85,25 +94,28 @@ class _ContinuumAppState extends State<ContinuumApp> {
     return ListenableBuilder(
       listenable: themeProvider,
       builder: (context, _) {
-        return MaterialApp(
-          title: 'Continuum',
-          debugShowCheckedModeBanner: false,
-          theme: AppTheme.lightTheme,
-          darkTheme: AppTheme.darkTheme,
-          themeMode: themeProvider.themeMode,
-          initialRoute: AppRoutes.login,
-          routes: {
-            AppRoutes.login: (context) => const LoginScreen(),
-            AppRoutes.sandboxSelect: (context) => const SandboxSelectorScreen(),
-            AppRoutes.home: (context) => const HomeShell(),
-            AppRoutes.apply: (context) => const ApplyFormScreen(),
-            AppRoutes.claimStatus: (context) => const StatusTrackerScreen(),
-            AppRoutes.profile: (context) => const ProfileScreen(),
-            AppRoutes.policy: (context) => const PolicyScreen(),
-            AppRoutes.planDetails: (context) => const PolicyScreen(),
-            AppRoutes.editProfile: (context) => const EditProfileScreen(),
-            AppRoutes.payments: (context) => const PaymentsScreen(),
-          },
+        return DriverProviderRoot(
+          child: MaterialApp(
+            title: 'Continuum',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: themeProvider.themeMode,
+            initialRoute: AppRoutes.login,
+            routes: {
+              AppRoutes.login: (context) => const LoginScreen(),
+              AppRoutes.sandboxSelect: (context) => const SandboxSelectorScreen(),
+              AppRoutes.home: (context) => const HomeShell(),
+              AppRoutes.apply: (context) => const ApplyFormScreen(),
+              AppRoutes.claimStatus: (context) => const StatusTrackerScreen(),
+              AppRoutes.profile: (context) => const ProfileScreen(),
+              AppRoutes.policy: (context) => const PolicyScreen(),
+              AppRoutes.planDetails: (context) => const PlanDetailsScreen(),
+              AppRoutes.registration: (context) => const RegistrationScreen(),
+              AppRoutes.editProfile: (context) => const EditProfileScreen(),
+              AppRoutes.payments: (context) => const PaymentsScreen(),
+            },
+          ),
         );
       },
     );

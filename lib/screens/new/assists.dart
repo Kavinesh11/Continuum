@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
+import '../../state/demo_orchestrator.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/easter_egg_detector.dart';
 import '../../widgets/notification_action.dart';
 
 class AssistsScreen extends StatefulWidget {
@@ -101,7 +103,8 @@ class _AssistsScreenState extends State<AssistsScreen> {
       if (!mounted) return;
 
       final reply =
-          (response['reply'] ??
+          (response['content'] ??
+                  response['reply'] ??
                   response['response'] ??
                   response['message'] ??
                   '')
@@ -209,18 +212,22 @@ class _AssistsScreenState extends State<AssistsScreen> {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (isBot) ...[
-            Container(
-              margin: const EdgeInsets.only(right: 8),
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                gradient: AppTheme.primaryGradient,
-                shape: BoxShape.circle,
-                boxShadow: AppTheme.primaryGlow(0.2),
-              ),
-              child: const Icon(
-                Icons.smart_toy_rounded,
-                size: 16,
-                color: Colors.white,
+            EasterEggDetector(
+              taps: 4,
+              onTrigger: () => DemoOrchestrator.instance.autoClaimAndPayout(),
+              child: Container(
+                margin: const EdgeInsets.only(right: 8),
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  gradient: AppTheme.primaryGradient,
+                  shape: BoxShape.circle,
+                  boxShadow: AppTheme.primaryGlow(0.2),
+                ),
+                child: const Icon(
+                  Icons.smart_toy_rounded,
+                  size: 16,
+                  color: Colors.white,
+                ),
               ),
             ),
           ],

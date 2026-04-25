@@ -43,6 +43,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           .toString();
       _partnerId = (profile['worker_id'] ?? 'N/A').toString();
       _tier = (profile['tier'] ?? 'Standard').toString();
+      _memberSince = (profile['member_since'] ?? profile['registered_at'] ?? '-').toString();
       setState(() {});
     } on ServerException {
       if (!mounted) return;

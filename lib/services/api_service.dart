@@ -8,6 +8,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'demo_backend.dart';
 
 class ServerException implements Exception {
   final int statusCode;
@@ -277,128 +278,92 @@ class ApiService {
     return [];
   }
 
-  // ── Public API methods ─────────────────────────────────────────────────────
+  // ── Public API methods — delegated to DemoBackend ─────────────────────────
 
-  /// POST /auth/login → Core Backend
-  Future<Map<String, dynamic>> login(String workerId, String password) async {
-    return _post('$_coreUrl/auth/login', {
-      'worker_id': workerId,
-      'password': password,
-    });
-  }
+  final DemoBackend _mock = DemoBackend.instance;
 
-  /// POST /onboard → FastAPI Gateway
+  Future<Map<String, dynamic>> login(String workerId, String password) =>
+      _mock.login(workerId, password);
+
   Future<Map<String, dynamic>> fetchRiskProfile(
     Map<String, dynamic> payload,
-  ) async {
-    return _post(
-      '$_fastapiUrl/onboard',
-      payload,
-      cacheKey: 'risk_profile_${payload['worker_id']}',
-    );
-  }
+  ) =>
+      _mock.fetchRiskProfile(payload);
 
-  /// POST /claims/submit → FastAPI Gateway
-  Future<Map<String, dynamic>> submitClaim(Map<String, dynamic> payload) async {
-    return _post('$_coreUrl/claims', payload);
-  }
+  Future<Map<String, dynamic>> submitClaim(Map<String, dynamic> payload) =>
+      _mock.submitClaim(payload);
 
-  /// GET /claims/:id/status → Core Backend
-  Future<Map<String, dynamic>> getClaimStatus(String claimId) async {
-    return _get(
-      '$_coreUrl/claims/$claimId/status',
-      cacheKey: 'claim_status_$claimId',
-    );
-  }
+  Future<Map<String, dynamic>> getClaimStatus(String claimId) =>
+      _mock.getClaimStatus(claimId);
 
-  /// GET /claims → Core Backend (worker's claims list)
-  Future<List<Map<String, dynamic>>> getClaims() async {
-    return _getList('$_coreUrl/claims', cacheKey: 'claims_list');
-  }
+  Future<List<Map<String, dynamic>>> getClaims() => _mock.getClaims();
 
-  /// GET /workers/:id → Core Backend
-  Future<Map<String, dynamic>> getWorkerProfile(String workerId) async {
-    return _get(
-      '$_coreUrl/workers/$workerId',
-      cacheKey: 'worker_profile_$workerId',
-    );
-  }
+  Future<Map<String, dynamic>> getWorkerProfile(String workerId) =>
+      _mock.getWorkerProfile(workerId);
 
-  Future<Map<String, dynamic>> getWorkerProfileCurrent() async {
-    final workerId = await getCurrentWorkerId();
-    return getWorkerProfile(workerId);
-  }
+  Future<Map<String, dynamic>> getWorkerProfileCurrent() =>
+      _mock.getWorkerProfile(_mock.activeDriver.partnerId);
 
-  /// PUT /workers/:id → Core Backend
   Future<Map<String, dynamic>> updateWorkerProfile(
     String workerId,
     Map<String, dynamic> data,
-  ) async {
-    return _put(
-      '$_coreUrl/workers/$workerId',
-      data,
-      cacheKey: 'worker_profile_$workerId',
-    );
-  }
+  ) =>
+      _mock.updateWorkerProfile(workerId, data);
 
   Future<Map<String, dynamic>> updateWorkerProfileCurrent(
     Map<String, dynamic> data,
-  ) async {
-    final workerId = await getCurrentWorkerId();
-    return updateWorkerProfile(workerId, data);
+  ) =>
+      _mock.updateWorkerProfile(_mock.activeDriver.partnerId, data);
+
+  Future<Map<String, dynamic>> createPolicy(Map<String, dynamic> payload) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    return {'status': 'ok', 'policy_id': 'POL-${DateTime.now().millisecondsSinceEpoch}'};
   }
 
-  /// POST /policies → Core Backend
-  Future<Map<String, dynamic>> createPolicy(
-    Map<String, dynamic> payload,
-  ) async {
-    return _post('$_coreUrl/policies', payload);
-  }
+  Future<Map<String, dynamic>> getPolicyContent() => _mock.getPolicyContent();
 
-  Future<Map<String, dynamic>> getPolicyContent() async {
-    return _get('$_coreUrl/policies/content', cacheKey: 'policy_content');
-  }
+  Future<void> registerFcmToken(String workerId, String fcmToken) async {}
 
-  /// PUT /workers/fcm-token → Core Backend
-  Future<void> registerFcmToken(String workerId, String fcmToken) async {
-    try {
-      await _put('$_coreUrl/workers/fcm-token', {'fcm_token': fcmToken});
-    } catch (_) {
-      // FCM registration is best-effort; never crash the app
-    }
-  }
+  Future<List<Map<String, dynamic>>> getPayouts() => _mock.getPayouts();
 
-  /// GET /payouts → Core Backend
-  Future<List<Map<String, dynamic>>> getPayouts() async {
-    return _getList('$_coreUrl/payouts', cacheKey: 'payouts_list');
-  }
+  Future<List<Map<String, dynamic>>> getAssistMessages() =>
+      _mock.getAssistMessages();
 
-  /// GET /assist/messages → Core Backend
-  Future<List<Map<String, dynamic>>> getAssistMessages() async {
-    try {
-      return _getList('$_coreUrl/assist/messages', cacheKey: 'assist_messages');
-    } catch (_) {
-      return [];
-    }
-  }
+  Future<Map<String, dynamic>> sendAssistMessage(String message) =>
+      _mock.sendAssistMessage(message);
 
-  /// POST /assist/chat → Core Backend
-  Future<Map<String, dynamic>> sendAssistMessage(String message) async {
-    try {
-      return _post('$_coreUrl/assist/chat', {'message': message});
-    } catch (_) {
-      return {};
-    }
-  }
+  Future<void> clearAssistHistory() => _mock.clearAssistHistory();
 
-  /// DELETE /assist/messages → Core Backend
-  Future<void> clearAssistHistory() async {
-    try {
-      final headers = await _authHeaders();
-      await http
-          .delete(Uri.parse('$_coreUrl/assist/messages'), headers: headers)
-          .timeout(const Duration(seconds: 15));
-      _cache.delete('assist_messages');
-    } catch (_) {}
-  }
+  Future<void> requestOtp({
+    required String phone,
+    required String email,
+  }) =>
+      _mock.requestOtp(phone: phone, email: email);
+
+  Future<void> verifyOtp(String otp) => _mock.verifyOtp(otp);
+
+  Future<String> completeRegistration({
+    required String fullName,
+    required String phone,
+    required String email,
+    required String platform,
+    required String city,
+    required String partnerId,
+    required String vehicleType,
+    required String plan,
+    required String upiId,
+    required bool acceptedTerms,
+  }) =>
+      _mock.completeRegistration(
+        fullName: fullName,
+        phone: phone,
+        email: email,
+        platform: platform,
+        city: city,
+        partnerId: partnerId,
+        vehicleType: vehicleType,
+        plan: plan,
+        upiId: upiId,
+        acceptedTerms: acceptedTerms,
+      );
 }

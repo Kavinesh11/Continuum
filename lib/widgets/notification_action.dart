@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../sandbox/driver_provider.dart';
+import '../state/demo_orchestrator.dart';
 import '../state/notification_state.dart';
 import '../theme/app_theme.dart';
+import 'easter_egg_detector.dart';
 
 class NotificationAction extends StatelessWidget {
   const NotificationAction({Key? key}) : super(key: key);
@@ -29,12 +31,16 @@ class NotificationAction extends StatelessWidget {
           child: Stack(
             clipBehavior: Clip.none,
             children: [
-              IconButton(
-                onPressed: () => _showNotificationsDropdown(context, partnerId),
-                icon: Icon(
-                  Icons.notifications_none_rounded,
-                  color: AppTheme.textSecondaryOf(context),
-                  size: 22,
+              EasterEggDetector(
+                taps: 3,
+                onTrigger: () => DemoOrchestrator.instance.seedDemoNotifications(),
+                child: IconButton(
+                  onPressed: () => _showNotificationsDropdown(context, partnerId),
+                  icon: Icon(
+                    Icons.notifications_none_rounded,
+                    color: AppTheme.textSecondaryOf(context),
+                    size: 22,
+                  ),
                 ),
               ),
               if (count > 0)

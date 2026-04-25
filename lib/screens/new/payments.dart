@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
+import '../../state/demo_orchestrator.dart';
 
 class PaymentsScreen extends StatefulWidget {
   const PaymentsScreen({Key? key}) : super(key: key);
@@ -88,32 +89,29 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
             statusRaw == 'success')
         ? 'Success'
         : (statusRaw == 'pending' ? 'Pending' : 'Failed');
-    final date = DateTime.tryParse(
-      (payout['disbursed_at'] ?? payout['created_at'] ?? '').toString(),
-    );
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    final dateText = date == null
-        ? 'Recent'
-        : '${months[date.month - 1]} ${date.day}, ${date.year}';
+
+    // Prefer pre-formatted date string; fall back to ISO parse
+    String dateText;
+    if (payout['date'] != null) {
+      dateText = payout['date'].toString();
+    } else {
+      final date = DateTime.tryParse(
+        (payout['disbursed_at'] ?? payout['created_at'] ?? '').toString(),
+      );
+      const months = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      ];
+      dateText = date == null
+          ? 'Recent'
+          : '${months[date.month - 1]} ${date.day}, ${date.year}';
+    }
 
     return {
-      'id': (payout['payout_id'] ?? 'TXN-NA').toString(),
+      'id': (payout['id'] ?? payout['payout_id'] ?? 'TXN-NA').toString(),
       'date': dateText,
       'amount': amount.round(),
-      'method': (payout['payu_txn_ref'] ?? 'Bank Transfer').toString(),
+      'method': (payout['payu_txn_ref'] ?? payout['method'] ?? 'Bank Transfer').toString(),
       'status': status,
     };
   }
@@ -549,6 +547,19 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
       ),
       child: ElevatedButton(
         onPressed: () {
+          DemoOrchestrator.instance.premiumDebited();
+          setState(() {
+            _payouts = [
+              {
+                'id': 'TXN-${DateTime.now().millisecondsSinceEpoch % 100000}',
+                'date': _todayLabel(),
+                'amount': (_profile?['weekly_premium'] as num?)?.round() ?? 199,
+                'method': 'UPI • primary@upi',
+                'status': 'Success',
+              },
+              ..._payouts,
+            ];
+          });
           showDialog(
             context: context,
             builder: (ctx) => AlertDialog(
@@ -762,5 +773,14 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
         }),
       ],
     );
+  }
+
+  String _todayLabel() {
+    final now = DateTime.now();
+    const months = [
+      '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return '${months[now.month]} ${now.day}, ${now.year}';
   }
 }

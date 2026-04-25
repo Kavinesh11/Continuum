@@ -3,6 +3,8 @@
 
 import 'package:flutter/material.dart';
 import '../routes/app_routes.dart';
+import '../services/demo_backend.dart';
+import '../state/demo_orchestrator.dart';
 import 'driver_provider.dart';
 import 'sandbox_drivers.dart';
 
@@ -20,29 +22,9 @@ class SandboxSelectorScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.amber.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: Colors.amber.withOpacity(0.4)),
-                ),
-                child: const Text(
-                  '🧪  SANDBOX MODE',
-                  style: TextStyle(
-                    color: Colors.amber,
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-              ),
               const SizedBox(height: 20),
               const Text(
-                'Select a driver\npersona',
+                'Select your\ndriver account',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 28,
@@ -52,7 +34,7 @@ class SandboxSelectorScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Each persona has pre-loaded location history, order history, and risk profile.',
+                'Your profile, claims history and coverage details will load automatically.',
                 style: TextStyle(color: Colors.white54, fontSize: 13),
               ),
               const SizedBox(height: 32),
@@ -98,6 +80,8 @@ class _DriverCard extends StatelessWidget {
 
     return GestureDetector(
       onTap: () {
+        DemoBackend.instance.setDriver(driver);
+        DemoOrchestrator.instance.seedInitialNotifications();
         DriverProvider.of(context).switchDriver(driver);
         Navigator.of(context).pushReplacementNamed(AppRoutes.home);
       },

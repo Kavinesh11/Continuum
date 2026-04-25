@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
@@ -15,6 +16,7 @@ class _StatusTrackerScreenState extends State<StatusTrackerScreen> {
   bool _isLoading = true;
   bool _invalidClaim = false;
   String? _claimId;
+  Timer? _pollTimer;
 
   @override
   void didChangeDependencies() {
@@ -54,26 +56,26 @@ class _StatusTrackerScreenState extends State<StatusTrackerScreen> {
         _liveData = result;
         _isLoading = false;
       });
-    } on ServerException {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text(
-            'Service temporarily unavailable. Please try again.',
-          ),
-          behavior: SnackBarBehavior.floating,
-          action: SnackBarAction(label: 'Retry', onPressed: _loadStatus),
-        ),
-      );
+      _scheduleNextPoll(result);
     } catch (_) {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
     }
+  }
+
+  void _scheduleNextPoll(Map<String, dynamic> data) {
+    _pollTimer?.cancel();
+    final code = (data['statusCode'] ?? '').toString();
+    if (code == 'APPROVED' || code == 'REJECTED') return;
+    _pollTimer = Timer(const Duration(seconds: 4), _loadStatus);
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
   }
 
   Map<String, dynamic> _buildDisplayData(dynamic args) {
@@ -106,9 +108,10 @@ class _StatusTrackerScreenState extends State<StatusTrackerScreen> {
                 (s) => {
                   'name': (s['name'] ?? '').toString().toUpperCase(),
                   'time': (s['time'] ?? '').toString().isEmpty
-                      ? ((s['completed'] == true) ? 'Completed' : 'Pending')
+                      ? ((s['complete'] == true || s['completed'] == true) ? 'Completed' : 'Pending')
                       : (s['time']).toString(),
-                  'complete': s['completed'] == true,
+                  // DemoBackend uses 'complete'; some backends use 'completed'
+                  'complete': s['complete'] == true || s['completed'] == true,
                 },
               )
               .toList()
