@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "claim_decision.v1",
+  "title": "Claim Decision Event",
+  "description": "Published by claims_scoring / crew_ai when a claim is decided (auto-approved, rejected, or escalated).",
+  "type": "object",
+  "required": ["claim_id", "worker_id", "status", "fraud_score", "decided_at"],
+  "properties": {
+    "claim_id":   { "type": "string", "format": "uuid" },
+    "worker_id":  { "type": "string", "format": "uuid" },
+    "status": {
+      "type": "string",
+      "enum": ["auto_approved", "rejected", "fraud_queue", "escalated_to_human"]
+    },
+    "fraud_score": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+    "decided_at":  { "type": "string", "format": "date-time" },
+    "zone_id":     { "type": ["string", "null"] },
+    "policy_id":   { "type": ["string", "null"] },
+    "payout_cap":  { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+    "reason":      { "type": ["string", "null"] }
+  },
+  "additionalProperties": false
+}

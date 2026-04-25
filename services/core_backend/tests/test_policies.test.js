@@ -11,9 +11,18 @@ const request = require('supertest');
 const { signToken } = require('../src/utils/jwt');
 
 // ─── Mock DB ──────────────────────────────────────────────────────────────────
+// db.connect() is used by policies.js for transactions (BEGIN/COMMIT).
+// The client mock uses a separate jest.fn() so transaction queries don't
+// interfere with the per-test mockResolvedValueOnce queue on db.query.
 jest.mock('../src/db', () => {
   const mockQuery = jest.fn();
-  return { query: mockQuery };
+  const mockClientQuery = jest.fn().mockResolvedValue({ rows: [] });
+  const mockRelease = jest.fn();
+  const mockConnect = jest.fn().mockResolvedValue({
+    query: mockClientQuery,
+    release: mockRelease,
+  });
+  return { query: mockQuery, connect: mockConnect };
 });
 
 // ─── Mock Kafka ───────────────────────────────────────────────────────────────
@@ -48,7 +57,7 @@ describe('POST /policies', () => {
   });
 
   test('creates policy with 72-hour activation delay and returns 201', async () => {
-    db.query.mockResolvedValueOnce({ rows: [] }); // INSERT
+    db.query.mockResolvedValueOnce({ rows: [] }); // zone lock check
 
     const before = Date.now();
     const res = await request(app)
@@ -60,6 +69,8 @@ describe('POST /policies', () => {
         zone_id: 'MUM_ANDHERI_W',
         coverage_cap: 5000,
         weekly_premium: 149,
+        aadhaar_hash: 'aadh_test_123',
+        device_fingerprint: 'fp_test_456',
       });
     const after = Date.now();
 
@@ -84,7 +95,7 @@ describe('POST /policies', () => {
   });
 
   test('publishes worker_onboarding and policy_lifecycle events to Kafka', async () => {
-    db.query.mockResolvedValueOnce({ rows: [] });
+    db.query.mockResolvedValueOnce({ rows: [] }); // zone lock check
 
     await request(app)
       .post('/policies')
@@ -95,6 +106,8 @@ describe('POST /policies', () => {
         zone_id: 'MUM_ANDHERI_W',
         coverage_cap: 10000,
         weekly_premium: 299,
+        aadhaar_hash: 'aadh_test_abc',
+        device_fingerprint: 'fp_test_def',
       });
 
     // Kafka should have been called for worker_onboarding and policy_lifecycle
@@ -129,6 +142,8 @@ describe('POST /policies', () => {
         zone_id: 'MUM_ANDHERI_W',
         coverage_cap: 5000,
         weekly_premium: 149,
+        aadhaar_hash: 'aadh_test_123',
+        device_fingerprint: 'fp_test_456',
       });
 
     expect(res.status).toBe(400);
@@ -145,6 +160,8 @@ describe('POST /policies', () => {
         zone_id: 'MUM_ANDHERI_W',
         coverage_cap: 5000,
         weekly_premium: 149,
+        aadhaar_hash: 'aadh_test_123',
+        device_fingerprint: 'fp_test_456',
       });
 
     expect(res.status).toBe(403);
@@ -165,7 +182,7 @@ describe('POST /policies', () => {
   });
 
   test('continues even if Kafka publish fails (non-fatal)', async () => {
-    db.query.mockResolvedValueOnce({ rows: [] });
+    db.query.mockResolvedValueOnce({ rows: [] }); // zone lock check
     kafka.publishEvent.mockRejectedValue(new Error('Kafka unavailable'));
 
     const res = await request(app)
@@ -177,6 +194,8 @@ describe('POST /policies', () => {
         zone_id: 'MUM_ANDHERI_W',
         coverage_cap: 5000,
         weekly_premium: 149,
+        aadhaar_hash: 'aadh_test_123',
+        device_fingerprint: 'fp_test_456',
       });
 
     // Should still succeed despite Kafka failure
@@ -491,7 +510,7 @@ describe('Business Rule: 72-hour activation delay (Requirement 6.5)', () => {
   });
 
   test('claim_eligible_from is exactly 72 hours after effective_date', async () => {
-    db.query.mockResolvedValueOnce({ rows: [] });
+    db.query.mockResolvedValueOnce({ rows: [] }); // zone lock check
 
     const res = await request(app)
       .post('/policies')
@@ -502,6 +521,8 @@ describe('Business Rule: 72-hour activation delay (Requirement 6.5)', () => {
         zone_id: 'DEL_CONNAUGHT',
         coverage_cap: 20000,
         weekly_premium: 499,
+        aadhaar_hash: 'aadh_test_789',
+        device_fingerprint: 'fp_test_789',
       });
 
     expect(res.status).toBe(201);

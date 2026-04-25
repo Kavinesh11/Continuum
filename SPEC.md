@@ -202,13 +202,13 @@ Parametric income-protection insurance for gig delivery workers. Oracle consensu
 | T11 | `x` | Extend `services/fastapi_gateway/tests/test_gateway.py` — timeout→504, 5xx proxy, claims endpoint 422 | V50,V51,V52 |
 | T12 | `x` | Extend `services/rasa_assistant/tests/test_rasa.py` — escalation threshold boundary | V53,V54,V55 |
 | T13 | `x` | Extend `services/web_intelligence/tests/test_web_intel.py` — scraper fault isolation, malformed XML | V56,V57 |
-| T14 | `~` | Create `tests/integration/claimLifecycle.test.js` — full lifecycle against real DB | V29,V34 |
-| T15 | `.` | Create `tests/integration/oracleEnrollmentLock.test.js` — adverse selection lock → policy rejection | V31,C9 |
-| T16 | `.` | Create `tests/integration/premiumCollection.test.js` — mandate debit + ledger entries | I.crdb |
-| T17 | `.` | Create `tests/integration/reserveFloor.test.js` — insufficient reserve → payout blocked | V37,V47 |
-| T18 | `.` | Extend `tests/contracts/kafkaSchemas.test.js` — claim_decision, payout_authorized, adverse_selection_lock schemas | I.kafka |
-| T19 | `.` | Add pytest-cov `.coveragerc` to each Python service; fail_under=75 | C10 |
-| T20 | `.` | Add Jest coverage config (collectCoverage, threshold lines:80) to core_backend | C10 |
+| T14 | `x` | Create `tests/integration/claimLifecycle.test.js` — full lifecycle against real DB | V29,V34 |
+| T15 | `x` | Create `tests/integration/oracleEnrollmentLock.test.js` — adverse selection lock → policy rejection | V31,C9 |
+| T16 | `x` | Create `tests/integration/premiumCollection.test.js` — mandate debit + ledger entries | I.crdb |
+| T17 | `x` | Create `tests/integration/reserveFloor.test.js` — insufficient reserve → payout blocked | V37,V47 |
+| T18 | `x` | Extend `tests/contracts/kafkaSchemas.test.js` — claim_decision, payout_authorized, adverse_selection_lock schemas | I.kafka |
+| T19 | `x` | Add pytest-cov `.coveragerc` to each Python service; fail_under=75 | C10 |
+| T20 | `x` | Add Jest coverage config (collectCoverage, threshold lines:80) to core_backend | C10 |
 
 ---
 
