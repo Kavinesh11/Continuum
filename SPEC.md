@@ -197,6 +197,9 @@ Parametric income-protection insurance for gig delivery workers. Oracle consensu
 | V68 | `CORS_ALLOWED_ORIGINS` must be non-empty in `.env` before any browser or Android emulator (10.0.2.2) call reaches core backend. Empty env var → empty allowed list → all cross-origin requests blocked. |
 | V69 | `dashboard.dart` reads `_profile['next_renewal']` which `GET /workers/:id` does not return; falls back to literal `'upcoming cycle'` — not a crash but stale UI. Field must be added to worker query or fetched from policy endpoint. |
 | V70 | `payments.dart` reads `_profile['weekly_premium']` which `GET /workers/:id` does not return; hardcodes fallback `57`. Real premium comes from `POST /onboard` (risk profiler) `weekly_premium` field. |
+| V71 | `lib/screens/new/` is the ONLY screen folder imported by `lib/main.dart`. `lib/screens/` (without `/new`) is dead code never executed. All Flutter integration fixes must target `lib/screens/new/` exclusively — fixes to `lib/screens/` have zero runtime effect. |
+| V72 | `GET /workers/:id` returns `registered_at` (ISO timestamp string). Key `member_since` does NOT exist in the response. Any screen reading `_workerData['member_since']` always receives `null` → shows fallback 'N/A' silently. Must use `registered_at`. |
+| V73 | `GET /workers/:id` does NOT return `weekly_order_count`, `weekly_earnings`, `completion_rate`, `current_location`, or `location_history`. Any screen referencing these keys receives `null`/empty silently. These fields must be removed from the UI or sourced from a real endpoint. |
 
 ---
 
@@ -238,6 +241,10 @@ Parametric income-protection insurance for gig delivery workers. Oracle consensu
 | T32 | `x` | Fix `lib/screens/payments.dart` — source `weekly_premium` from risk profiler `POST /onboard` result or add field to `GET /workers/:id` via policy join, remove hardcoded `57` | V70,I.api,I.gateway |
 | T33 | `x` | Fix `lib/screens/dashboard.dart` — source `next_renewal` from policy endpoint or add to `GET /workers/:id` via policy join | V69,I.api |
 | T34 | `x` | Update `.env.example` — set `CORS_ALLOWED_ORIGINS=http://10.0.2.2:3000,http://localhost:3000,http://localhost:5000` for Android emulator + web dev | V68,I.api |
+| T35 | `x` | Fix `lib/screens/new/profile.dart` — read `claims_approved_count` + `total_protected_amount` from top-level (not nested `_workerData['stats']`); use key `recent_claims` (not `recent_history`); use `registered_at` (not `member_since`); remove phantom fields `weekly_order_count`, `weekly_earnings`, `completion_rate`, `current_location`, `location_history` | V65,V66,V72,V73,I.api |
+| T36 | `x` | Fix `lib/screens/new/apply_form.dart` — fetch worker profile before submit, read real `zone_id` from profile response, remove hardcoded `'default'`; remove `device_attestation_token` field; remove `gps_coordinates: [0.0, 0.0]` field | V62,V63,I.api |
+| T37 | `x` | Fix `lib/screens/new/payments.dart` — replace hardcoded `57` fallback with `(_profile?['weekly_premium'] as num?)?.toStringAsFixed(0) ?? '—'` (3 occurrences: `_buildPlanData`, dialog content, Pay Now button label); source `nextBillingDate` from `_profile?['next_renewal']` with date formatting | V69,V70,I.api |
+| T38 | `x` | Fix `lib/screens/new/status_tracker.dart` — replace raw key literal `'claim_description'` label text with human-readable `'Description'` | V64,I.api |
 
 ---
 
@@ -247,3 +254,4 @@ Parametric income-protection insurance for gig delivery workers. Oracle consensu
 |----|------|-------|-----|
 | B1 | 2026-04-25 | V26 spec said Brier>0.2 is warning-only; code adds it to `failures` → hard CI gate failure. Docstring omits this threshold. | Updated V26 to reflect hard failure. |
 | B2 | 2026-04-25 | V31 spec says HTTP 409 for `enrollment_locked`; `policies.js:80` returned HTTP 423. | Changed status code to 409. |
+| B3 | 2026-04-25 | T26–T31 fixes targeted `lib/screens/` (legacy); `lib/main.dart` imports only `lib/screens/new/`. All six fixes had zero runtime effect. Root cause: no invariant stated which folder was active. | Added V71. New tasks T35–T38 target the correct folder. |

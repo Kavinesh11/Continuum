@@ -46,9 +46,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final stats = (_workerData?['stats'] as Map<String, dynamic>?) ?? const {};
     final historyRaw =
-        (_workerData?['recent_history'] as List<dynamic>? ?? const [])
+        (_workerData?['recent_claims'] as List<dynamic>? ?? const [])
             .cast<Map<String, dynamic>>();
 
     final name =
@@ -66,32 +65,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final platform = (_workerData?['platform'] ?? 'Unknown').toString();
     final zone = (_workerData?['zone_id'] ?? 'Unknown').toString();
     final tier = (_workerData?['tier'] ?? 'Standard').toString();
-    final memberSince = (_workerData?['member_since'] ?? 'N/A').toString();
-    final totalProtected = (stats['total_protected_amount'] ?? 0).toString();
+    final memberSince = (_workerData?['registered_at'] ?? 'N/A').toString();
+    final totalProtected =
+        (_workerData?['total_protected_amount'] ?? 0).toString();
     final claimsApproved =
-        (stats['claims_approved_count'] as num?)?.toInt() ?? 0;
-    final emergencyContact = (_workerData?['emergency_contact'] ?? '--')
-        .toString();
-    final weeklyOrderCount =
-        (stats['weekly_order_count'] as num?)?.toInt() ?? 0;
-    final weeklyEarnings =
-        (stats['weekly_earnings'] as num?)?.toDouble() ?? 0.0;
-    final completionRate =
-        (stats['completion_rate'] as num?)?.toDouble() ?? 0.0;
-    final currentLocation =
-        (_workerData?['current_location'] as Map<String, dynamic>?) ?? const {};
-    final locationAddress = (currentLocation['address'] ?? 'Unknown')
-        .toString();
-    final locationZone = (currentLocation['zone'] ?? zone).toString();
-    final locationHistory =
-        (_workerData?['location_history'] as List<dynamic>?) ?? const [];
+        (_workerData?['claims_approved_count'] as num?)?.toInt() ?? 0;
+    final emergencyContact =
+        (_workerData?['emergency_contact'] ?? '--').toString();
     final history = historyRaw
         .map(
           (h) => {
-            'incident': (h['incident'] ?? h['event_type'] ?? 'Claim')
-                .toString(),
-            'date': (h['date'] ?? 'Recent').toString(),
-            'detail': (h['detail'] ?? 'Claim activity recorded').toString(),
+            'incident': (h['event_type'] ?? 'Claim').toString(),
+            'date': (h['submitted_at'] ?? 'Recent').toString(),
+            'detail': (h['status'] ?? 'Pending').toString(),
           },
         )
         .toList();
@@ -130,20 +116,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           platform,
                           emergencyContact,
                           zone,
-                        ),
-                        const SizedBox(height: 24),
-                        _buildOrderSummary(
-                          context,
-                          weeklyOrderCount,
-                          weeklyEarnings,
-                          completionRate,
-                        ),
-                        const SizedBox(height: 24),
-                        _buildLocationSection(
-                          context,
-                          locationAddress,
-                          locationZone,
-                          locationHistory.length,
                         ),
                         const SizedBox(height: 24),
                         _buildQuickLinks(context),
@@ -509,113 +481,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildOrderSummary(
-    BuildContext context,
-    int count,
-    double earnings,
-    double rate,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          "This Week's Orders",
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.textPrimaryOf(context),
-          ),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            _StatCard(
-              label: 'Orders',
-              value: '$count',
-              icon: Icons.receipt_long_outlined,
-              color: AppTheme.primary,
-            ),
-            const SizedBox(width: 5),
-            _StatCard(
-              label: 'Earnings',
-              value: '₹${earnings.toStringAsFixed(0)}',
-              icon: Icons.account_balance_wallet_outlined,
-              color: AppTheme.successGreen,
-            ),
-            const SizedBox(width: 5),
-            _StatCard(
-              label: 'Completed',
-              value: '${(rate * 100).toStringAsFixed(0)}%',
-              icon: Icons.task_alt_outlined,
-              color: AppTheme.primary,
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildLocationSection(
-    BuildContext context,
-    String address,
-    String zone,
-    int pingCount,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Current Location',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.textPrimaryOf(context),
-          ),
-        ),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: AppTheme.cardDecorationOf(context),
-          child: Row(
-            children: [
-              const Icon(Icons.location_on, color: AppTheme.primary, size: 20),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      address,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.textPrimaryOf(context),
-                      ),
-                    ),
-                    Text(
-                      zone,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppTheme.textSecondaryOf(context),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Text(
-                '$pingCount pings',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppTheme.textHintOf(context),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 

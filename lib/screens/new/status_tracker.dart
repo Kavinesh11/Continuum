@@ -559,7 +559,7 @@ class _StatusTrackerScreenState extends State<StatusTrackerScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            'claim_description',
+            'Description',
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
