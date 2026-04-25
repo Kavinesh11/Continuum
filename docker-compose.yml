@@ -81,7 +81,7 @@ services:
     build:
       context: ./services/claims_scoring
     ports:
-      - "8080:8080" # Update based on actual Rust port
+      - "8081:8080" # Mapped to 8081 to avoid Docker daemon conflict on macOS
     networks:
       - continuum_net
     volumes:
@@ -177,7 +177,7 @@ services:
 
   cockroachdb:
     image: cockroachdb/cockroach:v23.2.0
-    command: start-single-node --insecure --store=type=mem,size=512MiB
+    command: start-single-node --insecure --store=type=mem,size=1GiB
     ports:
       - "26257:26257"
       - "26080:8080"

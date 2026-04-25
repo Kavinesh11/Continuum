@@ -12,6 +12,7 @@
 .swiftpm/
 migrate_working_dir/
 
+
 # IntelliJ related
 *.iml
 *.ipr
@@ -44,9 +45,36 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Node.js / JavaScript
+node_modules/
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment files
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Local dev artifacts
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+dist/
+coverage/
+
+# macOS / editor temp
+*.tmp
+*.temp
+*.bak
+*.orig
+
 # OpenMemory - IDE/Assistant specific rules
 .cursor\rules\openmemory.mdc
 
 .kiro/
-.cursor\rules\openmemory.mdc
-CLAUDE.md

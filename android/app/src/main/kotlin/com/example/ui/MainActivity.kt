@@ -19,12 +19,13 @@ class MainActivity: FlutterActivity() {
         FlutterEngineCache.getInstance().put("my_engine_id", flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
             if (call.method == "startFloatingWidget") {
-                val intent = Intent(this, FloatingWidgetService::class.java)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    startForegroundService(intent)
-                } else {
-                    startService(intent)
-                }
+                // Disabled: FloatingWidgetService is not available
+                // val intent = Intent(this, FloatingWidgetService::class.java)
+                // if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                //     startForegroundService(intent)
+                // } else {
+                //     startService(intent)
+                // }
                 result.success(null)
             } else if (call.method == "requestOverlayPermission") {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
@@ -33,8 +34,9 @@ class MainActivity: FlutterActivity() {
                 }
                 result.success(null)
             } else if (call.method == "stopFloatingWidget") {
-                val intent = Intent(this, FloatingWidgetService::class.java)
-                stopService(intent)
+                // Disabled: FloatingWidgetService is not available
+                // val intent = Intent(this, FloatingWidgetService::class.java)
+                // stopService(intent)
                 result.success(null)
             } else {
                 result.notImplemented()
