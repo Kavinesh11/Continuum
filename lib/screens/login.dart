@@ -336,6 +336,35 @@ class _LoginScreenState extends State<LoginScreen>
                       ),
                     ),
                   ),
+                  const SizedBox(height: 24),
+
+                  // ── Create Account ──
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'New here? ',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.5),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.of(context).pushNamed(AppRoutes.register);
+                        },
+                        child: Text(
+                          'Create Account',
+                          style: TextStyle(
+                            color: AppTheme.accent,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 32),
                 ],
               ),

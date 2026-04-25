@@ -13,6 +13,7 @@ import 'screens/new/payments.dart';
 import 'screens/new/apply_form.dart';
 import 'screens/new/policy.dart';
 import 'screens/new/status_tracker.dart';
+import 'screens/registration.dart';
 import 'sandbox/sandbox_selector_screen.dart';
 import 'services/api_service.dart';
 
@@ -94,6 +95,7 @@ class _ContinuumAppState extends State<ContinuumApp> {
           initialRoute: AppRoutes.login,
           routes: {
             AppRoutes.login: (context) => const LoginScreen(),
+            AppRoutes.register: (context) => const RegistrationScreen(),
             AppRoutes.sandboxSelect: (context) => const SandboxSelectorScreen(),
             AppRoutes.home: (context) => const HomeShell(),
             AppRoutes.apply: (context) => const ApplyFormScreen(),

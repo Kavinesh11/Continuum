@@ -279,6 +279,31 @@ class ApiService {
 
   // ── Public API methods ─────────────────────────────────────────────────────
 
+  /// POST /auth/register → Core Backend
+  /// Registers a new worker. Returns {token, expires_at, policy_eligible_from}
+  /// or {error: 'worker_already_exists'} on 409, {error: 'missing_fields'} on 400.
+  Future<Map<String, dynamic>> register({
+    required String workerId,
+    required String platform,
+    required String upiId,
+    required String tier,
+    required String password,
+    String? fullName,
+    String? phone,
+    String? city,
+  }) async {
+    return _post('$_coreUrl/auth/register', {
+      'worker_id': workerId,
+      'platform': platform,
+      'upi_id': upiId,
+      'tier': tier,
+      'password': password,
+      if (fullName != null) 'full_name': fullName,
+      if (phone != null) 'phone': phone,
+      if (city != null) 'city': city,
+    });
+  }
+
   /// POST /auth/login → Core Backend
   Future<Map<String, dynamic>> login(String workerId, String password) async {
     return _post('$_coreUrl/auth/login', {

@@ -29,8 +29,11 @@ app.use(helmet());
 const allowedOrigins = process.env.CORS_ALLOWED_ORIGINS
   ? process.env.CORS_ALLOWED_ORIGINS.split(',').map(s => s.trim())
   : [];
+const corsOrigin = allowedOrigins.includes('*')
+  ? true
+  : allowedOrigins.length > 0 ? allowedOrigins : false;
 app.use(cors({
-  origin: allowedOrigins.length > 0 ? allowedOrigins : false,
+  origin: corsOrigin,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   maxAge: 86400,

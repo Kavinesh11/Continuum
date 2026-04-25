@@ -23,7 +23,7 @@ const MIN_PASSWORD_LENGTH = 8;
  */
 router.post('/register', async (req, res, next) => {
   try {
-    const { worker_id, platform, upi_id, tier, password } = req.body;
+    const { worker_id, platform, upi_id, tier, password, full_name, phone, city } = req.body;
 
     if (!worker_id || !platform || !upi_id || !tier || !password) {
       return res.status(400).json({ error: 'missing_fields' });
@@ -39,11 +39,11 @@ router.post('/register', async (req, res, next) => {
     const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
     const result = await db.query(
-      `INSERT INTO workers (worker_id, platform, tier, upi_id, password_hash, registered_at)
-       VALUES ($1, $2, $3, $4, $5, NOW())
+      `INSERT INTO workers (worker_id, platform, tier, upi_id, password_hash, full_name, phone, city, registered_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
        ON CONFLICT (worker_id) DO NOTHING
        RETURNING worker_id`,
-      [worker_id, platform, tier, upi_id, passwordHash]
+      [worker_id, platform, tier, upi_id, passwordHash, full_name || null, phone || null, city || null]
     );
 
     if (result.rowCount === 0) {
@@ -85,10 +85,19 @@ router.post('/login', async (req, res, next) => {
       return res.status(401).json({ error: 'invalid_credentials' });
     }
 
-    const result = await db.query(
-      'SELECT worker_id, platform, tier, password_hash FROM workers WHERE worker_id = $1',
-      [worker_id]
-    );
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    let result;
+    if (uuidRegex.test(worker_id)) {
+      result = await db.query(
+        'SELECT worker_id, platform, tier, password_hash FROM workers WHERE worker_id = $1',
+        [worker_id]
+      );
+    } else {
+      result = await db.query(
+        'SELECT worker_id, platform, tier, password_hash FROM workers WHERE phone = $1',
+        [worker_id]
+      );
+    }
 
     if (result.rows.length === 0) {
       return res.status(401).json({ error: 'invalid_credentials' });

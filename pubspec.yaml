@@ -18,6 +18,7 @@ dependencies:
   firebase_messaging: ^15.0.0
   uuid: ^4.3.3
   flutter_dotenv: ^5.1.0
+  shared_preferences: ^2.5.5
   # No extra overlay package needed, will use OverlayEntry/Stack
 
 flutter:

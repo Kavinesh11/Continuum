@@ -30,15 +30,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _loadDashboardData() async {
     try {
-      final profile = await ApiService().getWorkerProfileCurrent();
-      final claims = await ApiService().getClaims();
-      final payouts = await ApiService().getPayouts();
+      final results = await Future.wait([
+        ApiService().getWorkerProfileCurrent().catchError((_) => <String, dynamic>{}),
+        ApiService().getClaims().catchError((_) => <Map<String, dynamic>>[]),
+        ApiService().getPayouts().catchError((_) => <Map<String, dynamic>>[]),
+      ]);
       if (!mounted) return;
 
       setState(() {
-        _profile = profile;
-        _claims = claims;
-        _payouts = payouts;
+        final profile = results[0];
+        if (profile is Map<String, dynamic> && profile.isNotEmpty) {
+          _profile = profile;
+        }
+        if (results[1] is List) {
+          _claims = (results[1] as List).cast<Map<String, dynamic>>();
+        }
+        if (results[2] is List) {
+          _payouts = (results[2] as List).cast<Map<String, dynamic>>();
+        }
       });
 
       await _fetchRiskProfile();
