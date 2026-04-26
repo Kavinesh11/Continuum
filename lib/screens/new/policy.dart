@@ -723,16 +723,18 @@ class _PolicyScreenState extends State<PolicyScreen>
       height: 200,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
       decoration: AppTheme.cardDecorationOf(context),
-      child: AnimatedBuilder(
-        animation: _chartAnim,
-        builder: (context, _) => CustomPaint(
-          size: Size.infinite,
-          painter: _HistoryChartPainter(
-            values: values,
-            labels: const ['Week −3', 'Week −2', 'Week −1', 'Current'],
-            barColor: AppTheme.primary,
-            textColor: AppTheme.textSecondaryOf(context),
-            progress: _chartAnim.value,
+      child: LayoutBuilder(
+        builder: (context, constraints) => AnimatedBuilder(
+          animation: _chartAnim,
+          builder: (context, _) => CustomPaint(
+            size: constraints.biggest,
+            painter: _HistoryChartPainter(
+              values: values,
+              labels: const ['Week −3', 'Week −2', 'Week −1', 'Current'],
+              barColor: AppTheme.primary,
+              textColor: AppTheme.textSecondaryOf(context),
+              progress: _chartAnim.value,
+            ),
           ),
         ),
       ),
@@ -759,12 +761,15 @@ class _PolicyScreenState extends State<PolicyScreen>
               color: AppTheme.primary,
             ),
             const SizedBox(width: 8),
-            Text(
-              'Risk Engine v2.1 • Gemini-assisted • Updated weekly',
-              style: TextStyle(
-                color: AppTheme.textSecondaryOf(context),
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
+            Flexible(
+              child: Text(
+                'Risk Engine v2.1 • Gemini-assisted • Updated weekly',
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: AppTheme.textSecondaryOf(context),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
           ],

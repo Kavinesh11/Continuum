@@ -459,7 +459,53 @@ class DemoOrchestrator {
     );
   }
 
-  // ── 13. Reset all ─────────────────────────────────────────────────────────
+  // ── 13. Roadblock claim scenario (admin easter egg companion) ────────────
+
+  Future<void> roadblockClaim() async {
+    const claimId = 'CLM-RBK-9284';
+    final d = DemoBackend.instance.activeDriver;
+
+    final claim = <String, dynamic>{
+      'id': claimId,
+      'claim_id': claimId,
+      'eventType': 'Roadblock / Road Closure',
+      'reason': 'Roadblock / Road Closure',
+      'description':
+          'Road closure near ${d.zone} — police barricade blocking all delivery routes. Unable to complete orders.',
+      'date': DemoBackend.instance.todayLabel(),
+      'status': 'In Review',
+      'statusCode': 'REVIEW',
+      'amount': 0.0,
+      'progressPct': 0.4,
+      'upiRef': null,
+      'verificationMsg': 'Claim submitted. Under review by Continuum admin team.',
+      'isAuto': false,
+      'claim_description':
+          'Road closure near ${d.zone} — police barricade blocking all delivery routes.',
+      'submitted_at': DateTime.now().toIso8601String(),
+    };
+
+    DemoBackend.instance.injectClaim(claim);
+    _state.addManualClaim(claim);
+
+    await DemoBackend.instance.postClaimToAdmin(claim);
+    DemoBackend.instance.startManualClaimWatcher(claimId);
+
+    _state.activateTrigger(3);
+
+    _notif.addNotification(
+      _partnerId,
+      NotificationItem(
+        id: 'notif_roadblock_${DateTime.now().millisecondsSinceEpoch}',
+        title: 'New Claim Submitted',
+        detail:
+            'Roadblock reported near ${d.zone} — unable to complete deliveries. Claim CLM-RBK-9284 filed.',
+        timeLabel: 'Just now',
+      ),
+    );
+  }
+
+  // ── 14. Reset all ─────────────────────────────────────────────────────────
 
   void resetAll() {
     _state.resetAll();

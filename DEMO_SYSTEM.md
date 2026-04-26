@@ -68,7 +68,7 @@ All three have full persona-aware AI context. Gemini (or the mock fallback) know
 ### Switching personas
 
 - **Sandbox Selector:** Long-press the logo on the login screen → choose a persona → seeded data swaps immediately.
-- **Sign Up flow:** Tap "New to Continuum? Sign Up" on the login screen → 4-step registration → plan tier maps to closest sandbox persona.
+- **Sign Up flow:** Tap "New to Continuum? Sign Up" on the login screen → 4-step registration → success screen → "Go to Dashboard" (logs in) or **"Back to Sign In"** (returns to login for a clean demo reset).
 - **Registration flow:** Complete registration → plan tier maps to closest sandbox persona.
 - **Fast-path:** 4-tap logo on login → direct to Sudarshan (Platinum).
 
@@ -99,6 +99,7 @@ All three have full persona-aware AI context. Gemini (or the mock fallback) know
 | Profile header (gradient) | **Long-press** | `resetAll()` — full reset to clean state |
 | Profile avatar | **Long-press** | `fraudQueueEscalation()` — fraud flag + escalate claim to admin |
 | Profile zone row | **Long-press** | `zoneEnrollmentLock()` — zone lock banner |
+| Dashboard "Apply Claim" quick action | **Long-press** | `roadblockClaim()` — injects Sudarshan roadblock claim in REVIEW + posts to admin bridge |
 | Notification bell | **Tap** | Open full Notifications screen |
 | Notification bell | **Long-press** | Seed 3 demo notifications |
 
@@ -106,6 +107,7 @@ All three have full persona-aware AI context. Gemini (or the mock fallback) know
 
 | Where | Gesture | What happens |
 |---|---|---|
+| **Claims Queue** (sidebar nav) | **Long-press (600ms)** | `sudarshanRoadblock()` — injects roadblock claim from Sudarshan, auto-rejects in 10s |
 | **Pending** stat card | **4-tap** | `bulkApproveWave()` — approves all queued claims, adds ₹5,400 to payout total |
 | **Approved** stat card | **4-tap** | Shows Payout Audit Trail overlay (UPI refs, amounts, timestamps) |
 | **Rejected** stat card | **3-tap** | `claimRejectionCascade()` — injects 2 GPS-rejected claims |
@@ -175,6 +177,24 @@ Tap **Apply Claim**. **Long-press "New Claim" in the AppBar** to prefill the for
 - Click **Approve ₹X** → within 4 seconds Flutter's Status Tracker updates to APPROVED, payout processes, notification arrives.
 
 > *"For edge cases that need human review, the oracle routes them here. The admin can see everything — tier, zone, claim history — and approve in one click."*
+
+---
+
+### 5b. Roadblock claim + admin auto-reject (1 min)
+
+On the Flutter app, **long-press "Apply Claim"** on Sudarshan's dashboard.
+
+- Banner: *"Roadblock Alert — HSR Layout. Manual claim filed by Sudarshan K."*
+- Notification: *"New Claim Submitted — Roadblock reported near HSR Layout."*
+- Claims tab shows `CLM-RBK-9284` in REVIEW.
+
+Switch to the admin dashboard. **Long-press "Claims Queue"** in the sidebar (hold 600ms).
+
+- Claim `CLM-RBK-9284` appears immediately in the Priority Queue: *"Roadblock / Road Closure — Sudarshan K. · Platinum · Bangalore South"*
+- After 10 seconds, admin auto-rejects with reason: *"Route outside parametric disruption zone. GPS proximity data shows alternative access routes available."*
+- Within 25 seconds total, switch back to Flutter — Claims screen shows `CLM-RBK-9284` as **Rejected**. Status Tracker shows the rejection reason.
+
+> *"Road closure and vehicle breakdown claims require GPS proximity verification — our oracle cross-checks the incident against road sensor data before authorising a payout. The GPS log showed Sudarshan had an alternative route, so the claim was rejected. This prevents false claims during planned events."*
 
 ---
 

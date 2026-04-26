@@ -259,6 +259,18 @@ class DemoBackend {
 
   // ── Admin bridge ───────────────────────────────────────────────────────────
 
+  Future<void> postClaimToAdmin(Map<String, dynamic> claim) => _postToAdmin(claim);
+
+  void startManualClaimWatcher(String claimId) {
+    Timer.periodic(const Duration(seconds: 6), (timer) {
+      final idx = _claims.indexWhere((c) => c['id'] == claimId);
+      if (idx == -1) { timer.cancel(); return; }
+      final code = _claims[idx]['statusCode'] as String? ?? '';
+      if (code == 'APPROVED' || code == 'REJECTED') { timer.cancel(); return; }
+      getClaimStatus(claimId);
+    });
+  }
+
   Future<void> _postToAdmin(Map<String, dynamic> claim, {bool isFraud = false}) async {
     try {
       final d = _driver;

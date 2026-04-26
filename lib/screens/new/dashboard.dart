@@ -1036,6 +1036,7 @@ class _DashboardScreenState extends State<DashboardScreen>
           AppTheme.primary,
           AppRoutes.apply,
           true,
+          onLongPress: () => DemoOrchestrator.instance.roadblockClaim(),
         ),
         _buildActionButton(
           context,
@@ -1064,13 +1065,15 @@ class _DashboardScreenState extends State<DashboardScreen>
     String label,
     Color color,
     String route,
-    bool isPrimary,
-  ) {
+    bool isPrimary, {
+    VoidCallback? onLongPress,
+  }) {
     return GestureDetector(
       onTap: () {
         if (route == AppRoutes.home) return;
         Navigator.pushNamed(context, route);
       },
+      onLongPress: onLongPress,
       child: Column(
         children: [
           Container(

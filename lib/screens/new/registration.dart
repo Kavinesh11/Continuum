@@ -220,14 +220,14 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       await _storage.saveRegistration(payload);
 
       if (!mounted) return;
-      await Navigator.of(context).push(
+      final goToDashboard = await Navigator.of(context).push<bool>(
         MaterialPageRoute(
           builder: (_) => RegistrationSuccessScreen(policyId: policyId),
         ),
       );
       if (!mounted) return;
       Navigator.of(context).pushNamedAndRemoveUntil(
-        AppRoutes.home,
+        goToDashboard == false ? AppRoutes.login : AppRoutes.home,
         (route) => false,
       );
     });
@@ -1286,7 +1286,7 @@ class RegistrationSuccessScreen extends StatelessWidget {
                 SizedBox(
                   width: 240,
                   child: ElevatedButton(
-                    onPressed: () => Navigator.of(context).pop(),
+                    onPressed: () => Navigator.of(context).pop(true),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.accent,
                       foregroundColor: Colors.white,
@@ -1300,6 +1300,23 @@ class RegistrationSuccessScreen extends StatelessWidget {
                       style: TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 15,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: 240,
+                  child: OutlinedButton.icon(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                    label: const Text('Back to Sign In'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white70,
+                      side: const BorderSide(color: Colors.white24, width: 1.5),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
                   ),

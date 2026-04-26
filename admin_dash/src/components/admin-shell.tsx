@@ -38,7 +38,7 @@ type AdminShellProps = {
 
 export function AdminShell({ title, subtitle, children }: AdminShellProps) {
   const pathname = usePathname();
-  const { seedDemoNotifications, resetAll, killSwitchTrip, notifications } = useDemo();
+  const { seedDemoNotifications, resetAll, killSwitchTrip, sudarshanRoadblock, notifications } = useDemo();
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -56,7 +56,7 @@ export function AdminShell({ title, subtitle, children }: AdminShellProps) {
             <nav className="space-y-1 text-sm">
               {navItems.map((item) => {
                 const isActive = pathname === item.href;
-                return (
+                const linkEl = (
                   <Link
                     key={item.href}
                     href={item.href}
@@ -83,6 +83,14 @@ export function AdminShell({ title, subtitle, children }: AdminShellProps) {
                     {item.label}
                   </Link>
                 );
+                if (item.label === "Claims Queue") {
+                  return (
+                    <EasterEggDetector key={item.href} taps={99} onLongPress={sudarshanRoadblock} longPressMs={600}>
+                      {linkEl}
+                    </EasterEggDetector>
+                  );
+                }
+                return linkEl;
               })}
             </nav>
           </div>

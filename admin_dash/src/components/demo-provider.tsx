@@ -35,6 +35,7 @@ type DemoState = {
   resetAll: () => void;
   approveClaim: (id: string, message: string) => void;
   rejectClaim: (id: string, reason: string) => void;
+  sudarshanRoadblock: () => Promise<void>;
 };
 
 const DemoContext = createContext<DemoState | null>(null);
@@ -242,6 +243,48 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     } catch (_) {}
   }, [addAuditLog]);
 
+  const sudarshanRoadblock = useCallback(async () => {
+    const claimId = "CLM-RBK-9284";
+    const newClaim = {
+      id: claimId,
+      driver: "Sudarshan K.",
+      tier: "Platinum" as const,
+      reason: "Roadblock / Road Closure",
+      description: "Road closure near Koramangala 5th Block — police barricade blocking all delivery routes. Unable to complete any orders in Zone 4B.",
+      amount: 0,
+      status: "Pending" as const,
+      priority: "High" as const,
+      fraudScore: 0.05,
+      zone: "Bangalore South",
+      justification: "",
+      submittedAt: new Date().toISOString(),
+      isFraud: false,
+    };
+
+    setClaims((prev) => {
+      if (prev.some((c) => c.id === claimId)) return prev;
+      return [newClaim, ...prev];
+    });
+    setKpis((prev) => ({ ...prev, pendingQueue: prev.pendingQueue + 1 }));
+    addAuditLog("Sudarshan K.", "SUBMITTED", claimId, "Roadblock / Road Closure — manual review required");
+    addNotification("🚧 CLM-RBK-9284 — Sudarshan K. filed a roadblock claim (Zone 4B).");
+
+    try {
+      await fetch("/api/claims", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newClaim),
+      });
+    } catch (_) {}
+
+    setTimeout(() => {
+      rejectClaim(
+        claimId,
+        "Route outside parametric disruption zone. GPS proximity data shows alternative access routes available. Roadblock does not meet coverage trigger criteria.",
+      );
+    }, 10_000);
+  }, [rejectClaim, addAuditLog, addNotification]);
+
   return (
     <DemoContext.Provider
       value={{
@@ -264,6 +307,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
         resetAll,
         approveClaim,
         rejectClaim,
+        sudarshanRoadblock,
       }}
     >
       {children}
