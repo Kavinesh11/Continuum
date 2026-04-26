@@ -1,7 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 
+import 'package:http/http.dart' as http;
+
 import '../sandbox/sandbox_drivers.dart';
+
+const _adminBaseUrl = 'http://localhost:3000';
 
 /// Singleton mock backend — backs every ApiService call with persona-aware,
 /// deterministic fake data. No network required.
@@ -118,6 +123,35 @@ class DemoBackend {
 
   Future<Map<String, dynamic>> getClaimStatus(String claimId) async {
     await _delay();
+    // Try admin API — if it has a newer status, sync it back to local store
+    final adminData = await _fetchFromAdmin(claimId);
+    if (adminData != null) {
+      final adminStatus = adminData['status'] as String? ?? '';
+      final local = _claims.firstWhere(
+        (c) => c['id'] == claimId,
+        orElse: () => <String, dynamic>{},
+      );
+      if (adminStatus == 'Approved' || adminStatus == 'Rejected') {
+        final newStatusCode = adminStatus == 'Approved' ? 'APPROVED' : 'REJECTED';
+        final newAmount = adminStatus == 'Approved'
+            ? (adminData['amount'] as num? ?? local['amount'] ?? 0).toDouble()
+            : 0.0;
+        final updated = {
+          ...local.isNotEmpty ? local : _defaultClaimStatus(claimId),
+          'statusCode': newStatusCode,
+          'status': adminStatus,
+          'amount': newAmount,
+          'progressPct': 1.0,
+          'verificationMsg': adminData['reviewNote'] ?? 'Reviewed by admin.',
+          'upiRef': adminStatus == 'Approved' ? generateUpiRef() : null,
+        };
+        final idx = _claims.indexWhere((c) => c['id'] == claimId);
+        if (idx != -1) {
+          _claims[idx] = updated;
+        }
+        return _claimToStatus(updated);
+      }
+    }
     final claim = _claims.firstWhere(
       (c) => c['id'] == claimId,
       orElse: () => _claims.isNotEmpty ? _claims.first : _defaultClaimStatus(claimId),
@@ -202,8 +236,12 @@ class DemoBackend {
 
     _claims.insert(0, claim);
 
-    if (status == 'APPROVED' || status == 'REVIEW') {
+    if (status == 'APPROVED' && isAuto) {
+      // Only auto-advance oracle-approved auto-claims through stages
       _startAutoAdvancer(claimId);
+    } else if (status == 'REVIEW' || status == 'ESCALATED_TO_HUMAN') {
+      // Manual/fraud claims → post to admin dashboard for human review
+      _postToAdmin(claim, isFraud: status == 'ESCALATED_TO_HUMAN');
     }
 
     return claim;
@@ -218,6 +256,45 @@ class DemoBackend {
 
   void addPayoutEntry(Map<String, dynamic> entry) {
     _payouts.insert(0, entry);
+  }
+
+  // ── Admin bridge ───────────────────────────────────────────────────────────
+
+  Future<void> _postToAdmin(Map<String, dynamic> claim, {bool isFraud = false}) async {
+    try {
+      final d = _driver;
+      await http.post(
+        Uri.parse('$_adminBaseUrl/api/claims'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'id': claim['id'],
+          'driver': d.fullName,
+          'tier': d.tier,
+          'zone': d.zone.split(' — ').first,
+          'reason': claim['reason'] ?? claim['eventType'] ?? 'Disruption',
+          'description': claim['claim_description'] ?? claim['description'] ?? '',
+          'amount': claim['amount'] ?? 0,
+          'fraudScore': isFraud ? 0.81 : 0.15,
+          'priority': isFraud ? 'High' : 'Medium',
+          'submittedAt': claim['submitted_at'] ?? DateTime.now().toIso8601String(),
+          'isFraud': isFraud,
+        }),
+      ).timeout(const Duration(seconds: 3));
+    } catch (_) {
+      // Admin dashboard not running — fall back to local-only mode
+    }
+  }
+
+  Future<Map<String, dynamic>?> _fetchFromAdmin(String claimId) async {
+    try {
+      final res = await http
+          .get(Uri.parse('$_adminBaseUrl/api/claims/$claimId'))
+          .timeout(const Duration(seconds: 2));
+      if (res.statusCode == 200) {
+        return jsonDecode(res.body) as Map<String, dynamic>;
+      }
+    } catch (_) {}
+    return null;
   }
 
   // ── Risk profile ───────────────────────────────────────────────────────────
@@ -366,6 +443,35 @@ class DemoBackend {
       ],
       'last_consensus': hasAlert ? todayLabel() : 'No recent consensus',
       'auto_events': autoEvents,
+      'ml_model': {
+        'name': 'IsoForest-XGB Ensemble v2.4',
+        'version': '2.4.1',
+        'last_trained': 'Apr 24, 2026',
+        'accuracy': 0.947,
+        'precision': 0.931,
+        'recall': 0.962,
+        'features': [
+          {'name': 'Zone weather score', 'importance': 0.34},
+          {'name': 'Platform API latency', 'importance': 0.27},
+          {'name': 'Order density delta', 'importance': 0.19},
+          {'name': 'Historical claim rate', 'importance': 0.12},
+          {'name': 'GPS proximity score', 'importance': 0.08},
+        ],
+        'prediction': hasAlert
+            ? {'label': 'HIGH_DISRUPTION', 'confidence': 0.91, 'threshold': 0.72}
+            : {'label': 'NOMINAL', 'confidence': 0.88, 'threshold': 0.72},
+        'anomaly_score': hasAlert ? 0.81 : 0.12,
+        'shap_top_factor': hasAlert
+            ? 'Zone weather score (↑ +0.28)'
+            : 'Platform API latency (↓ −0.04)',
+      },
+      'data_sources': [
+        {'name': 'IMD Real-Time API', 'latency_ms': 142, 'status': 'connected', 'records_last_hour': 3_840},
+        {'name': 'Platform Webhook', 'latency_ms': 38, 'status': 'connected', 'records_last_hour': 12_200},
+        {'name': 'NASA-GPM S3 Feed', 'latency_ms': 890, 'status': 'connected', 'records_last_hour': 288},
+        {'name': 'Municipal RSS', 'latency_ms': 210, 'status': 'connected', 'records_last_hour': 14},
+        {'name': 'Traffic API', 'latency_ms': 320, 'status': 'connected', 'records_last_hour': 7_640},
+      ],
     };
   }
 
@@ -737,13 +843,18 @@ class DemoBackend {
 
     return {
       'claimId': claim['id'],
+      'claim_id': claim['id'],
       'status': claim['status'] ?? 'In Review',
       'statusCode': statusCode,
       'stages': stages,
       'expectedPayout': claim['amount'] ?? 0,
       'timelineText': statusCode == 'APPROVED' ? 'Paid' : '2-3 business days',
       'verificationMessage': claim['verificationMsg'] ?? 'Verifying your claim details.',
+      'verification_message': claim['verificationMsg'] ?? 'Verifying your claim details.',
       'upiRef': claim['upiRef'],
+      'claim_description': claim['claim_description'] ?? claim['description'] ?? '',
+      'reason': claim['reason'] ?? claim['eventType'] ?? 'Claim',
+      'event_type': claim['eventType'] ?? claim['reason'] ?? 'Claim',
     };
   }
 

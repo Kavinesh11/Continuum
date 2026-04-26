@@ -1046,6 +1046,14 @@ class _DashboardScreenState extends State<DashboardScreen>
           true,
         ),
         _buildTrackClaimButton(context),
+        _buildActionButton(
+          context,
+          Icons.hub_rounded,
+          'View Data',
+          AppTheme.primary,
+          AppRoutes.oracle,
+          true,
+        ),
       ],
     );
   }

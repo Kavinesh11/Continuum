@@ -44,7 +44,9 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
   }
 
   void _onDemoStateChanged() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    // Reload from DemoBackend so status changes (e.g. admin approval) are picked up
+    _loadClaims();
   }
 
   Future<void> _loadClaims() async {
@@ -109,31 +111,20 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
   }
 
   String _statusLabel(String status) {
-    switch (status) {
-      case 'approved':
-        return 'Approved';
-      case 'rejected':
-        return 'Rejected';
-      case 'processing':
-      case 'in review':
-        return 'In Review';
-      default:
-        return 'Under Review';
-    }
+    final s = status.toLowerCase();
+    if (s == 'approved' || s == 'auto-approved') return 'Approved';
+    if (s == 'rejected') return 'Rejected';
+    if (s == 'in review' || s == 'processing' || s == 'under review') return 'In Review';
+    if (s.contains('fraud') || s.contains('escalated')) return 'Fraud Review';
+    return 'In Review';
   }
 
   Color _statusColor(String status) {
-    switch (status) {
-      case 'approved':
-        return AppTheme.successGreen;
-      case 'rejected':
-        return AppTheme.dangerRed;
-      case 'processing':
-      case 'in review':
-        return AppTheme.warningOrange;
-      default:
-        return AppTheme.warningOrange;
-    }
+    final s = status.toLowerCase();
+    if (s == 'approved' || s == 'auto-approved') return AppTheme.successGreen;
+    if (s == 'rejected') return AppTheme.dangerRed;
+    if (s.contains('fraud') || s.contains('escalated')) return const Color(0xFFE97C00);
+    return AppTheme.warningOrange;
   }
 
   double _statusProgress(String status) {

@@ -1,4 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
 
 import '../sandbox/sandbox_drivers.dart';
 import '../services/demo_backend.dart';
@@ -163,6 +166,9 @@ class DemoOrchestrator {
           'Crew-AI isolation-forest flagged anomalous pattern. Human review within 24h.',
     });
 
+    // Post to admin dashboard for human review
+    _postFraudToAdmin(claimId, existing);
+
     _notif.addNotification(
       _partnerId,
       NotificationItem(
@@ -173,6 +179,28 @@ class DemoOrchestrator {
         timeLabel: 'Just now',
       ),
     );
+  }
+
+  void _postFraudToAdmin(String claimId, Map<String, dynamic>? existing) {
+    final d = DemoBackend.instance.activeDriver;
+    final payload = jsonEncode({
+      'id': claimId,
+      'driver': d.fullName,
+      'tier': d.tier,
+      'zone': d.zone.split(' — ').first,
+      'reason': existing?['reason'] ?? existing?['eventType'] ?? 'Fraud Review',
+      'description': existing?['claim_description'] ?? '',
+      'amount': existing?['amount'] ?? 0,
+      'fraudScore': 0.81,
+      'priority': 'High',
+      'submittedAt': DateTime.now().toIso8601String(),
+      'isFraud': true,
+    });
+    http.post(
+      Uri.parse('http://localhost:3000/api/claims'),
+      headers: {'Content-Type': 'application/json'},
+      body: payload,
+    ).timeout(const Duration(seconds: 3)).catchError((_) => http.Response('', 200));
   }
 
   // ── 5. Kill-switch trip ───────────────────────────────────────────────────

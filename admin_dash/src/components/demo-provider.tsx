@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from "react";
 import { initialKpis, initialClaims, initialDrivers, initialAuditLogs } from "@/lib/demo-data";
 
 export type NotificationItem = {
@@ -49,6 +49,54 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   const [lockedZones, setLockedZones] = useState<string[]>([]);
   const [killSwitchActive, setKillSwitchActive] = useState(false);
 
+  // Poll the bridge API and merge any new Flutter-submitted claims into the local state
+  useEffect(() => {
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const res = await fetch("/api/claims");
+        if (!res.ok || cancelled) return;
+        const apiClaims: Array<{
+          id: string; driver: string; tier: string; zone: string;
+          reason: string; description: string; amount: number;
+          status: string; fraudScore: number; priority: string;
+          submittedAt: string; isFraud?: boolean; reviewNote?: string;
+        }> = await res.json();
+
+        if (cancelled) return;
+        setClaims((prev) => {
+          const existingIds = new Set(prev.map((c) => c.id));
+          const newEntries = apiClaims
+            .filter((c) => !existingIds.has(c.id))
+            .map((c) => ({
+              id: c.id,
+              driver: c.driver,
+              tier: c.tier as "Platinum" | "Gold" | "Silver",
+              reason: c.reason,
+              description: c.description,
+              amount: c.amount,
+              status: c.status as "Pending" | "Approved" | "Rejected",
+              priority: (c.priority ?? "Medium") as "High" | "Medium" | "Low",
+              fraudScore: c.fraudScore ?? 0,
+              zone: c.zone,
+              justification: c.reviewNote ?? "",
+              submittedAt: c.submittedAt ?? new Date().toISOString(),
+              isFraud: c.isFraud ?? false,
+            }));
+          if (newEntries.length === 0) return prev;
+          setKpis((k) => ({ ...k, pendingQueue: k.pendingQueue + newEntries.length }));
+          return [...newEntries, ...prev];
+        });
+      } catch (_) {
+        // Bridge API not running — pure local mode, no-op
+      }
+    };
+
+    poll();
+    const interval = setInterval(poll, 4000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, []);
+
   const addNotification = useCallback((message: string) => {
     setNotifications((prev) => [{ id: Math.random().toString(), message, read: false }, ...prev]);
   }, []);
@@ -56,7 +104,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   const addAuditLog = useCallback((actor: string, action: string, target: string, details: string) => {
     setAuditLogs((prev) => [
       { timestamp: new Date().toISOString().slice(0, 16).replace("T", " "), actor, action, target, details },
-      ...prev
+      ...prev,
     ]);
   }, []);
 
@@ -64,7 +112,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     setClaims((prev) =>
       prev.map((c) =>
         c.status === "Pending" && (c.priority === "High" || c.priority === "Medium")
-          ? { ...c, status: "Approved" }
+          ? { ...c, status: "Approved" as const }
           : c
       )
     );
@@ -90,10 +138,10 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       addNotification(`⚠ ${driverName} flagged — crew-AI isolation-forest score 0.81.`);
       setClaims((prev) => {
         let flagged = false;
-        return prev.map(c => {
+        return prev.map((c) => {
           if (!flagged && c.driver === driverName && c.status === "Pending") {
             flagged = true;
-            return { ...c, fraudScore: 0.81 };
+            return { ...c, fraudScore: 0.81, isFraud: true };
           }
           return c;
         });
@@ -101,7 +149,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     } else {
       addNotification("⚠ CLM-9102-54 flagged — crew-AI isolation-forest score 0.71.");
       setClaims((prev) =>
-        prev.map(c => (c.id === "CLM-9102-54" ? { ...c, fraudScore: 0.71 } : c))
+        prev.map((c) => (c.id === "CLM-9102-54" ? { ...c, fraudScore: 0.71, isFraud: true } : c))
       );
     }
   }, [addNotification]);
@@ -115,15 +163,14 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     setKpis((prev) => ({ ...prev, rejectedToday: prev.rejectedToday + 2 }));
     addNotification("2 claims auto-rejected — GPS proximity failed.");
     setClaims((prev) => [
-      { id: "CLM-9999-01", driver: "Ravi T.", tier: "Platinum", reason: "Vehicle Breakdown", amount: 0, status: "Rejected", priority: "Low", fraudScore: 0.55, zone: "BLR-North", justification: "GPS proximity log shows worker outside disruption zone." },
-      { id: "CLM-9999-02", driver: "Sudha M.", tier: "Silver", reason: "Outside Zone", amount: 0, status: "Rejected", priority: "Low", fraudScore: 0.60, zone: "CHN-Central", justification: "Claim originated outside active zone." },
-      ...prev
+      { id: "CLM-9999-01", driver: "Ravi T.", tier: "Platinum" as const, reason: "Vehicle Breakdown", description: "GPS log mismatch.", amount: 0, status: "Rejected" as const, priority: "Low" as const, fraudScore: 0.55, zone: "BLR-North", justification: "GPS proximity log shows worker outside disruption zone.", submittedAt: new Date().toISOString(), isFraud: false },
+      { id: "CLM-9999-02", driver: "Sudha P.", tier: "Silver" as const, reason: "Outside Zone", description: "Claim originated outside active zone.", amount: 0, status: "Rejected" as const, priority: "Low" as const, fraudScore: 0.60, zone: "KOL-South", justification: "Claim originated outside active zone.", submittedAt: new Date().toISOString(), isFraud: false },
+      ...prev,
     ]);
   }, [addNotification]);
 
   const payoutAuditTrail = useCallback(() => {
-    // This UI trigger can be handled locally in the component, but we keep it here to match the spec
-    alert("Showing Audit Overlay...");
+    // Handled locally in page.tsx as bottom sheet overlay
   }, []);
 
   const killSwitchTrip = useCallback(() => {
@@ -133,7 +180,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
 
   const seedDemoNotifications = useCallback(() => {
     addNotification("⚠ Reserve runway 31 days — review autopay.");
-    addNotification("✅ CLM-9824-21 approved — ₹450 to Sudarshan");
+    addNotification("✅ CLM-9824-21 approved — ₹450 to Sudarshan K.");
     addNotification("🌧 Flood advisory — BLR-South zone");
   }, [addNotification]);
 
@@ -148,20 +195,52 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     setKillSwitchActive(false);
   }, []);
 
-  const approveClaim = useCallback((id: string, message: string) => {
-    setClaims((prev) => prev.map(c => c.id === id ? { ...c, status: killSwitchActive ? "Approved (payout queued — kill switch active)" : "Approved", justification: message } : c));
-    setKpis((prev) => ({ ...prev, pendingQueue: Math.max(0, prev.pendingQueue - 1), approvedToday: prev.approvedToday + 1 }));
+  const approveClaim = useCallback(async (id: string, message: string) => {
+    // Update local state immediately
+    setClaims((prev) =>
+      prev.map((c) =>
+        c.id === id
+          ? { ...c, status: (killSwitchActive ? "Approved" : "Approved") as const, justification: message }
+          : c
+      )
+    );
+    setKpis((prev) => ({
+      ...prev,
+      pendingQueue: Math.max(0, prev.pendingQueue - 1),
+      approvedToday: prev.approvedToday + 1,
+    }));
     addAuditLog("Preethi Nair", "APPROVED", id, killSwitchActive ? `Payout Queued: ${message}` : `Approved: ${message}`);
     if (!killSwitchActive) addNotification(`✅ ${id} approved.`);
+
+    // Persist to bridge API so Flutter app picks it up
+    try {
+      await fetch(`/api/claims/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "approve", reason: message }),
+      });
+    } catch (_) {}
   }, [killSwitchActive, addAuditLog, addNotification]);
 
-  const rejectClaim = useCallback((id: string, reason: string) => {
-    setClaims((prev) => prev.map(c => c.id === id ? { ...c, status: "Rejected", justification: reason } : c));
-    setKpis((prev) => ({ ...prev, pendingQueue: Math.max(0, prev.pendingQueue - 1), rejectedToday: prev.rejectedToday + 1 }));
+  const rejectClaim = useCallback(async (id: string, reason: string) => {
+    setClaims((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, status: "Rejected" as const, justification: reason } : c))
+    );
+    setKpis((prev) => ({
+      ...prev,
+      pendingQueue: Math.max(0, prev.pendingQueue - 1),
+      rejectedToday: prev.rejectedToday + 1,
+    }));
     addAuditLog("Preethi Nair", "REJECTED", id, reason);
+
+    try {
+      await fetch(`/api/claims/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reject", reason }),
+      });
+    } catch (_) {}
   }, [addAuditLog]);
-
-
 
   return (
     <DemoContext.Provider
@@ -184,7 +263,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
         seedDemoNotifications,
         resetAll,
         approveClaim,
-        rejectClaim
+        rejectClaim,
       }}
     >
       {children}

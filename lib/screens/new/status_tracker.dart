@@ -150,9 +150,8 @@ class _StatusTrackerScreenState extends State<StatusTrackerScreen> {
               .toString(),
       'claim_description':
           (source['claim_description'] ??
-                  source['verification_message'] ??
-                  source['claim_description'] ??
-                  'No description provided')
+                  source['description'] ??
+                  '')
               .toString(),
       'expectedPayout': amount,
       'timelineText':
@@ -312,7 +311,9 @@ class _StatusTrackerScreenState extends State<StatusTrackerScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Your claim is being reviewed by our team',
+            isApproved
+                ? 'Payout has been approved and is being processed'
+                : 'Your claim is being reviewed by our team',
             style: TextStyle(
               fontSize: 13,
               color: Colors.white.withOpacity(0.7),

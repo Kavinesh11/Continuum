@@ -34,6 +34,30 @@ DemoBackend  ←─── all ApiService calls land here
 NotificationToastLayer  ←─── OS-style sliding banner overlay
 ```
 
+### Admin Bridge (optional — for live admin dashboard demo)
+
+When `admin_dash/` is running at `localhost:3000`, manual and fraud claims are mirrored in real time:
+
+```
+Flutter DemoBackend.submitClaim()
+  ├─ manual / fraud → HTTP POST http://localhost:3000/api/claims  (try/catch)
+  └─ falls back to local store if Next.js not running
+
+Flutter DemoBackend.getClaimStatus()
+  ├─ HTTP GET http://localhost:3000/api/claims/:id  (try/catch)
+  └─ returns local store status if API unreachable
+
+Next.js API Bridge (admin_dash/src/app/api/claims/)
+  GET  /api/claims       → all claims sorted by submittedAt desc
+  POST /api/claims       → create new pending claim (Flutter-submitted)
+  GET  /api/claims/[id]  → single claim
+  PATCH /api/claims/[id] → { action: 'approve'|'reject', reason? } → updates status
+
+Admin Dashboard — DemoProvider (admin_dash/src/components/demo-provider.tsx)
+  • Polls /api/claims every 4s, merges Flutter-submitted claims into React state
+  • approveClaim() / rejectClaim() → PATCH /api/claims/:id + update local state
+```
+
 All four singletons are bootstrapped in `main.dart` before `runApp`:
 
 ```dart
@@ -59,6 +83,9 @@ DemoOrchestrator.instance.bootstrap(); // also seeds initial notifications
 | `lib/services/gemini_service.dart` | Gemini 2.0 Flash chat client with persona-aware RAG system context. Falls back to keyword mock if `GEMINI_API_KEY` is absent |
 | `lib/screens/new/oracle_engine.dart` | Oracle Network screen — 5 source cards, consensus stepper, auto-event feed |
 | `lib/screens/new/notifications_screen.dart` | Full notifications screen with filter chips (All/Claims/Payouts/Alerts), swipe-to-dismiss, mark-all-read |
+| `admin_dash/src/app/api/claims/route.ts` | In-memory bridge store (`claimsStore` Map). GET all claims, POST new claim from Flutter |
+| `admin_dash/src/app/api/claims/[id]/route.ts` | GET single claim, PATCH approve/reject; auto-fills payout by tier (Platinum ₹450, Gold ₹312, Silver ₹180) |
+| `admin_dash/src/app/page.tsx` | Next.js admin dashboard — "Pending Review" amber section, inline Approve/Reject, KPI cards with easter eggs |
 
 ---
 
@@ -132,6 +159,7 @@ All scenarios live in `DemoOrchestrator`. Each composes state mutations, claim i
 ### 5. `fraudQueueEscalation()`
 - Sets `DemoBackend.fraudFlagActive = true` (subsequent `submitClaim` calls produce `ESCALATED_TO_HUMAN`)
 - Finds the latest in-review claim and mutates it to `ESCALATED_TO_HUMAN` status
+- **HTTP-POSTs the claim to the admin bridge** with `isFraud: true`, `fraudScore: 0.81`, `priority: 'High'` — claim appears in the admin Pending Review queue flagged as ESCALATED
 - Pushes "Claim routed to specialist review" notification
 
 ### 6. `killSwitchTrip()`
@@ -156,7 +184,7 @@ All scenarios live in `DemoOrchestrator`. Each composes state mutations, claim i
 
 ### 10. `submitManualClaim(reason, description, photos, audio)` *(called from ApplyForm)*
 - Passes `_isManual: true` + kill-switch flag into `DemoBackend.submitClaim`
-- Manual submissions always start as `REVIEW` ("In Progress") — auto-advancer drives them to APPROVED
+- Manual submissions always start as `REVIEW` ("In Progress"). They are **posted to the admin bridge** (`/api/claims`) and remain at REVIEW until an admin clicks Approve in the dashboard. The `_ClaimAdvancer` only fires for `isAuto == true` oracle claims.
 - Vehicle Breakdown reason still produces `REJECTED`
 - Adds result to `DemoState.manualClaims`; navigates to Status Tracker with claim ID
 - On `ESCALATED_TO_HUMAN`: pushes specialist review notification
@@ -187,7 +215,7 @@ Outcome is determined by the `_isManual` flag first, then reason keywords + acti
 |---|---|---|
 | `fraudFlagActive == true` (any) | `ESCALATED_TO_HUMAN` | ₹0 |
 | `_isManual == true` + vehicle/breakdown reason | `REJECTED` | ₹0 |
-| `_isManual == true` (all other reasons) | `REVIEW` → auto-advances to APPROVED | ₹247 (via advancer) |
+| `_isManual == true` (all other reasons) | `REVIEW` → posted to admin bridge; advances only when admin approves | per tier |
 | reason "rain / weather / flood" + kill switch OFF | `APPROVED` (auto) | ₹247 |
 | reason "rain / weather / flood" + kill switch ON | `REVIEW` | ₹0 |
 | reason "outage / app" + kill switch OFF | `APPROVED` | ₹180 |
@@ -202,7 +230,7 @@ Outcome is determined by the `_isManual` flag first, then reason keywords + acti
 
 ## Auto-advancing claim stages (`_ClaimAdvancer`)
 
-When a claim is submitted with `APPROVED` or `REVIEW` status, a `Timer.periodic(4s)` starts:
+When an **oracle-triggered (`isAuto == true`) claim** is submitted with `APPROVED` status, a `Timer.periodic(4s)` starts. Manual REVIEW claims are not auto-advanced — they wait for admin approval via the bridge.
 
 ```
 Step 0 (4s):  SUBMITTED → REVIEW (progressPct 0.5)
@@ -301,13 +329,57 @@ GEMINI_API_KEY=your_gemini_api_key_here
 
 ## Oracle Engine screen (`/oracle`)
 
-Accessible by tapping the "Live Triggers" header on the dashboard.
+Accessible by tapping the "Live Triggers" header on the dashboard or the "View Data" Quick Action button.
 
 - **Header card:** Gradient, shows "Monitoring" or "Consensus Reached" with pulsing dot. Long-press → `floodAlert()`.
 - **5 oracle source cards:** IMD India, AccuWeather, NASA-GPM, CPCB AQI, DownDetector — each shows status chip, last reading, and confidence bar.
 - **Consensus stepper:** Animates 1-of-4 → 2-of-4 → 3-of-4 → CONSENSUS when alerts fire.
 - **Auto-event feed:** Recent auto-triggered claims from DemoBackend (filtered to `isAuto == true`).
 - Listens to `DemoState.instance` for reactive reload when alerts fire.
+
+**ML model data** (from `DemoBackend.getOracleStatus`):
+- Model: `IsoForest-XGB Ensemble v2.4` — accuracy 0.947, precision 0.931, recall 0.962
+- Top 5 features: Weather severity (0.34), GPS proximity (0.28), Platform status (0.19), Historical frequency (0.12), Zone risk (0.07)
+- SHAP top factor: "weather_severity_score = 0.81"
+- Prediction confidence: 0.94, anomaly score: 0.23
+- 5 data sources with per-source latency (ms) and `records_last_hour` counts
+
+---
+
+## Admin Dashboard (`admin_dash/`)
+
+A Next.js 14 admin interface running at `localhost:3000` alongside the Flutter demo. Optional — the Flutter demo is fully self-contained without it, but the bridge unlocks live approve/reject interactions.
+
+### Running
+
+```bash
+cd admin_dash
+npm install
+npm run dev    # starts on http://localhost:3000
+```
+
+### Features
+
+- **KPI cards** — Pending Queue, Approved Today, Rejected Today, Fraud Flagged, Reserve Runway, Zones Active, Avg Payout, Total Payout Today
+- **Pending Review section** — amber-highlighted section appears when Flutter-submitted manual/fraud claims arrive. Each card shows claim ID, tier badge, driver name, reason, description (truncated), zone, amount, FRAUD badge (fraudScore > 0.7), ESCALATED badge (isFraud).
+- **Inline approve/reject** — Approve button shows payout amount (tier default when amount is 0). Reject opens an inline text input for the rejection reason.
+- **Recent Claims table** — last 8 claims with hover states, status badges, and tier sub-rows
+- **Audit Log** — last 5 actions; APPROVED entries shown in green, REJECTED in red
+- **Payout Audit overlay** — 4-tap "Approved Today" KPI → slide-up sheet with UPI references
+
+### Easter egg triggers (admin dashboard)
+
+| Gesture | Action |
+|---|---|
+| 4-tap Pending Queue | `bulkApproveWave()` — approves all high/medium priority claims, adds ₹5,400 to payout total |
+| 4-tap Approved Today | Shows Payout Audit Trail overlay |
+| 3-tap Rejected Today | `claimRejectionCascade()` — injects 2 GPS-rejected claims |
+| 3-tap Fraud Flagged | `fraudFlagging()` — flags CLM-9102-54 with isolation-forest score 0.71 |
+| 4-tap Reserve Runway | `reserveFloorBreach()` — sets runway to 31 days, triggers reserve alert banner |
+
+### Seeded claims (initial state)
+
+8 claims across BLR-South, CHN-Central, and KOL-South zones for Sudarshan K., Dakshina Moorthy, and Sudha P. — names, zones, and amounts match the Flutter app's persona data exactly.
 
 ---
 
@@ -483,6 +555,7 @@ Run this in order for a clean investor/stakeholder presentation. Total time: ~10
 
 - Point out the coverage card (Platinum Shield Plan, ₹24,800 coverage, next renewal).
 - Show the earnings chart — Platinum tier data, toggle between Weekly/Monthly/Yearly.
+- Show the 4 Quick Action buttons: Track Claim, Pay Now, View Policy, and **View Data** (→ Oracle Engine).
 - Show the Live Triggers section with 5 oracle cards monitoring in real time.
 
 ### 3. Zero-touch flood scenario (2 min)
@@ -506,15 +579,17 @@ Run this in order for a clean investor/stakeholder presentation. Total time: ~10
 
 - Tap **Apply Claim** on the dashboard.
 - **Long-press "New Claim" in the AppBar** → form auto-fills with flood scenario data.
-- Tap Submit → navigates to Status Tracker showing "In Progress" (REVIEW).
-- Watch the stepper advance every 4 seconds: SUBMITTED → IN REVIEW → APPROVED → PAYOUT (UPI ref appears).
+- Tap Submit → navigates to Status Tracker showing "In Progress" (REVIEW). The claim is **simultaneously posted to the admin bridge**.
+- Switch to the **admin dashboard** (`localhost:3000`) → the claim appears in the amber "Pending Review" section with Approve/Reject buttons.
+- Click **Approve** in the admin dashboard → within 4 seconds (next Flutter poll), the Status Tracker updates to APPROVED and the payout processes.
 - Bell badge increments; tap it → full Notifications screen with filter chips.
 
 ### 6. Oracle Engine (1 min)
 
-- Return to Dashboard, tap the "Live Triggers" header.
+- Return to Dashboard, tap the "Live Triggers" header (or tap **View Data** in Quick Actions).
 - Oracle Network screen shows 5 data source cards (IMD, AccuWeather, NASA-GPM, CPCB, DownDetector).
 - Show the confidence bars and consensus stepper — already at "Consensus Reached" from the flood trigger.
+- Mention the ML model: IsoForest-XGB Ensemble — 94.7% accuracy, 5 weighted features, SHAP-backed decisions.
 
 ### 7. Kill-switch demo (1 min)
 
@@ -526,7 +601,8 @@ Run this in order for a clean investor/stakeholder presentation. Total time: ~10
 
 - Navigate to **Profile**.
 - Note the notification bell in the top-right (frosted glass, white).
-- **Long-press the avatar** → fraud flag activates; latest in-review claim mutates to "Under Review — Fraud Queue".
+- **Long-press the avatar** → fraud flag activates; latest in-review claim mutates to "Under Review — Fraud Queue". The claim is also posted to the admin bridge with `isFraud: true`.
+- Switch to the admin dashboard → claim appears in Pending Review with the ESCALATED badge and fraud score 0.81.
 - Bell badge shows the new notification; tap → Notifications screen with the escalation entry.
 
 ### 9. Assist chat (1 min)
