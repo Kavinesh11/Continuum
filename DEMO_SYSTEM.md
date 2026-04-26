@@ -41,9 +41,9 @@ npm install
 npm run dev    # http://localhost:3000
 ```
 
-The Flutter app automatically routes manual/fraud claims to `localhost:3000`. No additional config needed.
+The Flutter app routes manual/fraud claims to `https://admin-dash-kappa.vercel.app` by default — no config needed for the live Vercel demo.
 
-**For Vercel deployment:** set `ADMIN_BRIDGE_URL=https://your-app.vercel.app` in the Flutter `.env` file — the app reads it from there and everything routes automatically.
+**For local admin dev:** set `ADMIN_BRIDGE_URL=http://localhost:3000` in the Flutter `.env` file to point at your local `npm run dev` instance instead.
 
 ---
 
@@ -68,6 +68,7 @@ All three have full persona-aware AI context. Gemini (or the mock fallback) know
 ### Switching personas
 
 - **Sandbox Selector:** Long-press the logo on the login screen → choose a persona → seeded data swaps immediately.
+- **Sign Up flow:** Tap "New to Continuum? Sign Up" on the login screen → 4-step registration → plan tier maps to closest sandbox persona.
 - **Registration flow:** Complete registration → plan tier maps to closest sandbox persona.
 - **Fast-path:** 4-tap logo on login → direct to Sudarshan (Platinum).
 
@@ -121,6 +122,8 @@ All three have full persona-aware AI context. Gemini (or the mock fallback) know
 ### 1. Boot and login (30s)
 
 Launch the app. Enter **SWG-9284** / **Continuum@2026** — or **4-tap the logo** for the fast path. Sudarshan's Platinum dashboard loads instantly.
+
+> New users can tap **"New to Continuum? Sign Up"** to walk through the 4-step registration flow. Image uploads are optional — tap the upload button a second time to soft-bypass each step.
 
 > *"This is Sudarshan — a Platinum-tier delivery partner in Bangalore. He's been with us since January 2024 and has ₹24,800 of income protection active right now."*
 
@@ -302,14 +305,16 @@ Admin dashboard (Next.js)
 
 ### URL configuration
 
-The admin bridge URL is read from the Flutter `.env` file:
+The admin bridge URL is managed by `lib/config/app_config.dart` (`AppConfig.adminBridgeUrl`).
 
+**Default (no `.env` needed):** `https://admin-dash-kappa.vercel.app`
+
+To override for local dev, add to `.env`:
 ```
-ADMIN_BRIDGE_URL=http://localhost:3000   # local dev
-ADMIN_BRIDGE_URL=https://your-app.vercel.app   # Vercel
+ADMIN_BRIDGE_URL=http://localhost:3000
 ```
 
-Managed by `lib/config/app_config.dart` (`AppConfig.adminBridgeUrl`). Change the env var — both `demo_backend.dart` and `demo_orchestrator.dart` pick it up automatically.
+Both `demo_backend.dart` and `demo_orchestrator.dart` pick it up automatically via `AppConfig.adminBridgeUrl`.
 
 The admin dashboard's internal `/api/claims` routes are relative Next.js routes — they auto-resolve on Vercel, no URL config needed in `admin_dash`.
 
@@ -323,7 +328,7 @@ The admin dashboard's internal `/api/claims` routes are relative Next.js routes 
 | `lib/state/demo_orchestrator.dart` | All 13 scenarios. Composes DemoState + NotificationState + DemoBackend |
 | `lib/state/demo_state.dart` | Kill-switch flags, zone lock, reserve breach, trigger alerts, in-session claim lists (`ChangeNotifier`) |
 | `lib/state/notification_state.dart` | Per-persona notification inbox + toast sequence (`ChangeNotifier`) |
-| `lib/config/app_config.dart` | `AppConfig.adminBridgeUrl` — reads `ADMIN_BRIDGE_URL` from dotenv, fallback to localhost:3000 |
+| `lib/config/app_config.dart` | `AppConfig.adminBridgeUrl` — reads `ADMIN_BRIDGE_URL` from dotenv, fallback to `https://admin-dash-kappa.vercel.app` |
 | `lib/services/gemini_service.dart` | Gemini 2.0 Flash chat. Injects full persona-aware RAG system context. Keyword mock fallback if no API key |
 | `lib/services/api_service.dart` | Every public method delegates to `DemoBackend.instance` — HTTP layer unreachable |
 | `lib/widgets/notification_toast.dart` | OS-style sliding banner overlay. Auto-dismisses 3.8s, tap → Notifications screen |
@@ -468,12 +473,42 @@ Oracle auto-approval speed: Silver 24–48h review · Gold 4–12h priority · P
 - Weekly earnings, completion rate, order count
 - Tier-specific covered events + NOT covered events
 
-With `GEMINI_API_KEY` set, responses come from Gemini 2.0 Flash. Without a key, a keyword mock provides persona-specific replies for: flood/weather, outage, rejected/breakdown, claim status, payout/UPI, premium/renewal, coverage, bandh/strike, zone, earnings.
+With `GEMINI_API_KEY` set, responses come from Gemini 2.0 Flash. Without a key, a keyword mock provides persona-specific replies for:
+
+| Topic | Example question |
+|---|---|
+| Flood / weather | "Where is my flood claim?" |
+| App outage | "Is Swiggy down?" |
+| Rejected / breakdown | "Why was my claim rejected?" |
+| Claim status | "What's in review?" |
+| Payout / UPI | "When will I get paid?" |
+| Payout timing | "How long do payouts take?" |
+| Filing a claim | "How do I file a claim?" |
+| What is Continuum | "What is Continuum?" / "How does this work?" |
+| Oracle network | "How does oracle work?" / "How does it auto-detect?" |
+| Tier comparison | "Silver vs Gold vs Platinum?" / "Which plan is better?" |
+| Auto-debit / eNACH | "How does auto-debit work?" / "When is my next debit?" |
+| Premium / renewal | "When does my policy renew?" |
+| Coverage rules | "Am I covered for bandh?" |
+| Zone / earnings | "What zone am I in?" |
+
+All mock responses are persona-specific — they reference the active driver's actual tier, premium, UPI handle, renewal date, and claim history.
 
 To enable real Gemini:
 ```
 GEMINI_API_KEY=your_key   # in .env
 ```
+
+---
+
+## Policy screen
+
+Navigate via the **View Policy** quick action on the dashboard.
+
+- **Overview card:** Active tier pill, zone (truncates gracefully on narrow screens), shield plan label, total coverage amount.
+- **Risk Recalculation:** Tap "Run Risk Recalculation" → 5 factors animate sequentially (driving hours, claim history, weather risk, zone density, oracle accuracy) → result card shows calculated premium and savings.
+- **History chart:** Animated bar chart showing 4-week premium history. Bars render after recalculation completes — value labels are clamped so they never clip above the canvas.
+- **FAQs section:** 5 expandable FAQ tiles covering coverage events, claim timelines, oracle triggers, auto-debit, and zone changes.
 
 ---
 
@@ -519,7 +554,7 @@ All three can stack simultaneously. Banners clear on `resetAll()`.
 | Symptom | Fix |
 |---|---|
 | App launches but shows blank/loading | Run `flutter pub get`, then `flutter run` again |
-| Claims don't appear in admin dashboard | Make sure `npm run dev` is running at localhost:3000; check `ADMIN_BRIDGE_URL=http://localhost:3000` in `.env` |
+| Claims don't appear in admin dashboard | By default the app posts to `https://admin-dash-kappa.vercel.app` — open that URL and check the Priority Queue. For local dev, set `ADMIN_BRIDGE_URL=http://localhost:3000` in `.env` and run `npm run dev`. |
 | Gemini chat gives generic responses | API key is missing or empty — that's fine, keyword mock is active |
 | Persona data looks wrong after switch | Long-press Profile header → `resetAll()`, then switch persona again via Sandbox Selector |
 | Admin dashboard showing old claims from previous run | 5-tap the version tag (bottom of sidebar) → `resetAll()` |

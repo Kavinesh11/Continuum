@@ -239,28 +239,32 @@ class _AssistsScreenState extends State<AssistsScreen> {
 
   Widget _buildQuickReplies(BuildContext context) {
     if (_isTyping || _isSending) return const SizedBox.shrink();
-    return SizedBox(
-      height: 44,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: _quickReplies.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (context, i) => GestureDetector(
-          onTap: () => _sendQuickMessage(_quickReplies[i]),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: AppTheme.primary.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppTheme.primary.withOpacity(0.25)),
-            ),
-            child: Text(
-              _quickReplies[i],
-              style: TextStyle(
-                color: AppTheme.primary,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: SizedBox(
+        height: 52,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          itemCount: _quickReplies.length,
+          separatorBuilder: (_, __) => const SizedBox(width: 8),
+          itemBuilder: (context, i) => GestureDetector(
+            onTap: () => _sendQuickMessage(_quickReplies[i]),
+            child: Container(
+              alignment: Alignment.center,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppTheme.primary.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppTheme.primary.withOpacity(0.25)),
+              ),
+              child: Text(
+                _quickReplies[i],
+                style: TextStyle(
+                  color: AppTheme.primary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),

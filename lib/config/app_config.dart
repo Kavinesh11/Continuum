@@ -9,5 +9,5 @@ class AppConfig {
   /// Local default: http://localhost:3000
   /// Vercel: set ADMIN_BRIDGE_URL=https://your-app.vercel.app in .env
   static String get adminBridgeUrl =>
-      dotenv.env['ADMIN_BRIDGE_URL'] ?? 'http://localhost:3000';
+      dotenv.env['ADMIN_BRIDGE_URL'] ?? 'https://admin-dash-kappa.vercel.app';
 }

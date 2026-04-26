@@ -65,6 +65,10 @@ class _LoginScreenState extends State<LoginScreen>
     Navigator.of(context).pushReplacementNamed(AppRoutes.sandboxSelect);
   }
 
+  void _signUp() {
+    Navigator.of(context).pushNamed(AppRoutes.registration);
+  }
+
   void _loginAsSudarshan() {
     DemoBackend.instance.setDriver(sandboxDriverSudarshan);
     DemoOrchestrator.instance.seedInitialNotifications();
@@ -266,6 +270,41 @@ class _LoginScreenState extends State<LoginScreen>
                       fontSize: 11,
                       color: Colors.white.withOpacity(0.3),
                       letterSpacing: 0.3,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // ── Sign Up button ──
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: AppTheme.accent.withOpacity(0.35),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: OutlinedButton.icon(
+                      onPressed: _isLoading ? null : _signUp,
+                      icon: Icon(
+                        Icons.app_registration_rounded,
+                        color: AppTheme.accent,
+                        size: 20,
+                      ),
+                      label: const Text(
+                        'New to Continuum? Sign Up',
+                        style: TextStyle(
+                          color: AppTheme.accent,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide.none,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),

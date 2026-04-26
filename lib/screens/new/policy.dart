@@ -291,28 +291,33 @@ class _PolicyScreenState extends State<PolicyScreen>
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      driver.zone,
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.85),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
+                Flexible(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        driver.zone,
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.85),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${driver.tier} Shield Plan',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
+                      const SizedBox(height: 4),
+                      Text(
+                        '${driver.tier} Shield Plan',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 12),
                 Icon(
                   Icons.shield_outlined,
                   color: Colors.white.withOpacity(0.5),
@@ -643,14 +648,19 @@ class _PolicyScreenState extends State<PolicyScreen>
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(
-                  Icons.check_circle_outline_rounded,
-                  color: AppTheme.successGreen,
-                  size: 30,
+                const Padding(
+                  padding: EdgeInsets.only(top: 2),
+                  child: Icon(
+                    Icons.check_circle_outline_rounded,
+                    color: AppTheme.successGreen,
+                    size: 30,
+                  ),
                 ),
                 const SizedBox(width: 12),
-                Column(
+                Flexible(
+                  child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
@@ -675,6 +685,7 @@ class _PolicyScreenState extends State<PolicyScreen>
                       ),
                     ],
                   ],
+                ),
                 ),
               ],
             ),
@@ -709,12 +720,13 @@ class _PolicyScreenState extends State<PolicyScreen>
     final base = driver.weeklyPremium;
     final values = <double>[base + 6, base, base - 8, _currentPremium];
     return Container(
-      height: 180,
+      height: 200,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
       decoration: AppTheme.cardDecorationOf(context),
       child: AnimatedBuilder(
         animation: _chartAnim,
         builder: (context, _) => CustomPaint(
+          size: Size.infinite,
           painter: _HistoryChartPainter(
             values: values,
             labels: const ['Week −3', 'Week −2', 'Week −1', 'Current'],
@@ -796,10 +808,10 @@ class _HistoryChartPainter extends CustomPainter {
 
     for (int i = 0; i < values.length; i++) {
       final double x = spacing + i * (barWidth + spacing);
-      final double maxBarH = size.height - 40;
+      final double maxBarH = size.height - 48;
       final double fullBarH = maxBarH * (values[i] / (maxVal * 1.08));
       final double barH = fullBarH * progress;
-      final double y = size.height - 22 - barH;
+      final double y = size.height - 24 - barH;
 
       paint.color = i == values.length - 1
           ? AppTheme.successGreen
@@ -813,24 +825,27 @@ class _HistoryChartPainter extends CustomPainter {
       );
 
       if (progress > 0.85) {
+        final opacity = (progress - 0.85) / 0.15;
+
         textPainter.text = TextSpan(
           text: '₹${values[i].toInt()}',
           style: TextStyle(
-            color: textColor.withOpacity((progress - 0.85) / 0.15),
+            color: textColor.withOpacity(opacity),
             fontSize: 11,
             fontWeight: FontWeight.w600,
           ),
         );
         textPainter.layout();
+        final valueLabelY = math.max(2.0, y - 16);
         textPainter.paint(
           canvas,
-          Offset(x + (barWidth - textPainter.width) / 2, y - 16),
+          Offset(x + (barWidth - textPainter.width) / 2, valueLabelY),
         );
 
         textPainter.text = TextSpan(
           text: labels[i],
           style: TextStyle(
-            color: textColor.withOpacity((progress - 0.85) / 0.15),
+            color: textColor.withOpacity(opacity),
             fontSize: 10,
             fontWeight: FontWeight.w500,
           ),
@@ -838,7 +853,7 @@ class _HistoryChartPainter extends CustomPainter {
         textPainter.layout();
         textPainter.paint(
           canvas,
-          Offset(x + (barWidth - textPainter.width) / 2, size.height - 14),
+          Offset(x + (barWidth - textPainter.width) / 2, size.height - 16),
         );
       }
     }

@@ -128,6 +128,49 @@ INSTRUCTIONS: Be concise (2–4 sentences), empathetic, and conversational. Addr
     final claims = DemoBackend.instance.getSeededClaimsSummary();
     final pendingClaims = claims.split('\n').where((l) => l.contains('In Review') || l.contains('Pending'));
 
+    // ── FAQ quick-reply overrides — checked first to avoid false positives ──────
+
+    if (lower.contains('how long') || lower.contains('payout time') || lower.contains('when will i get') || lower.contains('how fast')) {
+      return 'Auto-approved payouts on your ${d.tier} plan reach your UPI in under 5 minutes, $name. '
+          'Manual claims in review: Gold priority is 4–12 hours, Silver is 24–48 hours. '
+          'You get a push notification the moment funds are credited.';
+    }
+
+    if ((lower.contains('file') && lower.contains('claim')) || lower.contains('how do i claim') || lower.contains('how to claim') || lower.contains('new claim') || lower.contains('submit a claim')) {
+      return 'To file a claim, tap "Apply Claim" on your dashboard, $name. '
+          'Pick the event type, add the date and a brief description — photos are optional. '
+          'Most weather and outage events are auto-detected by the oracle before you even file, so check your notifications first.';
+    }
+
+    if (lower.contains('what is continuum') || lower.contains('about continuum') || lower.contains('how does continuum') || lower.contains('what does continuum')) {
+      return 'Continuum is India\'s first parametric income-protection platform for Swiggy & Zomato delivery partners. '
+          'When a disruption event is detected — rain, bandh, outage — the oracle network auto-credits your UPI account, '
+          'often within minutes. No forms, no waiting, no guesswork.';
+    }
+
+    if (lower.contains('how does oracle') || lower.contains('oracle work') || lower.contains('oracle network')) {
+      return 'The oracle network combines 5 data feeds: IMD rainfall API, municipal disruption notices, '
+          'traffic density index, Swiggy/Zomato platform incident logs, and GPS zone data. '
+          'When 3-of-5 sources agree a disruption occurred in your zone, consensus is reached and payouts fire — '
+          'no human approval needed for standard events. ML model accuracy: 94.7%.';
+    }
+
+    if (lower.contains('silver vs') || lower.contains('vs gold') || lower.contains('vs platinum') || lower.contains('plan difference') || lower.contains('which plan')) {
+      return 'Silver (₹49/wk): rain, outages, network failures — 24–48h review.\n'
+          'Gold (₹99/wk): adds bandh, cyclone, Zomato outage, roadblocks — 4–12h priority review.\n'
+          'Platinum (₹199/wk): all 7 event types including curfews and municipal advisories — instant oracle auto-approval under 5 min.\n'
+          'You\'re currently on ${d.tier} tier.';
+    }
+
+    if (lower.contains('auto-debit') || lower.contains('auto debit') || lower.contains('enach') || lower.contains('how does auto') || lower.contains('debit work')) {
+      return 'Your ₹${d.weeklyPremium.toStringAsFixed(0)}/week premium is auto-debited every Monday via eNACH mandate on PayU, $name. '
+          'No action needed — it happens automatically. '
+          'If a debit fails, you get a 7-day grace period before coverage pauses. '
+          'View debit history in the Payments section.';
+    }
+
+    // ── General keyword handlers ─────────────────────────────────────────────────
+
     if (lower.contains('flood') || lower.contains('severe weather') || lower.contains('rain')) {
       final weatherClaim = claims.split('\n').firstWhere(
         (l) => l.toLowerCase().contains('weather') || l.toLowerCase().contains('flood') || l.toLowerCase().contains('rain'),
