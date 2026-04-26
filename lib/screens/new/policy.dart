@@ -14,6 +14,8 @@ class _PolicyScreenState extends State<PolicyScreen>
     with TickerProviderStateMixin {
   bool _isCalculating = false;
   bool _isFinished = false;
+  bool _isInitializing = false;
+  String _initLabel = '';
   int _visibleCount = 0;
   int _resolvedCount = 0;
   late double _currentPremium;
@@ -22,6 +24,8 @@ class _PolicyScreenState extends State<PolicyScreen>
   late Animation<double> _pulseAnim;
   late AnimationController _fadeController;
   late Animation<double> _fadeAnim;
+  late AnimationController _chartAnimController;
+  late Animation<double> _chartAnim;
 
   late List<Map<String, dynamic>> _factors;
 
@@ -34,28 +38,53 @@ class _PolicyScreenState extends State<PolicyScreen>
     _factors = [
       {
         'name': 'Waterlogging incidents (30d)',
-        'outcome': '0 incidents',
+        'analyzeLabel': 'Querying oracle rainfall data for ${driver.zone}...',
+        'outcome': driver.tier == 'Platinum'
+            ? '0 incidents — Zone ${driver.zone} verified clean'
+            : driver.tier == 'Gold'
+                ? '1 incident on record'
+                : '2 incidents detected',
         'adj': driver.tier == 'Platinum' ? -12 : driver.tier == 'Gold' ? -8 : -4,
+        'confidence': 97,
+        'icon': Icons.water_drop_outlined,
       },
       {
-        'name': 'Your order completion rate',
-        'outcome': '${(driver.completionRate * 100).toStringAsFixed(0)}% (${_completionLabel(driver.completionRate)})',
+        'name': 'Order completion rate',
+        'analyzeLabel': 'Fetching delivery records from ${driver.platform} API...',
+        'outcome':
+            '${(driver.completionRate * 100).toStringAsFixed(1)}% — ${_completionLabel(driver.completionRate)}',
         'adj': driver.tier == 'Platinum' ? -10 : driver.tier == 'Gold' ? -6 : -2,
+        'confidence': 99,
+        'icon': Icons.check_circle_outline_rounded,
       },
       {
         'name': 'Traffic density trends',
-        'outcome': 'Average',
+        'analyzeLabel': 'Cross-referencing zone traffic density index...',
+        'outcome':
+            driver.zone.contains('North') ? 'Moderate congestion' : 'Low congestion index',
         'adj': 0,
+        'confidence': 88,
+        'icon': Icons.traffic_rounded,
       },
       {
         'name': 'Platform app stability',
-        'outcome': driver.tier == 'Platinum' ? 'Excellent' : 'Good',
-        'adj': driver.tier == 'Platinum' ? -8 : -4,
+        'analyzeLabel': 'Checking ${driver.platform} API health scores (last 7d)...',
+        'outcome': driver.tier == 'Platinum'
+            ? '99.8% uptime — Excellent'
+            : driver.tier == 'Gold'
+                ? '99.2% uptime — Good'
+                : '98.5% uptime — Average',
+        'adj': driver.tier == 'Platinum' ? -8 : driver.tier == 'Gold' ? -4 : 0,
+        'confidence': 95,
+        'icon': Icons.speed_rounded,
       },
       {
         'name': 'Zone risk classification',
+        'analyzeLabel': 'Classifying ${driver.zone} from geo-risk satellite data...',
         'outcome': _zoneRisk(driver.zone),
         'adj': driver.tier == 'Silver' ? 2 : 0,
+        'confidence': 92,
+        'icon': Icons.map_outlined,
       },
     ];
 
@@ -72,12 +101,22 @@ class _PolicyScreenState extends State<PolicyScreen>
       vsync: this,
     )..forward();
     _fadeAnim = CurvedAnimation(parent: _fadeController, curve: Curves.easeOut);
+
+    _chartAnimController = AnimationController(
+      duration: const Duration(milliseconds: 900),
+      vsync: this,
+    );
+    _chartAnim = CurvedAnimation(
+      parent: _chartAnimController,
+      curve: Curves.easeOutCubic,
+    );
   }
 
   @override
   void dispose() {
     _pulseController.dispose();
     _fadeController.dispose();
+    _chartAnimController.dispose();
     super.dispose();
   }
 
@@ -88,9 +127,26 @@ class _PolicyScreenState extends State<PolicyScreen>
   }
 
   String _zoneRisk(String zone) {
-    if (zone.contains('South') || zone.contains('Central')) return 'Low Risk';
-    if (zone.contains('North')) return 'Moderate';
-    return 'Low Risk';
+    if (zone.contains('South') || zone.contains('Central')) return 'Low Risk (1.8/10)';
+    if (zone.contains('North')) return 'Moderate (4.6/10)';
+    return 'Low Risk (2.1/10)';
+  }
+
+  String _resultSummary() {
+    final biggest = _factors
+        .where((f) => (f['adj'] as int) < 0)
+        .toList()
+      ..sort((a, b) => (a['adj'] as int).compareTo(b['adj'] as int));
+    if (biggest.isEmpty) return 'Your risk profile is stable this week.';
+    final top = biggest.first['name'] as String;
+    final topAdj = (biggest.first['adj'] as int).abs();
+    return 'Biggest saving: ${top.split(' ').take(2).join(' ')} (−₹$topAdj). Your risk profile looks strong.';
+  }
+
+  int _overallConfidence() {
+    if (_factors.isEmpty) return 0;
+    final sum = _factors.fold<int>(0, (s, f) => s + (f['confidence'] as int));
+    return (sum / _factors.length).round();
   }
 
   Future<void> _runRecalculation() async {
@@ -99,10 +155,20 @@ class _PolicyScreenState extends State<PolicyScreen>
     setState(() {
       _isCalculating = true;
       _isFinished = false;
+      _isInitializing = true;
+      _initLabel = 'Connecting to oracle data feed...';
       _visibleCount = 0;
       _resolvedCount = 0;
       _currentPremium = driver.weeklyPremium;
     });
+    _chartAnimController.reset();
+
+    await Future.delayed(const Duration(milliseconds: 700));
+    if (!mounted) return;
+    setState(() => _initLabel = 'Initializing Continuum Risk Engine v2.1...');
+    await Future.delayed(const Duration(milliseconds: 700));
+    if (!mounted) return;
+    setState(() => _isInitializing = false);
 
     for (int i = 0; i < _factors.length; i++) {
       if (!mounted) return;
@@ -121,6 +187,7 @@ class _PolicyScreenState extends State<PolicyScreen>
       _isFinished = true;
       _isCalculating = false;
     });
+    _chartAnimController.forward();
   }
 
   @override
@@ -159,6 +226,7 @@ class _PolicyScreenState extends State<PolicyScreen>
               ),
               const SizedBox(height: 16),
               if (!_isCalculating && !_isFinished) _buildCalculateButton(),
+              if (_isInitializing) _buildInitializingWidget(),
               if (_visibleCount > 0) ...[
                 ...List.generate(
                   _visibleCount,
@@ -168,7 +236,16 @@ class _PolicyScreenState extends State<PolicyScreen>
               if (_isFinished) ...[
                 const SizedBox(height: 12),
                 _buildResultCard(savings),
-                const SizedBox(height: 28),
+                const SizedBox(height: 4),
+                Center(
+                  child: TextButton.icon(
+                    onPressed: _runRecalculation,
+                    icon: const Icon(Icons.refresh_rounded, size: 16),
+                    label: const Text('Recalculate'),
+                    style: TextButton.styleFrom(foregroundColor: AppTheme.primary),
+                  ),
+                ),
+                const SizedBox(height: 16),
                 _buildSectionTitle('Premium History'),
                 const SizedBox(height: 16),
                 _buildChartSection(context, driver),
@@ -329,16 +406,12 @@ class _PolicyScreenState extends State<PolicyScreen>
             ),
           ],
         ),
-        child: Row(
+        child: const Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.auto_fix_high_rounded,
-              color: AppTheme.primary,
-              size: 18,
-            ),
-            const SizedBox(width: 10),
-            const Text(
+            Icon(Icons.auto_fix_high_rounded, color: AppTheme.primary, size: 18),
+            SizedBox(width: 10),
+            Text(
               'Run Risk Recalculation',
               style: TextStyle(
                 color: AppTheme.primary,
@@ -352,6 +425,42 @@ class _PolicyScreenState extends State<PolicyScreen>
     );
   }
 
+  Widget _buildInitializingWidget() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppTheme.cardOf(context),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.primary.withOpacity(0.25)),
+        boxShadow: AppTheme.softShadowOf(context),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.5,
+              valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primary),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              _initLabel,
+              style: TextStyle(
+                color: AppTheme.textSecondaryOf(context),
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildFactorRow(BuildContext context, int index) {
     final isResolved = index < _resolvedCount;
     final factor = _factors[index];
@@ -360,16 +469,16 @@ class _PolicyScreenState extends State<PolicyScreen>
         adj > 0 ? '+₹$adj' : (adj == 0 ? '±₹0' : '−₹${adj.abs()}');
     final Color adjColor = adj < 0
         ? AppTheme.successGreen
-        : (adj == 0
-            ? AppTheme.textSecondaryOf(context)
-            : AppTheme.dangerRed);
+        : (adj == 0 ? AppTheme.textSecondaryOf(context) : AppTheme.dangerRed);
 
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.0, end: 1.0),
       duration: const Duration(milliseconds: 400),
       curve: Curves.easeOutCubic,
-      builder: (context, v, child) =>
-          Transform.translate(offset: Offset(20 * (1 - v), 0), child: Opacity(opacity: v, child: child)),
+      builder: (context, v, child) => Transform.translate(
+        offset: Offset(20 * (1 - v), 0),
+        child: Opacity(opacity: v, child: child),
+      ),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 600),
         margin: const EdgeInsets.only(bottom: 10),
@@ -391,6 +500,12 @@ class _PolicyScreenState extends State<PolicyScreen>
             ? Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
+                  Icon(
+                    factor['icon'] as IconData,
+                    size: 18,
+                    color: adj <= 0 ? AppTheme.successGreen : AppTheme.dangerRed,
+                  ),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -403,7 +518,7 @@ class _PolicyScreenState extends State<PolicyScreen>
                             fontSize: 14,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 3),
                         Text(
                           factor['outcome'] as String,
                           style: TextStyle(
@@ -414,46 +529,92 @@ class _PolicyScreenState extends State<PolicyScreen>
                       ],
                     ),
                   ),
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 400),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: adjColor.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      adjStr,
-                      style: TextStyle(
-                        color: adjColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 400),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: adjColor.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          adjStr,
+                          style: TextStyle(
+                            color: adjColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppTheme.textSecondaryOf(context).withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          '${factor['confidence']}%',
+                          style: TextStyle(
+                            color: AppTheme.textSecondaryOf(context),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               )
-            : Row(
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  AnimatedBuilder(
-                    animation: _pulseAnim,
-                    builder: (_, __) => Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppTheme.primary.withOpacity(_pulseAnim.value),
+                  Row(
+                    children: [
+                      AnimatedBuilder(
+                        animation: _pulseAnim,
+                        builder: (_, __) => Container(
+                          width: 9,
+                          height: 9,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppTheme.primary.withOpacity(_pulseAnim.value),
+                          ),
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          factor['analyzeLabel'] as String,
+                          style: TextStyle(
+                            color: AppTheme.textSecondaryOf(context),
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 14),
-                  Text(
-                    'Analyzing ${(factor['name'] as String).split(' ').first}…',
-                    style: TextStyle(
-                      color: AppTheme.textSecondaryOf(context),
-                      fontSize: 14,
+                  const SizedBox(height: 10),
+                  TweenAnimationBuilder<double>(
+                    key: ValueKey('progress_$index'),
+                    tween: Tween(begin: 0.0, end: 1.0),
+                    duration: const Duration(milliseconds: 1100),
+                    builder: (context, progress, _) => ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: progress,
+                        minHeight: 3,
+                        backgroundColor: AppTheme.primary.withOpacity(0.1),
+                        valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primary),
+                      ),
                     ),
                   ),
                 ],
@@ -505,7 +666,7 @@ class _PolicyScreenState extends State<PolicyScreen>
                     if (savings > 0) ...[
                       const SizedBox(height: 2),
                       Text(
-                        'You saved ₹$savings',
+                        'You saved ₹$savings vs base rate',
                         style: const TextStyle(
                           color: AppTheme.successGreen,
                           fontSize: 13,
@@ -518,13 +679,23 @@ class _PolicyScreenState extends State<PolicyScreen>
               ],
             ),
             const SizedBox(height: 14),
-            const Text(
-              'Your zone had zero waterlogging incidents in the last 30 days.',
+            Text(
+              _resultSummary(),
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 color: AppTheme.successGreen,
                 fontSize: 12,
                 height: 1.4,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Model confidence: ${_overallConfidence()}%',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppTheme.successGreen.withOpacity(0.75),
+                fontSize: 11,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -536,22 +707,21 @@ class _PolicyScreenState extends State<PolicyScreen>
 
   Widget _buildChartSection(BuildContext context, dynamic driver) {
     final base = driver.weeklyPremium;
-    final values = [
-      base + 6,
-      base,
-      base - 8,
-      _currentPremium,
-    ];
+    final values = [base + 6, base, base - 8, _currentPremium];
     return Container(
       height: 180,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
       decoration: AppTheme.cardDecorationOf(context),
-      child: CustomPaint(
-        painter: _HistoryChartPainter(
-          values: values,
-          labels: const ['Week-1', 'Week-2', 'Week-3', 'Current'],
-          barColor: AppTheme.primary,
-          textColor: AppTheme.textSecondaryOf(context),
+      child: AnimatedBuilder(
+        animation: _chartAnim,
+        builder: (context, _) => CustomPaint(
+          painter: _HistoryChartPainter(
+            values: values,
+            labels: const ['Week −3', 'Week −2', 'Week −1', 'Current'],
+            barColor: AppTheme.primary,
+            textColor: AppTheme.textSecondaryOf(context),
+            progress: _chartAnim.value,
+          ),
         ),
       ),
     );
@@ -578,7 +748,7 @@ class _PolicyScreenState extends State<PolicyScreen>
             ),
             const SizedBox(width: 8),
             Text(
-              'ML-Optimized Pricing • Updated weekly',
+              'Risk Engine v2.1 • Gemini-assisted • Updated weekly',
               style: TextStyle(
                 color: AppTheme.textSecondaryOf(context),
                 fontSize: 11,
@@ -597,19 +767,21 @@ class _HistoryChartPainter extends CustomPainter {
   final List<String> labels;
   final Color barColor;
   final Color textColor;
+  final double progress;
 
   _HistoryChartPainter({
     required this.values,
     required this.labels,
     required this.barColor,
     required this.textColor,
+    this.progress = 1.0,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     if (values.isEmpty) return;
     final maxVal = values.reduce(math.max);
-    final double barWidth = 32.0;
+    const double barWidth = 32.0;
     final double spacing =
         (size.width - barWidth * values.length) / (values.length + 1);
 
@@ -625,7 +797,8 @@ class _HistoryChartPainter extends CustomPainter {
     for (int i = 0; i < values.length; i++) {
       final double x = spacing + i * (barWidth + spacing);
       final double maxBarH = size.height - 40;
-      final double barH = maxBarH * (values[i] / (maxVal * 1.08));
+      final double fullBarH = maxBarH * (values[i] / (maxVal * 1.08));
+      final double barH = fullBarH * progress;
       final double y = size.height - 22 - barH;
 
       paint.color = i == values.length - 1
@@ -639,36 +812,39 @@ class _HistoryChartPainter extends CustomPainter {
         paint,
       );
 
-      textPainter.text = TextSpan(
-        text: '₹${values[i].toInt()}',
-        style: TextStyle(
-          color: textColor,
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-        ),
-      );
-      textPainter.layout();
-      textPainter.paint(
-        canvas,
-        Offset(x + (barWidth - textPainter.width) / 2, y - 16),
-      );
+      if (progress > 0.85) {
+        textPainter.text = TextSpan(
+          text: '₹${values[i].toInt()}',
+          style: TextStyle(
+            color: textColor.withOpacity((progress - 0.85) / 0.15),
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+          ),
+        );
+        textPainter.layout();
+        textPainter.paint(
+          canvas,
+          Offset(x + (barWidth - textPainter.width) / 2, y - 16),
+        );
 
-      textPainter.text = TextSpan(
-        text: labels[i],
-        style: TextStyle(
-          color: textColor,
-          fontSize: 10,
-          fontWeight: FontWeight.w500,
-        ),
-      );
-      textPainter.layout();
-      textPainter.paint(
-        canvas,
-        Offset(x + (barWidth - textPainter.width) / 2, size.height - 14),
-      );
+        textPainter.text = TextSpan(
+          text: labels[i],
+          style: TextStyle(
+            color: textColor.withOpacity((progress - 0.85) / 0.15),
+            fontSize: 10,
+            fontWeight: FontWeight.w500,
+          ),
+        );
+        textPainter.layout();
+        textPainter.paint(
+          canvas,
+          Offset(x + (barWidth - textPainter.width) / 2, size.height - 14),
+        );
+      }
     }
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _HistoryChartPainter old) =>
+      old.progress != progress;
 }

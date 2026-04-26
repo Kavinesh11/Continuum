@@ -104,6 +104,12 @@ class _AssistsScreenState extends State<AssistsScreen> {
     return '$h:$m';
   }
 
+  void _sendQuickMessage(String text) {
+    if (_isSending || _isTyping) return;
+    _messageController.text = text;
+    _sendMessage();
+  }
+
   Future<void> _sendMessage() async {
     final text = _messageController.text.trim();
     if (text.isEmpty || _isSending || _isTyping) return;
@@ -215,8 +221,50 @@ class _AssistsScreenState extends State<AssistsScreen> {
                     },
                   ),
           ),
+          _buildQuickReplies(context),
           _buildChatInput(context),
         ],
+      ),
+    );
+  }
+
+  static const _quickReplies = [
+    'What is Continuum?',
+    'How does oracle work?',
+    'How long do payouts take?',
+    'Silver vs Gold vs Platinum?',
+    'How do I file a claim?',
+    'How does auto-debit work?',
+  ];
+
+  Widget _buildQuickReplies(BuildContext context) {
+    if (_isTyping || _isSending) return const SizedBox.shrink();
+    return SizedBox(
+      height: 44,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: _quickReplies.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, i) => GestureDetector(
+          onTap: () => _sendQuickMessage(_quickReplies[i]),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppTheme.primary.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppTheme.primary.withOpacity(0.25)),
+            ),
+            child: Text(
+              _quickReplies[i],
+              style: TextStyle(
+                color: AppTheme.primary,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
