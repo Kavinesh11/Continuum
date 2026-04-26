@@ -707,7 +707,7 @@ class _PolicyScreenState extends State<PolicyScreen>
 
   Widget _buildChartSection(BuildContext context, dynamic driver) {
     final base = driver.weeklyPremium;
-    final values = [base + 6, base, base - 8, _currentPremium];
+    final values = <double>[base + 6, base, base - 8, _currentPremium];
     return Container(
       height: 180,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),

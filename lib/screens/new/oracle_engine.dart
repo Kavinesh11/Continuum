@@ -506,7 +506,7 @@ class _OracleEngineScreenState extends State<OracleEngineScreen>
       case 'wb_cloudy': return Icons.wb_cloudy_outlined;
       case 'water_drop': return Icons.water_drop_outlined;
       case 'air': return Icons.air_rounded;
-      case 'signal_wifi_off': return Icons.signal_wifi_statusbar_not_connected;
+      case 'signal_wifi_off': return Icons.signal_wifi_off;
       default: return Icons.sensors_rounded;
     }
   }
