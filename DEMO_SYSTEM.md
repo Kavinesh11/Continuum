@@ -1,12 +1,275 @@
-# Continuum — Demo Simulation System
+# Continuum — Demo Guide
 
-A fully self-contained, offline presentation layer for the Continuum Flutter app. No backend server required. Every screen, flow, and data point is driven by a local mock stack that mirrors the real API contract exactly.
+> **The single reference for running the Continuum demo.** Read this before any investor, stakeholder, or pilot presentation. Every screen, trigger, and edge case is covered.
 
 ---
 
-## Why it exists
+## What Continuum is
 
-The app needs to be demo-able to investors, pilots, and internal stakeholders without a live backend. The simulation layer intercepts every `ApiService` call and returns persona-aware, deterministic data with realistic latency. Presenters can walk through every screen, trigger edge-case scenarios via hidden gestures, and reset to a clean state in seconds.
+Continuum is a gig-worker income-protection platform for Swiggy/Zomato delivery partners in India. It pays out instantly when an oracle network detects a disruption event (flood, bandh, app outage) — no manual claim filing required. This demo shows the complete lifecycle: real-time disruption detection → parametric payout → admin review → partner notification.
+
+---
+
+## Quick-start (5 minutes to demo-ready)
+
+### Flutter app
+
+```bash
+# Clone and install
+flutter pub get
+
+# Copy env (no edits needed for mock-only demo)
+cp .env.example .env
+
+# Optional: add your Gemini API key for real AI responses in Assist chat
+# GEMINI_API_KEY=your_key_here
+
+# Run on device
+flutter run
+
+# Or web
+flutter run -d chrome --web-port 5000
+```
+
+Login: **SWG-9284** / **Continuum@2026** — or **4-tap the logo** to skip the form.
+
+### Admin dashboard (optional — enables live Approve/Reject)
+
+```bash
+cd admin_dash
+npm install
+npm run dev    # http://localhost:3000
+```
+
+The Flutter app automatically routes manual/fraud claims to `localhost:3000`. No additional config needed.
+
+**For Vercel deployment:** set `ADMIN_BRIDGE_URL=https://your-app.vercel.app` in the Flutter `.env` file — the app reads it from there and everything routes automatically.
+
+---
+
+## The three personas
+
+| Persona | Partner ID | Tier | Platform | City | Zone | Weekly Premium | Coverage |
+|---|---|---|---|---|---|---|---|
+| **Sudarshan K.** | `SWG-9284` | Platinum | Swiggy + Zomato | Bangalore | HSR Layout | ₹199/wk | ₹24,800 |
+| **Dakshina Moorthy** | `ZMT-4471-338` | Gold | Swiggy + Zomato | Chennai | Anna Nagar | ₹99/wk | ₹18,400 |
+| **Sudha P.** | `SWG-7731-556` | Silver | Swiggy only | Kolkata | Ballygunge | ₹49/wk | ₹9,200 |
+
+### What each persona sees in their Assist chat
+
+All three have full persona-aware AI context. Gemini (or the mock fallback) knows their exact claim history, UPI references, policy details, renewal dates, and tier-specific coverage rules.
+
+**Sudarshan (Platinum):** 8 approved claims. Active: Severe Weather approved ₹450 (CLM-9824-21), Platform Outage in review (CLM-9102-54). Instant oracle auto-approval. Ask: "where is my flood payout?" or "what's under review?"
+
+**Dakshina (Gold):** 6 approved claims. Active: Heavy Rain approved ₹312 (CLM-7711-08), App Outage in review (CLM-7611-22), Vehicle Breakdown rejected — GPS outside zone (CLM-7322-90). Ask: "why was my claim rejected?" or "when will my outage claim resolve?"
+
+**Sudha (Silver):** 3 approved claims. Active: Network Failure approved ₹180 (CLM-5510-44), Severe Weather auto-approved ₹224 (CLM-5388-19). Bandh/cyclone NOT covered on Silver. Ask: "when does my policy renew?" or "am I covered for bandh?"
+
+### Switching personas
+
+- **Sandbox Selector:** Long-press the logo on the login screen → choose a persona → seeded data swaps immediately.
+- **Registration flow:** Complete registration → plan tier maps to closest sandbox persona.
+- **Fast-path:** 4-tap logo on login → direct to Sudarshan (Platinum).
+
+---
+
+## All easter egg triggers
+
+> These are invisible — never point at them. Activate them naturally mid-conversation.
+
+### Flutter app
+
+| Where | Gesture | What happens |
+|---|---|---|
+| Login screen logo | **4-tap** | Fast-login as Sudarshan — bypasses form entirely |
+| Login screen logo | **Long-press** | Open Sandbox Selector (persona picker) |
+| Dashboard avatar (top-left) | **Long-press** | `floodAlert()` — flood advisory + ₹450 auto-payout after 4s |
+| Dashboard "Live Triggers" header | **Tap** | Navigate to Oracle Engine screen |
+| Dashboard "Live Triggers" header | **Long-press** | `bandhAlert()` — bandh advisory + ₹380 auto-payout after 4s |
+| Dashboard plan status card | **Long-press** | `reserveFloorBreach()` — reserve runway banner |
+| Dashboard weekly premium pill | **3-tap (3s)** | `killSwitchTrip()` — kill switch banner, payouts paused |
+| Dashboard "CONTINUUM" title | **Long-press** | Fire 5 scenarios sequentially (flood → outage → claim → fraud → kill switch) |
+| Dashboard "Track Claim" button | **Tap** | Status Tracker for most recent claim |
+| Assist bot avatar (shared counter) | **4-tap total** | `autoClaimAndPayout()` — injects ₹247 auto-approved claim |
+| Assist phone icon (AppBar) | **Tap** | Voice Agent call bottom sheet |
+| Status Tracker payout card | **Long-press** | `forceApprove(claimId)` — instantly approves claim + UPI ref in 600ms |
+| Claims "My Claims" heading | **Long-press** | `autoClaimAndPayout()` — injects new auto-approved claim |
+| New Claim AppBar title | **Long-press** | Prefill form with flood scenario data |
+| Profile header (gradient) | **Long-press** | `resetAll()` — full reset to clean state |
+| Profile avatar | **Long-press** | `fraudQueueEscalation()` — fraud flag + escalate claim to admin |
+| Profile zone row | **Long-press** | `zoneEnrollmentLock()` — zone lock banner |
+| Notification bell | **Tap** | Open full Notifications screen |
+| Notification bell | **Long-press** | Seed 3 demo notifications |
+
+### Admin dashboard (localhost:3000)
+
+| Where | Gesture | What happens |
+|---|---|---|
+| **Pending** stat card | **4-tap** | `bulkApproveWave()` — approves all queued claims, adds ₹5,400 to payout total |
+| **Approved** stat card | **4-tap** | Shows Payout Audit Trail overlay (UPI refs, amounts, timestamps) |
+| **Rejected** stat card | **3-tap** | `claimRejectionCascade()` — injects 2 GPS-rejected claims |
+| **Fraud** stat card | **3-tap** | `fraudFlagging()` — flags CLM-9102-54 with isolation-forest score 0.71 |
+| **Reserve Runway** operations card | **4-tap** | `reserveFloorBreach()` — runway drops to 31 days, red alert banner |
+| Notification bell (header) | **3-tap** | `seedDemoNotifications()` — 3 fresh notifications |
+| **Preethi Nair** (user name, header) | **5-tap** | `killSwitchTrip()` — kill switch trips, banner appears |
+| **v4.0.0 / DEMO** (footer) | **5-tap** | `resetAll()` — full admin state reset |
+
+---
+
+## Suggested demo walkthrough (~12 minutes)
+
+### 1. Boot and login (30s)
+
+Launch the app. Enter **SWG-9284** / **Continuum@2026** — or **4-tap the logo** for the fast path. Sudarshan's Platinum dashboard loads instantly.
+
+> *"This is Sudarshan — a Platinum-tier delivery partner in Bangalore. He's been with us since January 2024 and has ₹24,800 of income protection active right now."*
+
+---
+
+### 2. Dashboard tour (1 min)
+
+- Coverage card: Platinum Shield Plan, ₹24,800, next renewal date.
+- Earnings chart: toggle Weekly/Monthly/Yearly — Platinum tier data.
+- 4 Quick Actions: Track Claim, Pay Now, View Policy, View Data (→ Oracle Engine).
+- Live Triggers section: 5 oracle source cards showing real-time monitoring.
+
+> *"The platform is always watching — IMD weather feeds, AccuWeather, NASA GPM rainfall, CPCB air quality, and platform status from DownDetector. When 3 of 5 sources agree, an event is declared and claims auto-fire."*
+
+---
+
+### 3. Zero-touch flood payout (2 min)
+
+**Long-press the dashboard avatar (top-left).**
+
+- OS-style banner slides in from the top: *"Red Alert — Flood advisory Zone 4B. Parametric coverage activated."*
+- Wait 4 seconds: *"₹450 credited to your UPI account. Ref: UPI/020426/CONT847291."*
+- Navigate to **Claims** → the auto-approved claim is there with a lightning bolt (oracle auto-approval badge).
+- Tap the claim → Status Tracker shows all four stages completed with UPI reference.
+
+> *"No form. No photos. No waiting. The oracle declared the event, cross-checked GPS data, and settled ₹450 directly to UPI — in under 5 minutes."*
+
+---
+
+### 4. Zero-touch bandh payout (2 min)
+
+Return to Dashboard. **Long-press the "Live Triggers" section header.**
+
+- Banner: *"Bandh advisory — Zone 4B. Parametric coverage is now active."*
+- After 4 seconds: *"Bandh payout credited — ₹380."*
+- Claims tab now shows both the ₹450 flood and ₹380 bandh claims.
+
+> *"Bandh, cyclones, app outages — all handled parametrically. Sudarshan didn't have to do anything."*
+
+---
+
+### 5. Manual claim + live admin review (2 min)
+
+Tap **Apply Claim**. **Long-press "New Claim" in the AppBar** to prefill the form.
+
+- Tap Submit → Status Tracker shows "In Progress" (REVIEW).
+- Switch to **admin dashboard** (localhost:3000) → claim appears in the amber **Priority Queue** section.
+- The claim shows: driver name, tier pill, zone, amount, reason, description excerpt.
+- Click **Approve ₹X** → within 4 seconds Flutter's Status Tracker updates to APPROVED, payout processes, notification arrives.
+
+> *"For edge cases that need human review, the oracle routes them here. The admin can see everything — tier, zone, claim history — and approve in one click."*
+
+---
+
+### 6. Oracle Engine deep-dive (1 min)
+
+Tap the "Live Triggers" header (or **View Data** quick action).
+
+- 5 data source cards: IMD India, AccuWeather, NASA-GPM, CPCB AQI, DownDetector.
+- Confidence bars, last reading, per-source latency.
+- Consensus stepper: already at "Consensus Reached" from the flood trigger.
+- ML model: IsoForest-XGB Ensemble v2.4 — 94.7% accuracy, SHAP-backed decisions.
+
+> *"The model weights weather severity at 34%, GPS proximity at 28%, platform status at 19%. Every payout is explainable — we can show exactly why it fired."*
+
+---
+
+### 7. Fraud escalation (1 min)
+
+Navigate to **Profile**. **Long-press the avatar.**
+
+- Fraud flag activates; latest in-review claim mutates to "Under Review — Specialist Queue."
+- Switch to admin dashboard → claim appears with **ESCALATED** badge and fraud score 0.81.
+- Notification bell badge increments.
+
+> *"High-risk claims are automatically routed to specialist review with a fraud score. The oracle's isolation-forest model flags anomalies before any payout fires."*
+
+---
+
+### 8. Assist AI chat (1 min)
+
+Navigate to **Assist**. Type naturally:
+
+- *"Where is my flood claim?"* → responds with CLM-9824-21 and ₹450 UPI reference.
+- *"When does my policy renew?"* → gives exact renewal date and premium.
+- *"What's covered under my plan?"* → tier-specific coverage rules.
+
+**4-tap the bot avatar** → instant ₹247 auto-claim fires mid-conversation.
+
+Tap the phone icon → Voice Agent call sheet.
+
+> *"Every partner has a dedicated AI that knows their exact claim history, renewal date, and coverage tier — no generic chatbot."*
+
+---
+
+### 9. Kill switch (30s, optional)
+
+Return to Dashboard. **3-tap the weekly premium pill.**
+
+- Red banner: *"PAYOUT_KILL_SWITCH active — payouts paused for safety review."*
+- Submit any claim → stays at REVIEW (auto-approval disabled).
+
+> *"We have a live kill switch for compliance incidents. One gesture pauses all automated payouts system-wide."*
+
+---
+
+### 10. Payments screen (30s)
+
+**Profile → Payments.** UPI handle: `swg9284@okaxis` (persona-specific). Tap Pay Now → premium debit appears. Filter Credits / Debits.
+
+---
+
+### 11. Reset (30s)
+
+Navigate to **Profile**. **Long-press the gradient header.** All flags clear, injected claims gone, notifications back to 2 seed items. App is clean for the next presenter.
+
+---
+
+## Admin dashboard layout
+
+The admin dashboard (`localhost:3000`) has four clear sections:
+
+### Stats strip
+Four KPI cards across the top:
+- **Pending** (amber) — 4-tap → `bulkApproveWave()`
+- **Approved** (emerald) — 4-tap → Payout Audit overlay
+- **Rejected** (red) — 3-tap → `claimRejectionCascade()`
+- **Fraud** (amber) — 3-tap → `fraudFlagging()`
+
+### Priority Queue
+Only visible when Flutter-submitted claims are pending. Amber-bordered section with:
+- Claim ID, driver name, tier pill (Platinum/Gold/Silver), zone, reason, amount
+- FRAUD and ESCALATED badges when applicable
+- **Approve ₹X** button (uses tier default when amount is 0) or **Reject** (expands inline text input for reason)
+
+### Operations row
+- **Reserve Runway** — turns red if < 60 days. 4-tap → `reserveFloorBreach()`.
+- **Zones Active** — zones with live coverage.
+- **Total Payout Today** — running total + avg per claim.
+
+### Activity section (2 columns)
+- **Recent Claims table** (left): last 8 claims — ID, Driver+Tier, Zone, Status badge, Amount.
+- **Audit Timeline** (right): last 6 actions as a color-coded timeline (emerald=approved, red=rejected).
+
+### Sidebar
+- Teal-900 with nav icons for Dashboard, Claims Queue, Analytics, Driver Profiles.
+- Active page: left-border accent + highlighted background.
+- Footer: `v4.0.0` + **DEMO** badge. 5-tap → `resetAll()`.
+- Header: Preethi Nair (Claims Reviewer). 5-tap her name → `killSwitchTrip()`. 3-tap bell → seed notifications.
 
 ---
 
@@ -16,54 +279,39 @@ The app needs to be demo-able to investors, pilots, and internal stakeholders wi
 Presenter gestures
        │
        ▼
-DemoOrchestrator   ←─── scripted scenarios (13 total)
+DemoOrchestrator   ←─── 13 scripted scenarios
        │
    ┌───┴────────────────────┐
    ▼                        ▼
 DemoState              NotificationState
-(flags + claim lists)  (per-persona inbox + toast seq)
+(flags + claim lists)  (per-persona inbox + toasts)
        │
        ▼
 DemoBackend  ←─── all ApiService calls land here
-(persona data, claim store, payout store, oracle status)
        │
-       ▼
-  UI Widgets  ←─── react via ChangeNotifier / AnimatedBuilder
-       │
-       ▼
-NotificationToastLayer  ←─── OS-style sliding banner overlay
+       ├── manual/fraud claims ──► HTTP POST → admin_dash /api/claims
+       │                            (falls back to local store if offline)
+       └── getClaimStatus ─────► HTTP GET → admin_dash /api/claims/:id
+                                    (falls back to local store)
+
+Admin dashboard (Next.js)
+  DemoProvider polls /api/claims every 4s
+  approveClaim / rejectClaim → PATCH /api/claims/:id
+  Flutter Status Tracker picks up status on next 4s poll
 ```
 
-### Admin Bridge (optional — for live admin dashboard demo)
+### URL configuration
 
-When `admin_dash/` is running at `localhost:3000`, manual and fraud claims are mirrored in real time:
+The admin bridge URL is read from the Flutter `.env` file:
 
 ```
-Flutter DemoBackend.submitClaim()
-  ├─ manual / fraud → HTTP POST http://localhost:3000/api/claims  (try/catch)
-  └─ falls back to local store if Next.js not running
-
-Flutter DemoBackend.getClaimStatus()
-  ├─ HTTP GET http://localhost:3000/api/claims/:id  (try/catch)
-  └─ returns local store status if API unreachable
-
-Next.js API Bridge (admin_dash/src/app/api/claims/)
-  GET  /api/claims       → all claims sorted by submittedAt desc
-  POST /api/claims       → create new pending claim (Flutter-submitted)
-  GET  /api/claims/[id]  → single claim
-  PATCH /api/claims/[id] → { action: 'approve'|'reject', reason? } → updates status
-
-Admin Dashboard — DemoProvider (admin_dash/src/components/demo-provider.tsx)
-  • Polls /api/claims every 4s, merges Flutter-submitted claims into React state
-  • approveClaim() / rejectClaim() → PATCH /api/claims/:id + update local state
+ADMIN_BRIDGE_URL=http://localhost:3000   # local dev
+ADMIN_BRIDGE_URL=https://your-app.vercel.app   # Vercel
 ```
 
-All four singletons are bootstrapped in `main.dart` before `runApp`:
+Managed by `lib/config/app_config.dart` (`AppConfig.adminBridgeUrl`). Change the env var — both `demo_backend.dart` and `demo_orchestrator.dart` pick it up automatically.
 
-```dart
-DemoBackend.instance.bootstrap();
-DemoOrchestrator.instance.bootstrap(); // also seeds initial notifications
-```
+The admin dashboard's internal `/api/claims` routes are relative Next.js routes — they auto-resolve on Vercel, no URL config needed in `admin_dash`.
 
 ---
 
@@ -71,568 +319,208 @@ DemoOrchestrator.instance.bootstrap(); // also seeds initial notifications
 
 | File | Role |
 |---|---|
-| `lib/services/demo_backend.dart` | Singleton mock backend. Owns all data stores, seeded persona data, claim advancement, oracle status, and deterministic API responses |
-| `lib/state/demo_orchestrator.dart` | Owns all 13 scripted scenarios. Composes DemoState + NotificationState + DemoBackend |
-| `lib/state/demo_state.dart` | `ChangeNotifier` holding kill-switch flags, zone lock, reserve breach, trigger alerts, and in-session claim lists |
-| `lib/state/notification_state.dart` | Per-persona unread notification inbox. `ChangeNotifier`. Also carries `toastSeq`/`toastItem` for the OS-style banner |
-| `lib/widgets/notification_toast.dart` | `NotificationToastLayer` — Stack overlay that slides a banner in from the top on every new notification. Stays 3.8s, tap to open Notifications screen |
-| `lib/widgets/easter_egg_detector.dart` | Invisible gesture wrapper that counts N taps within a time window (default 3s) and fires a callback |
-| `lib/widgets/demo_banner.dart` | Persistent top-of-screen banner that reacts to DemoState flags |
-| `lib/widgets/notification_action.dart` | Bell icon with badge dot. Tap → Notifications screen. Long-press → seed 3 demo notifications |
-| `lib/services/api_service.dart` | All public methods delegate to `DemoBackend.instance` — HTTP layer kept but unreachable |
-| `lib/services/gemini_service.dart` | Gemini 2.0 Flash chat client with persona-aware RAG system context. Falls back to keyword mock if `GEMINI_API_KEY` is absent |
+| `lib/services/demo_backend.dart` | Mock backend singleton. All persona data, seeded claims, payouts, oracle status, claim submission logic, admin bridge HTTP calls |
+| `lib/state/demo_orchestrator.dart` | All 13 scenarios. Composes DemoState + NotificationState + DemoBackend |
+| `lib/state/demo_state.dart` | Kill-switch flags, zone lock, reserve breach, trigger alerts, in-session claim lists (`ChangeNotifier`) |
+| `lib/state/notification_state.dart` | Per-persona notification inbox + toast sequence (`ChangeNotifier`) |
+| `lib/config/app_config.dart` | `AppConfig.adminBridgeUrl` — reads `ADMIN_BRIDGE_URL` from dotenv, fallback to localhost:3000 |
+| `lib/services/gemini_service.dart` | Gemini 2.0 Flash chat. Injects full persona-aware RAG system context. Keyword mock fallback if no API key |
+| `lib/services/api_service.dart` | Every public method delegates to `DemoBackend.instance` — HTTP layer unreachable |
+| `lib/widgets/notification_toast.dart` | OS-style sliding banner overlay. Auto-dismisses 3.8s, tap → Notifications screen |
+| `lib/widgets/easter_egg_detector.dart` | Invisible N-tap gesture wrapper with time window |
+| `lib/widgets/demo_banner.dart` | Kill switch / reserve breach / zone lock persistent banners on Dashboard |
+| `lib/screens/new/registration.dart` | Registration flow — `completeRegistration()` maps plan → persona. Image uploads are optional (soft bypass on second tap) |
 | `lib/screens/new/oracle_engine.dart` | Oracle Network screen — 5 source cards, consensus stepper, auto-event feed |
-| `lib/screens/new/notifications_screen.dart` | Full notifications screen with filter chips (All/Claims/Payouts/Alerts), swipe-to-dismiss, mark-all-read |
-| `admin_dash/src/app/api/claims/route.ts` | In-memory bridge store (`claimsStore` Map). GET all claims, POST new claim from Flutter |
-| `admin_dash/src/app/api/claims/[id]/route.ts` | GET single claim, PATCH approve/reject; auto-fills payout by tier (Platinum ₹450, Gold ₹312, Silver ₹180) |
-| `admin_dash/src/app/page.tsx` | Next.js admin dashboard — "Pending Review" amber section, inline Approve/Reject, KPI cards with easter eggs |
-
----
-
-## Sandbox personas
-
-Three real-world-inspired driver profiles. The active persona determines all profile data, seeded claims, payouts, risk score, policy content, premium amounts, earnings chart data, and payment method labels.
-
-| Persona | Partner ID | Tier | City | Weekly Premium | Coverage Limit | Claims Approved |
-|---|---|---|---|---|---|---|
-| **Sudarshan K.** | `SWG-9284` | Platinum | Bangalore | ₹199 | ₹24,800 | 8 |
-| **Dakshina Moorthy** | `ZMT-4471-338` | Gold | Chennai | ₹99 | ₹18,400 | 6 |
-| **Sudha P.** | `SWG-7731-556` | Silver | Kolkata | ₹49 | ₹9,200 | 3 |
-
-Switching persona (via Sandbox Selector or Registration flow) re-seeds all claim, payout, and chat stores immediately.
-
----
-
-## Easter egg gestures (trigger map)
-
-All triggers are invisible — no UI affordance is shown to the audience. Long-press gestures are used on prominent elements (they look accidental); tap-count gestures remain only on small elements where they're harder to notice.
-
-| Location | Gesture | Action |
-|---|---|---|
-| Login screen logo | 4-tap | Fast-login as Sudarshan (Platinum) — bypasses form entirely |
-| Login screen logo | Long-press | Open Sandbox Selector (persona picker) |
-| Dashboard avatar (top-left) | Long-press | `floodAlert()` — flood advisory + auto-payout ₹450 after 4s |
-| Dashboard plan status card | Long-press | `reserveFloorBreach()` — reserve runway banner |
-| Dashboard weekly premium pill | 3-tap (3s window) | `killSwitchTrip()` — kill switch banner + payout-paused |
-| Dashboard "CONTINUUM" title | Long-press | Fire 5 scenarios sequentially (flood → outage → auto-claim → fraud → kill switch) |
-| **Dashboard "Live Triggers" header** | **Tap** | **Navigate to Oracle Engine screen** |
-| **Dashboard "Live Triggers" header** | **Long-press** | **`bandhAlert()` — bandh advisory + auto-payout ₹380 after 4s** |
-| Dashboard "Track Claim" button | Tap | Navigate to Status Tracker with most recent claim ID |
-| **Assist bot avatar (shared counter)** | **4-tap total (any bubbles)** | **`autoClaimAndPayout()` — single shared counter, fires exactly once** |
-| Assist phone icon (AppBar) | Tap | Voice Agent call bottom sheet |
-| Status tracker payout card | Long-press | `forceApprove(claimId)` — instantly advances to APPROVED + UPI ref in 600ms |
-| Claims "My Claims" heading | Long-press | `autoClaimAndPayout()` — injects new auto-approved claim |
-| **Profile screen header** | **Long-press** | **`resetAll()` — wipe all flags, claims, notifications; reseed persona** |
-| **Profile screen avatar** | **Long-press** | **`fraudQueueEscalation()` — fraud flag + escalate latest in-review claim** |
-| Profile screen zone row | Long-press | `zoneEnrollmentLock()` — zone lock banner |
-| **Notification bell** | **Tap** | **Navigate to full Notifications screen** |
-| **Notification bell** | **Long-press** | **`seedDemoNotifications()` — inject 3 fresh notifications** |
-| **New Claim title (AppBar)** | **Long-press** | **Prefill form with flood scenario demo data** |
+| `lib/screens/new/notifications_screen.dart` | Full notifications — filter chips, swipe-to-dismiss, mark-all-read |
+| `admin_dash/src/app/page.tsx` | Admin dashboard — 4-section layout, all 7 easter egg triggers |
+| `admin_dash/src/components/admin-shell.tsx` | Sidebar with nav icons + active indicator, notification bell, user identity triggers |
+| `admin_dash/src/components/demo-provider.tsx` | React context — polls /api/claims, manages all admin scenario state |
+| `admin_dash/src/components/easter-egg-detector.tsx` | Same N-tap pattern as Flutter, for admin triggers |
+| `admin_dash/src/app/api/claims/route.ts` | In-memory bridge store. GET all claims, POST new from Flutter |
+| `admin_dash/src/app/api/claims/[id]/route.ts` | GET single claim, PATCH approve/reject (auto-fills tier default amounts) |
 
 ---
 
 ## The 13 scenarios
 
-All scenarios live in `DemoOrchestrator`. Each composes state mutations, claim injections, and notification pushes.
+### 1. `floodAlert()`
+Sets trigger alert in DemoState. Pushes "Red Alert: Flood advisory" notification. After 4s: injects auto-approved ₹450 claim + "₹450 credited" notification.
+**Trigger:** Long-press dashboard avatar.
 
-### 1. `floodAlert()` — *zero-touch flood scenario*
-- Sets trigger alert #2 (Municipal Advisory) in DemoState
-- Pushes "Red Alert: Flood advisory active" notification immediately
-- After 4 seconds: injects an auto-approved claim for ₹450 with a UPI ref into both DemoState and DemoBackend; pushes "₹450 credited" notification
-- **Easter egg:** Long-press the dashboard avatar (top-left)
-
-### 2. `bandhAlert()` — *zero-touch bandh scenario* *(NEW)*
-- Sets trigger alert #3 in DemoState
-- Pushes "Bandh advisory — Zone 4B" notification immediately
-- After 4 seconds: injects an auto-approved claim for ₹380 (Bandh / General Strike) with a UPI ref; pushes "₹380 credited" notification
-- Uses a different claim type, amount, and oracle narrative from `floodAlert`
-- **Easter egg:** Long-press the "Live Triggers" section header on the dashboard
+### 2. `bandhAlert()`
+Sets trigger alert. Pushes "Bandh advisory — Zone 4B". After 4s: injects ₹380 Bandh / General Strike claim + "₹380 credited" notification.
+**Trigger:** Long-press "Live Triggers" section header.
 
 ### 3. `appOutageAlert()`
-- Sets trigger alert #1 in DemoState
-- Pushes "Platform outage detected" notification for the active persona's platform
+Sets trigger alert. Pushes "Platform outage detected" for the active persona's platform.
 
-### 4. `autoClaimAndPayout()` *(Assist screen backdoor)*
-- Immediately injects a ₹247 auto-approved claim (Platform Outage)
-- Pushes "₹247 credited" notification
+### 4. `autoClaimAndPayout()`
+Immediately injects ₹247 auto-approved Platform Outage claim. Pushes "₹247 credited" notification.
+**Trigger:** 4-tap Assist bot avatar, or long-press "My Claims" heading.
 
 ### 5. `fraudQueueEscalation()`
-- Sets `DemoBackend.fraudFlagActive = true` (subsequent `submitClaim` calls produce `ESCALATED_TO_HUMAN`)
-- Finds the latest in-review claim and mutates it to `ESCALATED_TO_HUMAN` status
-- **HTTP-POSTs the claim to the admin bridge** with `isFraud: true`, `fraudScore: 0.81`, `priority: 'High'` — claim appears in the admin Pending Review queue flagged as ESCALATED
-- Pushes "Claim routed to specialist review" notification
+Sets `fraudFlagActive = true`. Mutates latest in-review claim to `ESCALATED_TO_HUMAN`. HTTP-POSTs to admin bridge with `isFraud: true`, `fraudScore: 0.81`, `priority: 'High'`.
+**Trigger:** Long-press Profile avatar.
 
 ### 6. `killSwitchTrip()`
-- Sets `DemoState.killSwitchActive = true`
-- DemoBanner renders "PAYOUT_KILL_SWITCH active" in red
-- Subsequent manual claim submissions produce `REVIEW` status (no auto-approval)
-- Pushes "Payout system under maintenance" notification
+Sets `killSwitchActive = true`. DemoBanner shows red "PAYOUT_KILL_SWITCH active". Subsequent manual claims stay at REVIEW.
+**Trigger:** 3-tap dashboard premium pill. Also available in admin header (5-tap user name).
 
 ### 7. `reserveFloorBreach()`
-- Sets `DemoState.reserveFloorBreached = true`
-- DemoBanner renders "Reserve runway 87 days" in orange
-- Pushes "Coverage status update" notification
+Sets `reserveFloorBreached = true`. DemoBanner shows orange "Reserve runway 87 days". Pushes "Coverage status update" notification.
+**Trigger:** Long-press plan status card. Also available in admin Operations row (4-tap Reserve Runway card).
 
 ### 8. `zoneEnrollmentLock()`
-- Sets `DemoState.zoneEnrollmentLocked = true`
-- DemoBanner renders "Zone enrollment locked" in orange
-- `ApplyForm` checks this flag before submission and blocks with a snackbar
+Sets `zoneEnrollmentLocked = true`. DemoBanner shows orange "Zone enrollment locked". `ApplyForm` blocks submission.
+**Trigger:** Long-press Profile zone row.
 
-### 9. `premiumDebited()` *(Payments screen Pay Now)*
-- Adds a premium debit entry to the payout history
-- Pushes "Premium debited ₹N" notification
+### 9. `premiumDebited()`
+Adds premium debit entry to payout history. Pushes "Premium debited ₹N" notification.
+**Trigger:** Payments screen "Pay Now".
 
-### 10. `submitManualClaim(reason, description, photos, audio)` *(called from ApplyForm)*
-- Passes `_isManual: true` + kill-switch flag into `DemoBackend.submitClaim`
-- Manual submissions always start as `REVIEW` ("In Progress"). They are **posted to the admin bridge** (`/api/claims`) and remain at REVIEW until an admin clicks Approve in the dashboard. The `_ClaimAdvancer` only fires for `isAuto == true` oracle claims.
-- Vehicle Breakdown reason still produces `REJECTED`
-- Adds result to `DemoState.manualClaims`; navigates to Status Tracker with claim ID
-- On `ESCALATED_TO_HUMAN`: pushes specialist review notification
+### 10. `submitManualClaim(reason, description, photos, audio)`
+Called from ApplyForm. Manual submissions always start as `REVIEW`. Posted to admin bridge. `_ClaimAdvancer` does NOT auto-advance manual claims — they wait for admin Approve. Vehicle Breakdown → `REJECTED`.
 
-### 11. `forceApprove(claimId)` *(Status Tracker easter egg)*
-- Immediately sets the given claim to `APPROVED` + generates UPI ref
-- Mirrors update into DemoState.manualClaims if present
-- Pushes "Claim approved" notification
-- **Easter egg:** Long-press the payout card on the Status Tracker screen
+### 11. `forceApprove(claimId)`
+Instantly sets claim to `APPROVED` + generates UPI ref. Pushes "Claim approved" notification.
+**Trigger:** Long-press payout card on Status Tracker.
 
 ### 12. `seedDemoNotifications()`
-- Injects 3 notifications: Weather Alert, Premium Debited, Claim Approved
+Injects 3 notifications: Weather Alert, Premium Debited, Claim Approved.
+**Trigger:** Long-press notification bell.
 
 ### 13. `resetAll()`
-- Clears all DemoState flags and claim lists
-- Clears the active persona's notification inbox
-- Resets `fraudFlagActive = false`
-- Re-seeds DemoBackend with the current persona's original data
-- Re-seeds 2 initial notifications
+Clears all flags, claim lists, notification inbox. Resets `fraudFlagActive`. Re-seeds persona data. Re-seeds 2 initial notifications.
+**Trigger:** Long-press Profile gradient header. Also available in admin sidebar footer (5-tap version tag).
 
 ---
 
-## Claim submission logic (`DemoBackend.submitClaim`)
-
-Outcome is determined by the `_isManual` flag first, then reason keywords + active flags:
+## Claim submission logic
 
 | Condition | Status | Amount |
 |---|---|---|
-| `fraudFlagActive == true` (any) | `ESCALATED_TO_HUMAN` | ₹0 |
-| `_isManual == true` + vehicle/breakdown reason | `REJECTED` | ₹0 |
-| `_isManual == true` (all other reasons) | `REVIEW` → posted to admin bridge; advances only when admin approves | per tier |
-| reason "rain / weather / flood" + kill switch OFF | `APPROVED` (auto) | ₹247 |
-| reason "rain / weather / flood" + kill switch ON | `REVIEW` | ₹0 |
-| reason "outage / app" + kill switch OFF | `APPROVED` | ₹180 |
-| reason "outage / app" + kill switch ON | `REVIEW` | ₹0 |
-| reason "vehicle / breakdown" | `REJECTED` | ₹0 |
-| reason "network / failure" | `REVIEW` | ₹0 |
-| anything else | `REVIEW` | ₹0 |
+| `fraudFlagActive == true` | `ESCALATED_TO_HUMAN` | ₹0 |
+| Manual + vehicle/breakdown | `REJECTED` | ₹0 |
+| Manual + any other reason | `REVIEW` → posted to admin bridge | per tier on approve |
+| Oracle rain/flood + kill switch OFF | `APPROVED` (auto) | ₹247 |
+| Oracle rain/flood + kill switch ON | `REVIEW` | ₹0 |
+| Oracle outage + kill switch OFF | `APPROVED` (auto) | ₹180 |
+| Oracle outage + kill switch ON | `REVIEW` | ₹0 |
+| Oracle breakdown | `REJECTED` | ₹0 |
 
-**Key rule:** All manual form submissions start as REVIEW regardless of weather/rain keywords. Only oracle-triggered (non-manual) calls auto-approve based on reason.
+**Key rule:** All manual form submissions start as REVIEW regardless of reason. Only oracle-triggered (`isAuto == true`) calls auto-approve.
 
----
-
-## Auto-advancing claim stages (`_ClaimAdvancer`)
-
-When an **oracle-triggered (`isAuto == true`) claim** is submitted with `APPROVED` status, a `Timer.periodic(4s)` starts. Manual REVIEW claims are not auto-advanced — they wait for admin approval via the bridge.
-
-```
-Step 0 (4s):  SUBMITTED → REVIEW (progressPct 0.5)
-Step 1 (8s):  REVIEW → APPROVED (amount = max(existing, 247))
-Step 2 (12s): APPROVED → PAYOUT (generates UPI ref, timer stops)
-```
-
-The Status Tracker polls `ApiService().getClaimStatus(id)` every 4 seconds. Polling stops once `APPROVED` or `REJECTED` is reached.
-
----
-
-## New claim reasons (India-specific)
-
-The Apply Form now includes 10 reasons, including India-specific disruption types:
-
-| Reason | Auto-approved (oracle) | Manual outcome |
-|---|---|---|
-| Heavy Rain / Waterlogging | ✅ ₹247 | REVIEW → APPROVED |
-| **Bandh / General Strike** | via `bandhAlert()` only | REVIEW → APPROVED |
-| **Roadblock / Road Closure** | — | REVIEW → APPROVED |
-| **Cyclone / Severe Storm** | — | REVIEW → APPROVED |
-| **Municipal Advisory** | — | REVIEW → APPROVED |
-| **Curfew / Section 144** | — | REVIEW → APPROVED |
-| App Outage (Swiggy/Zomato) | ✅ ₹180 | REVIEW → APPROVED |
-| Network Failure | — | REVIEW |
-| Vehicle Breakdown | — | REJECTED |
-
----
-
-## Earnings chart — per-persona data
-
-The dashboard earnings trend chart is now persona-aware. Data is selected based on the active driver's tier:
-
-| Tier | Yearly (last payout) | Monthly (peak) | Weekly (peak) |
-|---|---|---|---|
-| **Platinum** (Sudarshan) | ₹48,900 | ₹5,800 | ₹950 |
-| **Gold** (Dakshina) | ₹29,600 | ₹3,500 | ₹680 |
-| **Silver** (Sudha) | ₹17,800 | ₹2,100 | ₹420 |
-
-Data is defined in `_trendByTier` (static const map) in `dashboard.dart`. Switch persona → chart reloads automatically on next build.
-
----
-
-## Assist chat — Gemini 2.0 Flash + RAG
-
-`GeminiService` (`lib/services/gemini_service.dart`) powers the Assist chat:
-
-- **System context (RAG):** Injected per-request, built from the active driver's tier, zone, city, platform, premium, and claims count. The model knows what's covered and what isn't.
-- **Model:** `gemini-2.0-flash` via REST API
-- **API key:** Read from `.env` → `GEMINI_API_KEY`. If empty/absent, falls back to a keyword-match mock reply.
-- **Chat history:** Full conversation history is sent on every request (up to session length).
-- **Typing indicator:** 3-dot bouncing animation shows while awaiting the model response.
-- **Fallback mock keywords:** `claim`, `coverage`, `payout`, `bandh/strike`, `status/track`
-
-Bot-avatar 4-tap still triggers `autoClaimAndPayout()` mid-conversation.
-
-To enable real Gemini responses:
-```bash
-# In .env:
-GEMINI_API_KEY=your_gemini_api_key_here
-```
-
----
-
-## Payments screen
-
-- **Per-persona UPI handle:** Derived from driver's partner ID (`swg9284@okaxis`, etc.)
-- **Per-persona card last-4:** Derived deterministically from partner ID hash
-- **Add Method sheet:** Tapping "Add new" opens a bottom sheet with UPI / Credit-Debit Card / Net Banking options (each shows "coming soon" snackbar)
-- **Transaction type:** Payouts show `+₹` in green; premium debits show `-₹` in red
-- **Filter tabs:** All / Credits / Debits above the transaction history list
-
----
-
-## Notifications system
-
-### OS-style toast banner (`NotificationToastLayer`)
-- Wraps the HomeShell `Scaffold` in a `Stack`
-- Listens to `NotificationState.toastSeq` (increments on every `addNotification` call)
-- Slides in from the top with `SlideTransition(Offset(0,-1))` + fade
-- Auto-dismisses after 3.8 seconds; tap navigates to Notifications screen
-- Icon and color are derived from notification title keywords (claim=green, payout=blue, alert=orange)
-
-### Full Notifications screen (`/notifications`)
-- Filter chips: All / Claims / Payouts / Alerts (derived from title keywords)
-- `Dismissible` cards (swipe-to-dismiss = mark as read)
-- "Mark all read" `TextButton` in AppBar
-- Empty state with centered icon
-
-### Profile screen bell
-- Notification bell is embedded in the gradient header (frosted-glass style, white icon)
-- Shows red badge dot when unread notifications exist
-- Tap → Notifications screen; Long-press → seed 3 demo notifications
-
----
-
-## Oracle Engine screen (`/oracle`)
-
-Accessible by tapping the "Live Triggers" header on the dashboard or the "View Data" Quick Action button.
-
-- **Header card:** Gradient, shows "Monitoring" or "Consensus Reached" with pulsing dot. Long-press → `floodAlert()`.
-- **5 oracle source cards:** IMD India, AccuWeather, NASA-GPM, CPCB AQI, DownDetector — each shows status chip, last reading, and confidence bar.
-- **Consensus stepper:** Animates 1-of-4 → 2-of-4 → 3-of-4 → CONSENSUS when alerts fire.
-- **Auto-event feed:** Recent auto-triggered claims from DemoBackend (filtered to `isAuto == true`).
-- Listens to `DemoState.instance` for reactive reload when alerts fire.
-
-**ML model data** (from `DemoBackend.getOracleStatus`):
-- Model: `IsoForest-XGB Ensemble v2.4` — accuracy 0.947, precision 0.931, recall 0.962
-- Top 5 features: Weather severity (0.34), GPS proximity (0.28), Platform status (0.19), Historical frequency (0.12), Zone risk (0.07)
-- SHAP top factor: "weather_severity_score = 0.81"
-- Prediction confidence: 0.94, anomaly score: 0.23
-- 5 data sources with per-source latency (ms) and `records_last_hour` counts
-
----
-
-## Admin Dashboard (`admin_dash/`)
-
-A Next.js 14 admin interface running at `localhost:3000` alongside the Flutter demo. Optional — the Flutter demo is fully self-contained without it, but the bridge unlocks live approve/reject interactions.
-
-### Running
-
-```bash
-cd admin_dash
-npm install
-npm run dev    # starts on http://localhost:3000
-```
-
-### Features
-
-- **KPI cards** — Pending Queue, Approved Today, Rejected Today, Fraud Flagged, Reserve Runway, Zones Active, Avg Payout, Total Payout Today
-- **Pending Review section** — amber-highlighted section appears when Flutter-submitted manual/fraud claims arrive. Each card shows claim ID, tier badge, driver name, reason, description (truncated), zone, amount, FRAUD badge (fraudScore > 0.7), ESCALATED badge (isFraud).
-- **Inline approve/reject** — Approve button shows payout amount (tier default when amount is 0). Reject opens an inline text input for the rejection reason.
-- **Recent Claims table** — last 8 claims with hover states, status badges, and tier sub-rows
-- **Audit Log** — last 5 actions; APPROVED entries shown in green, REJECTED in red
-- **Payout Audit overlay** — 4-tap "Approved Today" KPI → slide-up sheet with UPI references
-
-### Easter egg triggers (admin dashboard)
-
-| Gesture | Action |
-|---|---|
-| 4-tap Pending Queue | `bulkApproveWave()` — approves all high/medium priority claims, adds ₹5,400 to payout total |
-| 4-tap Approved Today | Shows Payout Audit Trail overlay |
-| 3-tap Rejected Today | `claimRejectionCascade()` — injects 2 GPS-rejected claims |
-| 3-tap Fraud Flagged | `fraudFlagging()` — flags CLM-9102-54 with isolation-forest score 0.71 |
-| 4-tap Reserve Runway | `reserveFloorBreach()` — sets runway to 31 days, triggers reserve alert banner |
-
-### Seeded claims (initial state)
-
-8 claims across BLR-South, CHN-Central, and KOL-South zones for Sudarshan K., Dakshina Moorthy, and Sudha P. — names, zones, and amounts match the Flutter app's persona data exactly.
+Auto-approved oracle claims advance via `_ClaimAdvancer` timer: SUBMITTED (0s) → REVIEW (4s) → APPROVED (8s) → PAYOUT + UPI ref (12s).
 
 ---
 
 ## Seeded data per persona
 
-Each persona starts with pre-populated history so every screen feels lived-in from the first tap.
+**Sudarshan K. (Platinum, Bangalore — HSR Layout)**
+- Partner ID: `SWG-9284-912` | Member since: Jan 2024 | Next renewal: Apr 10, 2026
+- Claims: CLM-9824-21 Severe Weather (Approved ₹450, UPI/020426/CONT847291), CLM-9102-54 Platform Outage (In Review), CLM-8833-12 Weather auto-approved (₹247, UPI/220326/CONT829130)
+- Payouts: ₹450, ₹247, ₹199, ₹247 (pending)
+- Weekly: ₹454 across 6/7 orders (86% completion)
 
-**Sudarshan (Platinum)**
-- 3 claims: Severe Weather (Approved ₹450), Platform Outage (In Review), Weather auto-approved (₹247)
-- 4 payouts: ₹450, ₹247, ₹199, ₹247 (pending)
+**Dakshina Moorthy (Gold, Chennai — Anna Nagar)**
+- Partner ID: `ZMT-4471-338` | Member since: Mar 2023 | Next renewal: Apr 8, 2026
+- Claims: CLM-7711-08 Heavy Rain (Approved ₹312, UPI/010426/CONT711082), CLM-7611-22 App Outage (In Review), CLM-7322-90 Vehicle Breakdown (Rejected — GPS outside zone)
+- Payouts: ₹312, ₹99, ₹247 (pending)
+- Weekly: ₹320 across 5/6 orders (83% completion)
 
-**Dakshina (Gold)**
-- 3 claims: Heavy Rain (Approved ₹312), App Outage (In Review), Vehicle Breakdown (Rejected)
-- 3 payouts: ₹312, ₹99, ₹247 (pending)
-
-**Sudha (Silver)**
-- 2 claims: Network Failure (Approved ₹180), Severe Weather auto-approved (₹224)
-- 3 payouts: ₹180, ₹224, ₹49
+**Sudha P. (Silver, Kolkata — Ballygunge)**
+- Partner ID: `SWG-7731-556` | Member since: Jun 2024 | Next renewal: Apr 12, 2026
+- Claims: CLM-5510-44 Network Failure (Approved ₹180, UPI/300326/CONT551044), CLM-5388-19 Severe Weather (Auto-Approved ₹224, UPI/200326/CONT538819)
+- Payouts: ₹180, ₹224, ₹49
+- Weekly: ₹183 across 4/5 orders (80% completion)
 
 All personas get 2 seed notifications on bootstrap: "Coverage active" and "Premium debited".
 
 ---
 
-## Login credentials
+## Tier coverage matrix
 
-The standard login form requires exact credentials:
+| Event | Silver | Gold | Platinum |
+|---|---|---|---|
+| Heavy rain / waterlogging | ✅ | ✅ | ✅ |
+| App outage (Swiggy) | ✅ | ✅ | ✅ |
+| App outage (Zomato) | ❌ | ✅ | ✅ |
+| Network failure | ✅ | ✅ | ✅ |
+| Bandh / general strike | ❌ | ✅ | ✅ |
+| Roadblock / road closure | ❌ | ✅ | ✅ |
+| Cyclone / severe storm | ❌ | ✅ | ✅ |
+| Municipal advisory | ❌ | ✅ | ✅ |
+| Curfew / Section 144 | ❌ | ❌ | ✅ |
+| Vehicle breakdown | ❌ | ❌ | ❌ (GPS zone required) |
 
-| Field | Value |
-|---|---|
-| Worker ID | `SWG-9284` |
-| Password | `Continuum@2026` |
-
-A subtle hint is shown below the Sign In button on the login screen.
-
-**Fast-path (demo shortcut):** 4-tap the Continuum logo on the login screen → bypasses the form, directly loads Sudarshan's Platinum profile.
-
----
-
-## Persona switching
-
-**Via Sandbox Selector screen:**
-1. `DemoBackend.instance.setDriver(driver)` — re-seeds all stores
-2. `DemoOrchestrator.instance.seedInitialNotifications()` — 2 notifications for new persona
-3. `DriverProvider.of(context).switchDriver(driver)` — propagates persona down the widget tree
-4. Navigate to home
-
-**Via Registration flow (`registration.dart`):**
-- Collects name, phone, email, platform, city, partner ID, vehicle type, plan, UPI ID
-- Calls `DemoBackend.instance.completeRegistration(...)` which maps plan tier → closest sandbox persona
-
-**Via login screen:**
-- Standard form: `SWG-9284` / `Continuum@2026` → Sudarshan persona
-- 4-tap logo: fast-path directly to Sudarshan
+Oracle auto-approval speed: Silver 24–48h review · Gold 4–12h priority · Platinum instant (<5 min)
 
 ---
 
-## Profile editing
+## Assist chat — Gemini + persona RAG
 
-`EditProfileScreen` calls `ApiService().updateWorkerProfileCurrent(data)` → `DemoBackend.updateWorkerProfile` → stores changes in `_profileOverlay`. Subsequent `getWorkerProfile` calls layer the overlay on top of the persona defaults. Overlay is cleared on `resetAll()` or persona switch.
+`GeminiService` injects a full system context per request built from `DemoBackend.instance.activeDriver`:
+
+- Partner ID, tier, city, zone, platform, member since
+- Policy: coverage limit, weekly premium, next renewal, claims approved count
+- Full claims history with status, amounts, and UPI references
+- Recent payouts (last 3)
+- Weekly earnings, completion rate, order count
+- Tier-specific covered events + NOT covered events
+
+With `GEMINI_API_KEY` set, responses come from Gemini 2.0 Flash. Without a key, a keyword mock provides persona-specific replies for: flood/weather, outage, rejected/breakdown, claim status, payout/UPI, premium/renewal, coverage, bandh/strike, zone, earnings.
+
+To enable real Gemini:
+```
+GEMINI_API_KEY=your_key   # in .env
+```
 
 ---
 
-## Policy content
+## Oracle Engine screen
 
-`PlanDetailsScreen` calls `ApiService().getPolicyContent()` → DemoBackend returns a persona-tailored 6-section map:
+Tap "Live Triggers" header (Dashboard) or "View Data" Quick Action.
 
-1. **Coverage** — what events are covered, tier-specific limit
-2. **Eligibility** — order history requirements per tier
-3. **Claim Process** — step-by-step instructions, auto vs manual timelines
-4. **Payouts** — UPI eNACH, PayU, reference format
-5. **Exclusions** — vehicle breakdowns, out-of-zone events, fraud
-6. **Renewal** — weekly premium amount, next debit date, grace period
+- **5 source cards:** IMD India, AccuWeather, NASA-GPM, CPCB AQI, DownDetector
+- **Consensus stepper:** animates 1-of-4 → 2-of-4 → 3-of-4 → CONSENSUS when alerts fire
+- **Auto-event feed:** oracle-triggered claims filtered from DemoBackend
+- **ML model:** IsoForest-XGB Ensemble v2.4 — accuracy 0.947, precision 0.931, recall 0.962
+- **Feature weights:** weather_severity 0.34, gps_proximity 0.28, platform_status 0.19, historical_freq 0.12, zone_risk 0.07
+- **SHAP top factor:** weather_severity_score = 0.81, prediction confidence 0.94
+
+Long-press the Oracle header card → `floodAlert()`.
 
 ---
 
-## DemoBanner
+## DemoBanner flags
 
-Always rendered at the top of the Dashboard body column. Listens to `DemoState` via `AnimatedBuilder`. Shows stacked banners when multiple flags are active simultaneously:
-
-| Flag | Color | Text |
+| Flag | Color | Message |
 |---|---|---|
 | `killSwitchActive` | Red | "PAYOUT_KILL_SWITCH active — payouts paused for safety review" |
 | `reserveFloorBreached` | Orange | "Reserve runway 87 days — autopay paused on new policies" |
 | `zoneEnrollmentLocked` | Orange | "Zone enrollment locked — adverse selection guard active" |
 
-Renders nothing (`SizedBox.shrink`) when all flags are false.
-
----
-
-## Key data conventions
-
-DemoBackend uses **camelCase** for claim map keys:
-
-| Key | Meaning |
-|---|---|
-| `eventType` | Display title for the claim event |
-| `statusCode` | Machine-readable status: `SUBMITTED`, `REVIEW`, `APPROVED`, `REJECTED`, `ESCALATED_TO_HUMAN` |
-| `progressPct` | Float 0–1 for progress bar |
-| `upiRef` | UPI reference string, `null` until payout stage |
-| `verificationMsg` | Human-readable status explanation |
-| `isAuto` | `true` for oracle-triggered auto-claims |
-| `claim_description` | Free-text description submitted by the user |
-| `complete` | Boolean per stage in `getClaimStatus` response |
-
-Date strings from seeded data are pre-formatted ("Apr 2, 2026") — not ISO-8601. `DateTime.tryParse` will return null for these and display code passes them through as-is.
-
----
-
-## Reset procedure (live demo recovery)
-
-**Full reset:** Long-press the gradient header on the Profile screen → `resetAll()` — all flags cleared, all injected claims gone, notification inbox back to 2 seed items, persona data restored to original.
-
-**Partial reset:** Navigate to Sandbox Selector and tap any persona to reseed that persona's data.
-
----
-
-## How to run the demo (mock-only)
-
-### The mock is always on — no toggle needed
-
-`ApiService` delegates **every** public method directly to `DemoBackend.instance`. There is no feature flag, no environment switch, no `USE_MOCK=true`. The HTTP layer still compiles but is completely unreachable — no method calls it. You do not need a server, a VPN, or a working `.env` to run the demo.
-
-### Prerequisites
-
-```bash
-# Flutter SDK (3.x stable or later)
-flutter --version
-
-# Dependencies
-flutter pub get
-```
-
-Copy the example env file (no edits needed for the mock):
-
-```bash
-cp .env.example .env
-# Optional: add GEMINI_API_KEY= for real Gemini responses in Assist chat
-# All other backend vars are ignored by the mock layer
-```
-
-### Running
-
-```bash
-# Android emulator or physical device
-flutter run
-
-# iOS simulator (macOS)
-flutter run -d "iPhone 15"
-
-# Flutter web
-flutter run -d chrome --web-port 5000
-```
-
-### Confirming the mock is active
-
-On the login screen, enter `SWG-9284` / `Continuum@2026` and tap Sign In. If you land on the dashboard with Sudarshan's Platinum data (HSR Layout, Bangalore, ₹199/week), the mock layer is active. No network request is made.
-
-Alternatively, 4-tap the Continuum logo to skip the form entirely.
-
----
-
-## Suggested demo walkthrough
-
-Run this in order for a clean investor/stakeholder presentation. Total time: ~10–12 minutes.
-
-### 1. Boot and login (30s)
-
-- Launch the app. The login screen appears with a subtle hint below the button.
-- Enter **SWG-9284** / **Continuum@2026** and tap Sign In — or **4-tap the logo** to jump directly.
-- Sudarshan's Platinum dashboard loads.
-
-### 2. Dashboard tour (1 min)
-
-- Point out the coverage card (Platinum Shield Plan, ₹24,800 coverage, next renewal).
-- Show the earnings chart — Platinum tier data, toggle between Weekly/Monthly/Yearly.
-- Show the 4 Quick Action buttons: Track Claim, Pay Now, View Policy, and **View Data** (→ Oracle Engine).
-- Show the Live Triggers section with 5 oracle cards monitoring in real time.
-
-### 3. Zero-touch flood scenario (2 min)
-
-- **Long-press the dashboard avatar** (top-left profile photo).
-- An OS-style banner slides in from the top: "Red Alert — Flood advisory Zone 4B".
-- Wait 4 seconds — a second banner: "₹450 credited to your UPI".
-- Navigate to the **Claims** tab → the auto-approved claim appears in indigo with the lightning bolt badge.
-- Tap it → Status Tracker shows all four stages completed with UPI reference.
-
-### 4. Zero-touch bandh scenario (2 min)
-
-- Return to the Dashboard.
-- **Long-press the "Live Triggers" section header**.
-- Banner: "Bandh advisory — Zone 4B. Parametric coverage is now active."
-- After 4 seconds: "Bandh payout credited — ₹380. UPI Ref: ..."
-- Navigate to Claims → the ₹380 Bandh / General Strike claim appears alongside the flood claim.
-- Point out: two different zero-touch triggers, different reasons, different amounts, same oracle-speed settlement.
-
-### 5. Submit a manual claim (2 min)
-
-- Tap **Apply Claim** on the dashboard.
-- **Long-press "New Claim" in the AppBar** → form auto-fills with flood scenario data.
-- Tap Submit → navigates to Status Tracker showing "In Progress" (REVIEW). The claim is **simultaneously posted to the admin bridge**.
-- Switch to the **admin dashboard** (`localhost:3000`) → the claim appears in the amber "Pending Review" section with Approve/Reject buttons.
-- Click **Approve** in the admin dashboard → within 4 seconds (next Flutter poll), the Status Tracker updates to APPROVED and the payout processes.
-- Bell badge increments; tap it → full Notifications screen with filter chips.
-
-### 6. Oracle Engine (1 min)
-
-- Return to Dashboard, tap the "Live Triggers" header (or tap **View Data** in Quick Actions).
-- Oracle Network screen shows 5 data source cards (IMD, AccuWeather, NASA-GPM, CPCB, DownDetector).
-- Show the confidence bars and consensus stepper — already at "Consensus Reached" from the flood trigger.
-- Mention the ML model: IsoForest-XGB Ensemble — 94.7% accuracy, 5 weighted features, SHAP-backed decisions.
-
-### 7. Kill-switch demo (1 min)
-
-- Return to Dashboard.
-- **3-tap the weekly premium pill** → red "PAYOUT_KILL_SWITCH active" banner appears.
-- Tap Apply Claim, submit any weather reason → Status Tracker stays at REVIEW (auto-approval blocked).
-
-### 8. Fraud escalation (1 min)
-
-- Navigate to **Profile**.
-- Note the notification bell in the top-right (frosted glass, white).
-- **Long-press the avatar** → fraud flag activates; latest in-review claim mutates to "Under Review — Fraud Queue". The claim is also posted to the admin bridge with `isFraud: true`.
-- Switch to the admin dashboard → claim appears in Pending Review with the ESCALATED badge and fraud score 0.81.
-- Bell badge shows the new notification; tap → Notifications screen with the escalation entry.
-
-### 9. Assist chat (1 min)
-
-- Navigate to **Assist**.
-- Type "what does my coverage include?" → Gemini responds with persona-aware coverage details (or keyword mock if no API key).
-- Typing indicator (3 bouncing dots) shows while awaiting response.
-- **4-tap the bot avatar across any bubbles** → instant ₹247 auto-claim fires; banner slides in.
-- Tap the phone icon → Voice Agent call sheet with pulsing animation.
-
-### 10. Payments (30s)
-
-- Navigate to **Profile → Payments**.
-- UPI handle shows Sudarshan's persona-specific ID (`swg9284@okaxis`).
-- Tap Pay Now → dialog confirms payment; transaction history shows `-₹199` in red.
-- Filter to "Debits" → only premium payments. Filter to "Credits" → only payouts.
-- Tap "Add new" → bottom sheet with UPI / Card / Net Banking options.
-
-### 11. Reset (30s)
-
-- Navigate to **Profile**.
-- **Long-press the gradient header** → `resetAll()` fires.
-- All flags clear, all injected claims gone, notifications back to 2 seed items.
-- App is clean and ready for the next presenter.
+All three can stack simultaneously. Banners clear on `resetAll()`.
 
 ---
 
 ## What NOT to do before a demo
 
-- Do not set `API_HOST` to a live server IP — it has no effect on the mock, but a stale auth token in secure storage may trigger one real HTTP call at startup. Uninstall/reinstall the app if this is a concern.
-- Do not run `flutter clean` right before presenting — forces a full rebuild.
-- Do not leave kill switch or zone lock banners active between segments — use the Profile header long-press reset between segments.
-- Do not add `GEMINI_API_KEY` to `.env` right before a demo unless you have tested it — the mock fallback is reliable and covers all expected audience questions.
+- **Don't set `API_HOST` to a live server.** The mock intercepts everything, but a stale token in secure storage may cause one real HTTP call at boot. Uninstall/reinstall if concerned.
+- **Don't `flutter clean` right before presenting.** It forces a full rebuild.
+- **Don't leave flags active between segments.** Profile header long-press resets everything in seconds.
+- **Don't add `GEMINI_API_KEY` without testing it first.** The keyword mock is reliable and covers all expected audience questions.
+- **Don't run `npm run build`** right before presenting — dev mode is faster to start.
+
+---
+
+## Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| App launches but shows blank/loading | Run `flutter pub get`, then `flutter run` again |
+| Claims don't appear in admin dashboard | Make sure `npm run dev` is running at localhost:3000; check `ADMIN_BRIDGE_URL=http://localhost:3000` in `.env` |
+| Gemini chat gives generic responses | API key is missing or empty — that's fine, keyword mock is active |
+| Persona data looks wrong after switch | Long-press Profile header → `resetAll()`, then switch persona again via Sandbox Selector |
+| Admin dashboard showing old claims from previous run | 5-tap the version tag (bottom of sidebar) → `resetAll()` |
+| Easter egg doesn't fire | Tap count resets if taps are too slow. Retry within the time window (2–3s for most triggers) |

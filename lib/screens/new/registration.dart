@@ -54,6 +54,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   bool _autoDebit = true;
   int _resendSeconds = 30;
   Timer? _otpTimer;
+  bool _imageWarningShown = false;
 
   // Plan → weekly premium mapping (consistent with app tiers)
   static const _planPremiums = {
@@ -88,19 +89,23 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       if (_licenseFrontImage == null ||
           _licenseBackImage == null ||
           _profileImage == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text(
-              'Please upload license front, back, and your photo.',
+        if (!_imageWarningShown) {
+          setState(() => _imageWarningShown = true);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text(
+                'Photos not uploaded — tap Continue again to proceed in demo mode.',
+              ),
+              backgroundColor: AppTheme.warningOrange,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
-            backgroundColor: AppTheme.dangerRed,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        );
-        return;
+          );
+          return;
+        }
+        // Second tap bypasses photo requirement for demo
       }
       await _runTask(() async {
         await _api.requestOtp(

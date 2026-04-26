@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../config/app_config.dart';
 import '../sandbox/sandbox_drivers.dart';
 import '../services/demo_backend.dart';
 import 'demo_state.dart';
@@ -197,7 +198,7 @@ class DemoOrchestrator {
       'isFraud': true,
     });
     http.post(
-      Uri.parse('http://localhost:3000/api/claims'),
+      Uri.parse('${AppConfig.adminBridgeUrl}/api/claims'),
       headers: {'Content-Type': 'application/json'},
       body: payload,
     ).timeout(const Duration(seconds: 3)).catchError((_) => http.Response('', 200));

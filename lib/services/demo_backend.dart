@@ -4,9 +4,8 @@ import 'dart:math';
 
 import 'package:http/http.dart' as http;
 
+import '../config/app_config.dart';
 import '../sandbox/sandbox_drivers.dart';
-
-const _adminBaseUrl = 'http://localhost:3000';
 
 /// Singleton mock backend — backs every ApiService call with persona-aware,
 /// deterministic fake data. No network required.
@@ -264,7 +263,7 @@ class DemoBackend {
     try {
       final d = _driver;
       await http.post(
-        Uri.parse('$_adminBaseUrl/api/claims'),
+        Uri.parse('${AppConfig.adminBridgeUrl}/api/claims'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'id': claim['id'],
@@ -288,7 +287,7 @@ class DemoBackend {
   Future<Map<String, dynamic>?> _fetchFromAdmin(String claimId) async {
     try {
       final res = await http
-          .get(Uri.parse('$_adminBaseUrl/api/claims/$claimId'))
+          .get(Uri.parse('${AppConfig.adminBridgeUrl}/api/claims/$claimId'))
           .timeout(const Duration(seconds: 2));
       if (res.statusCode == 200) {
         return jsonDecode(res.body) as Map<String, dynamic>;
@@ -488,6 +487,37 @@ class DemoBackend {
   Future<void> verifyOtp(String otp) async {
     await _delay();
     // Mock: all OTPs pass
+  }
+
+  /// Returns a formatted claims summary for the active persona — used by GeminiService.
+  String getSeededClaimsSummary() {
+    final claims = _seededClaims(_driver);
+    return claims.map((c) {
+      final id = c['id'];
+      final event = c['eventType'];
+      final status = c['status'];
+      final amount = (c['amount'] as num?) ?? 0;
+      final upi = c['upiRef'] as String?;
+      final note = c['verificationMsg'] as String?;
+      if (upi != null && upi.isNotEmpty) {
+        return '- $id: $event ($status ₹${amount.toStringAsFixed(0)}, ref $upi)';
+      } else if (note != null && note.isNotEmpty) {
+        return '- $id: $event ($status — $note)';
+      }
+      return '- $id: $event ($status)';
+    }).join('\n');
+  }
+
+  /// Returns a formatted payouts summary for the active persona — used by GeminiService.
+  String getSeededPayoutsSummary() {
+    final payouts = _seededPayouts(_driver);
+    return payouts.take(3).map((p) {
+      final id = p['id'];
+      final date = p['date'];
+      final amount = (p['amount'] as num?) ?? 0;
+      final status = p['status'];
+      return '- $id: ₹${amount.toStringAsFixed(0)} on $date ($status)';
+    }).join('\n');
   }
 
   Future<String> completeRegistration({
