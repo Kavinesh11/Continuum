@@ -114,7 +114,7 @@ def _parse_fraud_report(
     Extract a FraudAnalysisReport from the crew's raw output string.
     Falls back to a conservative report if parsing fails.
     """
-    raw = str(crew_output) if crew_output else ""
+    raw = (getattr(crew_output, "raw", None) or str(crew_output)) if crew_output else ""
 
     # Attempt JSON extraction from the output
     try:
@@ -175,9 +175,7 @@ async def process_fraud_queue_claim(
                                  "fraud_signal_aggregation", "payout_authorization"]},
         )
 
-        # CrewAI kickoff is synchronous; run in executor to avoid blocking event loop
-        loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(None, crew.kickoff)
+        result = await crew.kickoff_async()
 
         await log_agent_action(
             claim_id=claim_id,

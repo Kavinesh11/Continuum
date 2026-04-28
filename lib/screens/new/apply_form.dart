@@ -607,6 +607,8 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
     try {
       final claimId = const Uuid().v4();
       final workerId = await ApiService().getCurrentWorkerId();
+      final profile = await ApiService().getWorkerProfileCurrent();
+      final zoneId = (profile['zone_id'] as String?) ?? 'default';
       final payload = {
         'claim_id': claimId,
         'worker_id': workerId,
@@ -614,8 +616,8 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
         'event_timestamp': DateTime.now().toIso8601String(),
         'verification_message': _descriptionController.text.trim(),
         'claim_description': _descriptionController.text.trim(),
+        'zone_id': zoneId,
         'gps_coordinates': [0.0, 0.0],
-        'zone_id': 'default',
         'device_attestation_token': 'mobile_app',
       };
 

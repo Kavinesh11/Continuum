@@ -185,8 +185,8 @@ class _LoginScreenState extends State<LoginScreen>
                   // ── Fields ──
                   _buildTextField(
                     controller: _emailController,
-                    hintText: 'Email address',
-                    icon: Icons.email_outlined,
+                    hintText: 'Worker ID (UUID)',
+                    icon: Icons.person_outline,
                   ),
                   const SizedBox(height: 14),
                   _buildTextField(

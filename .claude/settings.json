@@ -1,0 +1,5 @@
+{
+  "enabledPlugins": {
+    "crewai-skills@crewai-plugins": true
+  }
+}

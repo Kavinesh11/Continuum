@@ -48,7 +48,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final stats = (_workerData?['stats'] as Map<String, dynamic>?) ?? const {};
     final historyRaw =
-        (_workerData?['recent_history'] as List<dynamic>? ?? const [])
+        ((_workerData?['recent_history'] as List<dynamic>?) ??
+                (_workerData?['recent_claims'] as List<dynamic>?) ??
+                const [])
             .cast<Map<String, dynamic>>();
 
     final name =
@@ -66,10 +68,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final platform = (_workerData?['platform'] ?? 'Unknown').toString();
     final zone = (_workerData?['zone_id'] ?? 'Unknown').toString();
     final tier = (_workerData?['tier'] ?? 'Standard').toString();
-    final memberSince = (_workerData?['member_since'] ?? 'N/A').toString();
-    final totalProtected = (stats['total_protected_amount'] ?? 0).toString();
+    final memberSince =
+        (_workerData?['registered_at'] ?? _workerData?['member_since'] ?? 'N/A')
+            .toString();
+    final totalProtected =
+        (stats['total_protected_amount'] ??
+                _workerData?['total_protected_amount'] ??
+                0)
+            .toString();
     final claimsApproved =
-        (stats['claims_approved_count'] as num?)?.toInt() ?? 0;
+        (stats['claims_approved_count'] as num?)?.toInt() ??
+        (_workerData?['claims_approved_count'] as num?)?.toInt() ??
+        0;
     final emergencyContact = (_workerData?['emergency_contact'] ?? '--')
         .toString();
     final weeklyOrderCount =
@@ -90,8 +100,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           (h) => {
             'incident': (h['incident'] ?? h['event_type'] ?? 'Claim')
                 .toString(),
-            'date': (h['date'] ?? 'Recent').toString(),
-            'detail': (h['detail'] ?? 'Claim activity recorded').toString(),
+            'date': (h['date'] ?? h['submitted_at'] ?? 'Recent').toString(),
+            'detail': (h['detail'] ?? h['status'] ?? 'Claim activity recorded')
+                .toString(),
           },
         )
         .toList();

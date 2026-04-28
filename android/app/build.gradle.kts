@@ -6,9 +6,9 @@ plugins {
 }
 
 android {
-    namespace = "com.example.ui"
+    namespace = "in.continuum.rider"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = "27.0.12077973"
+    ndkVersion = "28.2.13676358"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -20,21 +20,33 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.ui"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
+        applicationId = "in.continuum.rider"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("release") {
+            val keystorePath = System.getenv("CONTINUUM_KEYSTORE_PATH") ?: "debug"
+            if (keystorePath != "debug") {
+                storeFile = file(keystorePath)
+                storePassword = System.getenv("CONTINUUM_KEYSTORE_PASSWORD") ?: ""
+                keyAlias = System.getenv("CONTINUUM_KEY_ALIAS") ?: "continuum"
+                keyPassword = System.getenv("CONTINUUM_KEY_PASSWORD") ?: ""
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            val hasKeystore = System.getenv("CONTINUUM_KEYSTORE_PATH") != null
+            signingConfig = if (hasKeystore) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }

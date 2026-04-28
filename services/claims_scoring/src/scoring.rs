@@ -101,6 +101,8 @@ mod tests {
             spatial: SpatialResult {
                 score: spatial_score,
                 zone_mismatch: spatial_score < 1.0,
+                adjacency_grace: false,
+                adjacent_zone_id: None,
             },
             frequency: FrequencyResult {
                 score: frequency_score,

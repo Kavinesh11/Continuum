@@ -118,6 +118,31 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
     };
   }
 
+  String _formatRenewalDate(dynamic v) {
+    if (v == null) return 'Upcoming cycle';
+    try {
+      final dt = DateTime.parse(v.toString()).toLocal();
+      return '${dt.day} ${_monthName(dt.month)} ${dt.year}';
+    } catch (_) {
+      return v.toString();
+    }
+  }
+
+  String _monthName(int m) => const [
+    '',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ][m];
   Map<String, dynamic> _buildPlanData() {
     final tier = (_profile?['tier'] ?? 'Standard').toString();
     final zone = (_profile?['zone_id'] ?? 'default').toString();
@@ -127,8 +152,9 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
       'planName': hero?['title']?.toString() ?? '$tier Tier Plan',
       'coverage':
           hero?['subtitle']?.toString() ?? 'Coverage active in zone $zone',
-      'weeklyCost': (_profile?['weekly_premium'] ?? 57).toString(),
-      'nextBillingDate': 'Upcoming cycle',
+      'weeklyCost':
+          (_profile?['weekly_premium'] as num?)?.toStringAsFixed(0) ?? '—',
+      'nextBillingDate': _formatRenewalDate(_profile?['next_renewal']),
     };
   }
 
@@ -560,9 +586,9 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                   ),
                 ],
               ),
-              content: const Text(
-                'Your payment of ₹57 has been initiated and will be processed shortly.',
-                style: TextStyle(height: 1.4),
+              content: Text(
+                'Your payment of ₹${(_profile?['weekly_premium'] as num?)?.toStringAsFixed(0) ?? '—'} has been initiated and will be processed shortly.',
+                style: const TextStyle(height: 1.4),
               ),
               actions: [
                 Container(
@@ -600,14 +626,16 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
             borderRadius: BorderRadius.circular(AppTheme.radiusMd),
           ),
         ),
-        child: const Row(
+        child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.payment_rounded, color: Colors.white, size: 20),
-            SizedBox(width: 10),
+            const Icon(Icons.payment_rounded, color: Colors.white, size: 20),
+            const SizedBox(width: 10),
             Text(
-              'Pay Now — ₹57',
-              style: TextStyle(
+              _profile?['weekly_premium'] != null
+                  ? 'Pay Now — ₹${(_profile!['weekly_premium'] as num).toStringAsFixed(0)}'
+                  : 'Pay Now',
+              style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
                 fontSize: 16,

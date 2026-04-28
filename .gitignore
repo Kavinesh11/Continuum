@@ -78,3 +78,6 @@ coverage/
 .cursor\rules\openmemory.mdc
 
 .kiro/
+
+.hypothesis/constants
+services/fastapi_gateway/.hypothesis/

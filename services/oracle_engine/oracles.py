@@ -53,8 +53,14 @@ def _build_ssl_context() -> ssl.SSLContext:
 
 
 def _verify_fingerprint(cert_der: bytes, expected_fps: list[str]) -> bool:
-    """Return True if cert fingerprint matches any expected pin, or if no pins are configured."""
+    """Return True if cert fingerprint matches any expected pin.
+
+    In production (CONTINUUM_ENV=prod), fails closed when no pins are configured.
+    In dev/test, returns True when no pins are set (pinning disabled).
+    """
     if not expected_fps:
+        if os.environ.get("CONTINUUM_ENV", "").lower() == "prod":
+            return False
         return True
     actual_fp = hashlib.sha256(cert_der).hexdigest().lower()
     return actual_fp in expected_fps

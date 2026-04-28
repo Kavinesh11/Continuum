@@ -29,6 +29,23 @@ function validateEnv() {
     console.warn('[config] WARNING: DB_SSL is false in production — database traffic is unencrypted');
   }
 
+  // Regulatory startup gate — prod must have these set before accepting policies
+  if (env.isProd) {
+    const required = [
+      'PAYOUT_GATEWAY_PROVIDER',
+      'MANDATE_GATEWAY_PROVIDER',
+    ];
+    for (const key of required) {
+      const val = process.env[key];
+      if (!val || val === 'mock') {
+        throw new Error(`${key} must not be 'mock' in production`);
+      }
+    }
+    if (process.env.PAYOUT_AUTOMATION_ENABLED !== 'true') {
+      throw new Error('PAYOUT_AUTOMATION_ENABLED must be true in production');
+    }
+  }
+
   return env;
 }
 

@@ -3,6 +3,7 @@ VectorStoreTool — MongoDB Atlas queries for relevant policy/disruption chunks.
 """
 from __future__ import annotations
 
+import json
 import os
 from typing import Any
 
@@ -68,8 +69,8 @@ def make_vector_store_tool():
             )
             args_schema: type[BaseModel] = VectorStoreInput
 
-            def _run(self, query: str, top_k: int = 5) -> list[dict[str, Any]]:
-                return VectorStoreTool().run(query, top_k)
+            def _run(self, query: str, top_k: int = 5) -> str:
+                return json.dumps(VectorStoreTool().run(query, top_k))
 
         return _VectorStoreTool()
     except ImportError:

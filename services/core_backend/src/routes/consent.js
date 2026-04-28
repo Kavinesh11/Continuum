@@ -18,29 +18,42 @@ const VALID_PURPOSES = [
 
 /**
  * POST /consent
- * Grant consent for a specific purpose. DPDP Act §6 — freely given, specific, informed.
+ * Grant consent for one or more purposes. DPDP Act §6 — freely given, specific, informed.
+ * Body: { purpose: string } OR { purposes: string[], consent_version: string }
  */
 router.post('/', authenticate, requireRole('worker'), async (req, res, next) => {
   try {
-    const { purpose, template_version } = req.body;
+    const { purpose, purposes, template_version, consent_version } = req.body;
     const worker_id = req.user.worker_id;
+    const version = consent_version || template_version || 'v1';
 
-    if (!purpose || !VALID_PURPOSES.includes(purpose)) {
-      return res.status(400).json({ error: 'invalid_purpose', valid_purposes: VALID_PURPOSES });
+    const purposeList = purposes || (purpose ? [purpose] : []);
+
+    const invalid = purposeList.filter(p => !VALID_PURPOSES.includes(p));
+    if (purposeList.length === 0 || invalid.length > 0) {
+      return res.status(400).json({
+        error: 'invalid_purpose',
+        invalid_purposes: invalid,
+        valid_purposes: VALID_PURPOSES,
+      });
     }
 
-    const result = await db.query(
-      `INSERT INTO consent_receipts (worker_id, purpose, template_version, granted_at, revoked_at)
-       VALUES ($1, $2, $3, NOW(), NULL)
-       ON CONFLICT (worker_id, purpose) DO UPDATE SET
-         granted_at = NOW(),
-         revoked_at = NULL,
-         template_version = EXCLUDED.template_version
-       RETURNING *`,
-      [worker_id, purpose, template_version || 'v1']
-    );
+    const results = [];
+    for (const p of purposeList) {
+      const result = await db.query(
+        `INSERT INTO consent_receipts (worker_id, purpose, template_version, granted_at, revoked_at)
+         VALUES ($1, $2, $3, NOW(), NULL)
+         ON CONFLICT (worker_id, purpose) DO UPDATE SET
+           granted_at = NOW(),
+           revoked_at = NULL,
+           template_version = EXCLUDED.template_version
+         RETURNING *`,
+        [worker_id, p, version]
+      );
+      results.push(result.rows[0]);
+    }
 
-    return res.status(201).json(result.rows[0]);
+    return res.status(201).json(results.length === 1 ? results[0] : results);
   } catch (err) {
     next(err);
   }

@@ -1,10 +1,11 @@
 // Feature: continuum-ml-pipelines
-// Claim status endpoint
+// Claim management endpoints
 // Requirements: 6.1
 
 'use strict';
 
 const express = require('express');
+const { v4: uuidv4 } = require('uuid');
 const { authenticate } = require('../middleware/auth');
 const { requireRole } = require('../middleware/rbac');
 const db = require('../db');
@@ -29,9 +30,9 @@ function progressPct(status) {
 }
 
 /**
- * GET /claims/:id/status
- * Returns current claim status + fraud_score for the authenticated worker.
- * Workers can only access their own claims.
+ * GET /claims
+ * List all claims for the authenticated worker.
+ * Admins and insurers can filter by worker_id query param.
  * Requirements: 6.1
  */
 router.get('/', authenticate, requireRole('worker', 'admin', 'insurer'), async (req, res, next) => {
@@ -68,6 +69,12 @@ router.get('/', authenticate, requireRole('worker', 'admin', 'insurer'), async (
   }
 });
 
+/**
+ * POST /claims
+ * Create a new claim with optional fields.
+ * Workers can only create claims for themselves.
+ * Requirements: 6.1
+ */
 router.post('/', authenticate, requireRole('worker', 'admin'), async (req, res, next) => {
   try {
     const {
@@ -144,6 +151,12 @@ router.post('/', authenticate, requireRole('worker', 'admin'), async (req, res, 
   }
 });
 
+/**
+ * PUT /claims/:id
+ * Update a claim's status, payout, or metadata.
+ * Workers can only update their own claims.
+ * Requirements: 6.1
+ */
 router.put('/:id', authenticate, requireRole('worker', 'admin', 'insurer'), async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -163,7 +176,7 @@ router.put('/:id', authenticate, requireRole('worker', 'admin', 'insurer'), asyn
            claim_description = COALESCE($4, claim_description),
            decided_at = CASE WHEN $1 IN ('approved','rejected') THEN NOW() ELSE decided_at END
          WHERE claim_id = $5`,
-        [status, estimated_payout, verification_message, claim_description, id]
+      [status, estimated_payout, verification_message, claim_description, id]
     );
 
     return res.status(200).json({ updated: true, claim_id: id });
@@ -172,6 +185,11 @@ router.put('/:id', authenticate, requireRole('worker', 'admin', 'insurer'), asyn
   }
 });
 
+/**
+ * DELETE /claims/:id
+ * Delete a claim. Workers can only delete their own.
+ * Requirements: 6.1
+ */
 router.delete('/:id', authenticate, requireRole('worker', 'admin'), async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -209,15 +227,15 @@ router.get('/:id/status', authenticate, requireRole('worker', 'admin', 'insurer'
     }
 
     const payoutResult = await db.query(
-    `SELECT status, disbursed_at, created_at FROM payouts WHERE claim_id = $1 ORDER BY created_at DESC LIMIT 1`, 
-    [id]
+      `SELECT status, disbursed_at, created_at FROM payouts WHERE claim_id = $1 ORDER BY created_at DESC LIMIT 1`,
+      [id]
     );
 
     const payout = payoutResult.rows[0] || null;
     const payoutStatus = payout?.status || null;
     const payoutTime = payout
-    ? toISO(payout.disbursed_at || payout.created_at)
-    : 'Pending';
+      ? toISO(payout.disbursed_at || payout.created_at)
+      : 'Pending';
 
     const status = claim.status || 'processing';
     const submitted = toISO(claim.submitted_at) || '';
@@ -227,10 +245,10 @@ router.get('/:id/status', authenticate, requireRole('worker', 'admin', 'insurer'
     const isPayoutDone = payoutStatus === 'disbursed';
 
     const stages = [
-    { name: 'SUBMITTED', time: submitted, complete: true },
-    { name: 'REVIEW', time: status === 'processing' ? 'In Progress' : decided, complete: true },
-    { name: 'APPROVED', time: isApproved ? decided : 'Pending', complete: isApproved },
-    { name: 'PAYOUT', time: isApproved ? payoutTime : 'Pending', complete: isApproved && isPayoutDone }
+      { name: 'SUBMITTED', time: submitted, complete: true },
+      { name: 'REVIEW', time: status === 'processing' ? 'In Progress' : decided, complete: true },
+      { name: 'APPROVED', time: isApproved ? decided : 'Pending', complete: isApproved },
+      { name: 'PAYOUT', time: isApproved ? payoutTime : 'Pending', complete: isApproved && isPayoutDone }
     ];
 
     return res.status(200).json({

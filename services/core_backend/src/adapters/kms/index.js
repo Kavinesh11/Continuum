@@ -83,32 +83,13 @@ class AwsKmsAdapter {
   }
 }
 
-/**
- * GCP KMS adapter (typed shell).
- */
-class GcpKmsAdapter {
-  constructor() {
-    this._keyName = process.env.GCP_KMS_KEY_NAME;
-    if (!this._keyName) throw new AdapterNotConfiguredError('GcpKmsAdapter');
-  }
-
-  async encrypt(_plaintext) {
-    throw new Error('GcpKmsAdapter.encrypt: not yet implemented — requires @google-cloud/kms');
-  }
-
-  async decrypt(_ciphertext) {
-    throw new Error('GcpKmsAdapter.decrypt: not yet implemented — requires @google-cloud/kms');
-  }
-}
-
 function createKmsAdapter() {
   const provider = (process.env.KMS_PROVIDER || 'local').toLowerCase();
   switch (provider) {
     case 'aws': return new AwsKmsAdapter();
-    case 'gcp': return new GcpKmsAdapter();
     case 'local':
     default: return new LocalKmsAdapter();
   }
 }
 
-module.exports = { createKmsAdapter, LocalKmsAdapter, AwsKmsAdapter, GcpKmsAdapter };
+module.exports = { createKmsAdapter, LocalKmsAdapter, AwsKmsAdapter };

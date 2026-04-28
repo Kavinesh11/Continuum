@@ -6,11 +6,8 @@
 
 const db = require('../../db');
 const { sendNotification } = require('../../services/fcm');
-const {
-  callPayUGateway,
-  hasSIMChangedRecently,
-  recordDisbursementStatus,
-} = require('../../services/payu');
+const { hasSIMChangedRecently, recordDisbursementStatus } = require('../../services/payu');
+const { createPayoutGateway } = require('../../adapters/payoutGateway');
 const { recordPayoutLatency } = require('../../services/metrics');
 
 /**
@@ -66,8 +63,9 @@ async function processPayoutDisbursement(job) {
     return { payout_id, status: 'held_sim_change', reason: 'sim_change_detected' };
   }
 
-  // Call PayU Gateway (Req 14.2)
-  const payuResult = await callPayUGateway(payout_id, worker_id, worker.upi_id, amount);
+  // Call payout gateway via adapter (Req 14.2)
+  const gateway = createPayoutGateway();
+  const payuResult = await gateway.disburse(payout_id, worker_id, worker.upi_id, amount);
 
   if (!payuResult.success) {
     // Record failed attempt then throw so BullMQ retries with exponential backoff (Req 8.2, 14.3)
@@ -119,7 +117,5 @@ async function processPayoutDisbursement(job) {
 
 module.exports = {
   processPayoutDisbursement,
-  // Re-export for backward compatibility and direct testing
-  callPayUGateway,
   hasSIMChangedRecently,
 };

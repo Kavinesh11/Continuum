@@ -68,9 +68,45 @@ class _StatusTrackerScreenState extends State<StatusTrackerScreen> {
     }
   }
 
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
+  }
+
+  List<Map<String, dynamic>> _buildStages(Map<String, dynamic> data) {
+    final status = (data['status'] as String? ?? '').toLowerCase();
+    final decidedAt = data['decided_at']?.toString() ?? '';
+    final isDecided = status == 'approved' || status == 'rejected';
+    final isScoring =
+        status == 'processing' ||
+        status == 'in review' ||
+        status == 'fraud_queue' ||
+        isDecided;
+    final isVerifying = status == 'in review' || isDecided;
+
+    String _fmt(String iso) {
+      final dt = DateTime.tryParse(iso);
+      if (dt == null) return '';
+      return '${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
+    }
+
+    return [
+      {'name': 'SUBMITTED', 'complete': true, 'time': ''},
+      {'name': 'SCORING', 'complete': isScoring, 'time': ''},
+      {'name': 'REVIEW', 'complete': isVerifying, 'time': ''},
+      {
+        'name': 'DECISION',
+        'complete': isDecided,
+        'time': isDecided ? _fmt(decidedAt) : '',
+      },
+    ];
+  }
+
   void _maybeStartPolling(String? status) {
     _pollTimer?.cancel();
-    if (status == 'processing') {
+    final s = (status ?? '').toLowerCase();
+    if (s == 'processing' || s == 'in review') {
       _pollTimer = Timer.periodic(const Duration(seconds: 30), (_) {
         _loadStatus();
       });
@@ -78,16 +114,9 @@ class _StatusTrackerScreenState extends State<StatusTrackerScreen> {
   }
 
   @override
-  void dispose() {
-    _pollTimer?.cancel();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final data = _liveData;
-    final stages = (data?['stages'] as List<dynamic>? ?? [])
-        .cast<Map<String, dynamic>>();
+    final stages = data != null ? _buildStages(data) : <Map<String, dynamic>>[];
 
     return Scaffold(
       appBar: AppBar(

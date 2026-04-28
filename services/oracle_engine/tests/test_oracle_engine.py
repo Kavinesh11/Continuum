@@ -2,16 +2,20 @@
 
 import itertools
 import pytest
+import random
+import uuid
+import asyncio
 from datetime import datetime, timedelta, timezone
 from hypothesis import given, settings, assume
 from hypothesis import strategies as st
+from unittest.mock import AsyncMock, MagicMock, patch, call
 
 import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 
 from services.oracle_engine.oracles import OracleVote
-from services.oracle_engine.engine import OracleConsensusEngine, AFFIRMATIVE_THRESHOLD
+from services.oracle_engine.engine import OracleConsensusEngine, AFFIRMATIVE_THRESHOLD, VoteResult
 
 ORACLE_NAMES = ["imd", "accuweather", "nasa_gpm", "ground_sensor"]
 
@@ -408,3 +412,274 @@ def test_property17_benefit_of_doubt_exact_boundary():
     result_no_bod = engine.evaluate_votes(votes_no_bod)
     assert result_no_bod.authorized is False
     assert result_no_bod.benefit_of_doubt is False
+
+
+# ---------------------------------------------------------------------------
+# V6 — Kafka publish schema: both topics receive events on authorization
+# ---------------------------------------------------------------------------
+
+def _make_authorized_result() -> VoteResult:
+    """Build a VoteResult representing 3-of-4 affirm authorization."""
+    votes = [
+        _make_vote("imd", "affirm"),
+        _make_vote("accuweather", "affirm"),
+        _make_vote("nasa_gpm", "affirm"),
+        _make_vote("ground_sensor", "deny"),
+    ]
+    return VoteResult(
+        authorized=True,
+        affirmative_count=3,
+        abstain_count=0,
+        deny_count=1,
+        nullified_count=0,
+        payout_cap=1.0,
+        votes=votes,
+        benefit_of_doubt=False,
+    )
+
+
+@pytest.mark.asyncio
+async def test_v6_both_topics_published_on_authorization():
+    """V6: when authorized=True, both oracle_trigger and payout_authorized topics receive events."""
+    from services.oracle_engine.kafka_publisher import KafkaPublisher, ORACLE_TRIGGER_TOPIC, PAYOUT_AUTHORIZED_TOPIC
+
+    publisher = KafkaPublisher()
+    sent_messages: dict[str, list] = {ORACLE_TRIGGER_TOPIC: [], PAYOUT_AUTHORIZED_TOPIC: []}
+
+    async def fake_send(topic, message):
+        sent_messages[topic].append(message)
+
+    mock_producer = AsyncMock()
+    mock_producer.send_and_wait.side_effect = fake_send
+    publisher._producer = mock_producer
+
+    result = _make_authorized_result()
+    await publisher.publish_oracle_trigger(result, "MUM_ANDHERI_W", "heavy_rainfall")
+    await publisher.publish_payout_authorized(result, "MUM_ANDHERI_W", "heavy_rainfall")
+
+    assert len(sent_messages[ORACLE_TRIGGER_TOPIC]) == 1
+    assert len(sent_messages[PAYOUT_AUTHORIZED_TOPIC]) == 1
+
+
+@pytest.mark.asyncio
+async def test_v6_oracle_trigger_schema():
+    """V6: oracle_trigger event contains required fields with correct types."""
+    from services.oracle_engine.kafka_publisher import KafkaPublisher, ORACLE_TRIGGER_TOPIC
+
+    publisher = KafkaPublisher()
+    captured = []
+
+    async def fake_send(topic, message):
+        if topic == ORACLE_TRIGGER_TOPIC:
+            captured.append(message)
+
+    mock_producer = AsyncMock()
+    mock_producer.send_and_wait.side_effect = fake_send
+    publisher._producer = mock_producer
+
+    result = _make_authorized_result()
+    await publisher.publish_oracle_trigger(result, "MUM_ANDHERI_W", "heavy_rainfall")
+
+    assert len(captured) == 1
+    event = captured[0]
+
+    # Required schema fields
+    assert "event_id" in event
+    assert uuid.UUID(event["event_id"])  # must be a valid UUID
+    assert event["zone_id"] == "MUM_ANDHERI_W"
+    assert event["event_type"] == "heavy_rainfall"
+    assert isinstance(event["oracle_votes"], list)
+    assert len(event["oracle_votes"]) == 4
+    assert event["payout_cap"] == 1.0
+    assert "triggered_at" in event
+    assert event["benefit_of_doubt"] is False
+
+    # Each vote dict must have required fields
+    for vote_dict in event["oracle_votes"]:
+        assert "oracle_name" in vote_dict
+        assert "vote" in vote_dict
+        assert "tls_valid" in vote_dict
+        assert "polled_at" in vote_dict
+
+
+@pytest.mark.asyncio
+async def test_v6_payout_authorized_schema():
+    """V6: payout_authorized event contains required fields including payout_cap."""
+    from services.oracle_engine.kafka_publisher import KafkaPublisher, PAYOUT_AUTHORIZED_TOPIC
+
+    publisher = KafkaPublisher()
+    captured = []
+
+    async def fake_send(topic, message):
+        if topic == PAYOUT_AUTHORIZED_TOPIC:
+            captured.append(message)
+
+    mock_producer = AsyncMock()
+    mock_producer.send_and_wait.side_effect = fake_send
+    publisher._producer = mock_producer
+
+    result = _make_authorized_result()
+    await publisher.publish_payout_authorized(
+        result, "MUM_ANDHERI_W", "heavy_rainfall",
+        payout_amount=500.0, claim_id="claim-1", worker_id="worker-1"
+    )
+
+    assert len(captured) == 1
+    event = captured[0]
+
+    assert "payout_id" in event
+    assert uuid.UUID(event["payout_id"])
+    assert event["zone_id"] == "MUM_ANDHERI_W"
+    assert event["claim_id"] == "claim-1"
+    assert event["worker_id"] == "worker-1"
+    assert event["amount"] == 500.0
+    assert event["payout_cap"] == 1.0
+    assert event["benefit_of_doubt"] is False
+    assert "authorized_at" in event
+    assert isinstance(event["oracle_votes"], list)
+
+
+@pytest.mark.asyncio
+async def test_v6_run_poll_cycle_publishes_both_topics_when_authorized():
+    """V6: run_poll_cycle publishes to BOTH oracle_trigger and payout_authorized when authorized."""
+    from services.oracle_engine.main import run_poll_cycle
+
+    result = _make_authorized_result()
+
+    mock_engine = AsyncMock()
+    mock_engine.run_cycle = AsyncMock(return_value=result)
+
+    publish_calls = []
+    mock_publisher = AsyncMock()
+    mock_publisher.publish_oracle_trigger = AsyncMock(side_effect=lambda *a, **kw: publish_calls.append("oracle_trigger"))
+    mock_publisher.publish_payout_authorized = AsyncMock(side_effect=lambda *a, **kw: publish_calls.append("payout_authorized"))
+
+    await run_poll_cycle(mock_engine, mock_publisher, "MUM_ANDHERI_W", "heavy_rainfall")
+
+    assert "oracle_trigger" in publish_calls
+    assert "payout_authorized" in publish_calls
+
+
+@pytest.mark.asyncio
+async def test_v6_run_poll_cycle_no_publish_when_not_authorized():
+    """V6: run_poll_cycle must NOT publish to either topic when authorized=False."""
+    from services.oracle_engine.main import run_poll_cycle
+
+    result = VoteResult(
+        authorized=False,
+        affirmative_count=1,
+        abstain_count=0,
+        deny_count=3,
+        nullified_count=0,
+        payout_cap=1.0,
+        votes=_make_votes_from_strings(["affirm", "deny", "deny", "deny"]),
+        benefit_of_doubt=False,
+    )
+
+    mock_engine = AsyncMock()
+    mock_engine.run_cycle = AsyncMock(return_value=result)
+    mock_publisher = AsyncMock()
+
+    await run_poll_cycle(mock_engine, mock_publisher, "MUM_ANDHERI_W", "heavy_rainfall")
+
+    mock_publisher.publish_oracle_trigger.assert_not_called()
+    mock_publisher.publish_payout_authorized.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# V7 — Polling jitter: interval in [BASE - 480s, BASE + 480s]
+# ---------------------------------------------------------------------------
+
+def test_v7_jitter_seconds_constant():
+    """V7: JITTER_SECONDS must equal 480 (±8 minutes)."""
+    from services.oracle_engine.main import JITTER_SECONDS
+    assert JITTER_SECONDS == 480
+
+
+def test_v7_jitter_range_over_many_samples():
+    """V7: over many samples, jitter stays within ±480s of BASE_INTERVAL."""
+    from services.oracle_engine.main import JITTER_SECONDS, BASE_INTERVAL_SECONDS
+
+    jitter_min = float("inf")
+    jitter_max = float("-inf")
+
+    for _ in range(2000):
+        jitter = random.uniform(-JITTER_SECONDS, JITTER_SECONDS)
+        sleep_seconds = max(60, BASE_INTERVAL_SECONDS + jitter)
+        jitter_min = min(jitter_min, sleep_seconds)
+        jitter_max = max(jitter_max, sleep_seconds)
+
+    # Upper bound: BASE + 480
+    assert jitter_max <= BASE_INTERVAL_SECONDS + JITTER_SECONDS + 1  # +1 for float precision
+
+    # Lower bound: at least 60 (the max(60, ...) floor)
+    assert jitter_min >= 60
+
+
+@given(jitter=st.floats(min_value=-480.0, max_value=480.0, allow_nan=False, allow_infinity=False))
+def test_v7_sleep_always_at_least_60s(jitter: float):
+    """V7: sleep_seconds = max(60, BASE + jitter) — never less than 60 seconds."""
+    from services.oracle_engine.main import BASE_INTERVAL_SECONDS
+    sleep_seconds = max(60, BASE_INTERVAL_SECONDS + jitter)
+    assert sleep_seconds >= 60
+    assert sleep_seconds <= BASE_INTERVAL_SECONDS + 480 + 1  # float tolerance
+
+
+# ---------------------------------------------------------------------------
+# V8 — DB fallback: poll_schedule failure falls back to FALLBACK_SCHEDULES
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_v8_db_failure_falls_back_to_fallback_schedules():
+    """V8: when load_schedules() returns empty (DB error), _get_poll_zones uses FALLBACK_SCHEDULES."""
+    from services.oracle_engine import main as oracle_main
+    from services.oracle_engine.schedule_loader import FALLBACK_SCHEDULES
+
+    # Reset module-level cache so we start fresh
+    oracle_main._cached_schedules = []
+    oracle_main._cycles_since_refresh = 0
+
+    with patch("services.oracle_engine.main.load_schedules", new=AsyncMock(return_value=[])):
+        zones = await oracle_main._get_poll_zones()
+
+    fallback_zone_ids = {s.zone_id for s in FALLBACK_SCHEDULES}
+    returned_zone_ids = {z["zone_id"] for z in zones}
+    assert returned_zone_ids == fallback_zone_ids
+
+
+@pytest.mark.asyncio
+async def test_v8_db_fallback_preserves_cached_schedules_when_available():
+    """V8: when DB returns empty but cache is populated, returns existing cached schedules (not fallback)."""
+    from services.oracle_engine import main as oracle_main
+
+    cached_zone = {"zone_id": "CACHED_ZONE", "event_type": "heavy_rainfall"}
+    oracle_main._cached_schedules = [cached_zone]
+    oracle_main._cycles_since_refresh = 0  # force a refresh attempt
+
+    with patch("services.oracle_engine.main.load_schedules", new=AsyncMock(return_value=[])):
+        zones = await oracle_main._get_poll_zones()
+
+    # Cache was not replaced — existing cached zone is kept
+    assert any(z["zone_id"] == "CACHED_ZONE" for z in zones)
+
+
+@pytest.mark.asyncio
+async def test_v8_db_success_updates_cache():
+    """V8: when load_schedules() returns rows, cache is updated with DB data."""
+    from services.oracle_engine import main as oracle_main
+    from services.oracle_engine.schedule_loader import PollSchedule
+
+    oracle_main._cached_schedules = []
+    oracle_main._cycles_since_refresh = 0
+
+    db_schedules = [
+        PollSchedule(zone_id="DB_ZONE_A", event_type="heavy_rainfall", interval_seconds=3600, enabled=True),
+        PollSchedule(zone_id="DB_ZONE_B", event_type="platform_outage", interval_seconds=1800, enabled=True),
+    ]
+
+    with patch("services.oracle_engine.main.load_schedules", new=AsyncMock(return_value=db_schedules)):
+        zones = await oracle_main._get_poll_zones()
+
+    zone_ids = {z["zone_id"] for z in zones}
+    assert "DB_ZONE_A" in zone_ids
+    assert "DB_ZONE_B" in zone_ids

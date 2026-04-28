@@ -137,22 +137,20 @@ impl PlatformOrderVerifier for ZomatoVerifier {
     }
 }
 
-pub fn create_verifier(platform: &str) -> Box<dyn PlatformOrderVerifier> {
+pub fn create_verifier(platform: &str) -> Result<Box<dyn PlatformOrderVerifier>, String> {
     let provider = std::env::var("PLATFORM_VERIFIER_PROVIDER")
         .unwrap_or_else(|_| "mock".to_string());
 
     match provider.as_str() {
         "prod" => match platform {
-            "swiggy" => match SwiggyVerifier::new() {
-                Ok(v) => Box::new(v),
-                Err(_) => Box::new(MockVerifier),
-            },
-            "zomato" => match ZomatoVerifier::new() {
-                Ok(v) => Box::new(v),
-                Err(_) => Box::new(MockVerifier),
-            },
-            _ => Box::new(MockVerifier),
+            "swiggy" => SwiggyVerifier::new()
+                .map(|v| Box::new(v) as Box<dyn PlatformOrderVerifier>)
+                .map_err(|e| format!("PLATFORM_VERIFIER_PROVIDER=prod but Swiggy init failed: {e}")),
+            "zomato" => ZomatoVerifier::new()
+                .map(|v| Box::new(v) as Box<dyn PlatformOrderVerifier>)
+                .map_err(|e| format!("PLATFORM_VERIFIER_PROVIDER=prod but Zomato init failed: {e}")),
+            other => Err(format!("PLATFORM_VERIFIER_PROVIDER=prod but unknown platform: {other}")),
         },
-        _ => Box::new(MockVerifier),
+        _ => Ok(Box::new(MockVerifier)),
     }
 }
