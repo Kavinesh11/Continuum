@@ -9,6 +9,7 @@ const fc = require('fast-check');
 
 jest.mock('../src/db', () => ({ query: jest.fn() }));
 jest.mock('node-fetch');
+jest.mock('../src/adapters/payoutGateway', () => ({ createPayoutGateway: jest.fn() }));
 
 const db = require('../src/db');
 const fetch = require('node-fetch');
@@ -222,6 +223,8 @@ describe('processPayoutDisbursement', () => {
 
   const { processPayoutDisbursement } = require('../src/workers/processors/payoutDisbursement');
   const { sendNotification } = require('../src/services/fcm');
+  const { createPayoutGateway } = require('../src/adapters/payoutGateway');
+  const mockDisburse = jest.fn();
 
   const baseJob = {
     id: 'job-1',
@@ -237,7 +240,10 @@ describe('processPayoutDisbursement', () => {
     },
   };
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    createPayoutGateway.mockReturnValue({ disburse: mockDisburse });
+  });
 
   test('throws when required fields are missing', async () => {
     const badJob = { id: 'job-bad', data: { payout_id: 'p1' } };
@@ -281,11 +287,7 @@ describe('processPayoutDisbursement', () => {
       .mockResolvedValueOnce({ rows: [{ sim_changed_at: oldSIMChange }] }) // hasSIMChangedRecently
       .mockResolvedValueOnce({ rows: [] }); // recordDisbursementStatus failed
 
-    fetch.mockResolvedValueOnce({
-      ok: false,
-      status: 500,
-      text: async () => 'internal error',
-    });
+    mockDisburse.mockResolvedValueOnce({ success: false, error: 'gateway_error' });
 
     await expect(processPayoutDisbursement(baseJob)).rejects.toThrow(/PayU disbursement failed/);
 
@@ -302,10 +304,7 @@ describe('processPayoutDisbursement', () => {
       .mockResolvedValueOnce({ rows: [{ sim_changed_at: oldSIMChange }] }) // hasSIMChangedRecently
       .mockResolvedValueOnce({ rows: [] }); // recordDisbursementStatus disbursed
 
-    fetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ transaction_ref: 'TXN_DONE' }),
-    });
+    mockDisburse.mockResolvedValueOnce({ success: true, transaction_ref: 'TXN_DONE' });
 
     const result = await processPayoutDisbursement(baseJob);
 

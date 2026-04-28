@@ -15,8 +15,9 @@ class MediaProjectionPermissionActivity : Activity() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if (requestCode == 1001) {
-            val service = FloatingWidgetService.instance
-            service?.onMediaProjectionPermissionResult(resultCode, data)
+            // Disabled: FloatingWidgetService is not available
+            // val service = FloatingWidgetService.instance
+            // service?.onMediaProjectionPermissionResult(resultCode, data)
         }
         finish()
     }

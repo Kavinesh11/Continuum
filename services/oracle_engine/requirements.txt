@@ -1,5 +1,6 @@
 httpx[http2]>=0.27.0
 aiokafka>=0.10.0
+aiohttp>=3.9.0
 prometheus-client>=0.20.0
 structlog>=24.1.0
 python-dotenv>=1.0.0

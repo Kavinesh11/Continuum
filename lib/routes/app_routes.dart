@@ -6,9 +6,7 @@ class AppRoutes {
   static const String claimStatus = '/status';
   static const String profile = '/profile';
   static const String policy = '/policy';
+  static const String planDetails = '/plan-details';
   static const String editProfile = '/editProfile';
   static const String payments = '/payments';
-  static const String enrollment = '/enrollment';
-  static const String consent = '/consent';
-  static const String mandate = '/mandate';
 }

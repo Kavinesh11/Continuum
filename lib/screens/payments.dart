@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../data/mock_data.dart';
 import '../theme/app_theme.dart';
+import '../services/api_service.dart';
 
 class PaymentsScreen extends StatefulWidget {
   const PaymentsScreen({Key? key}) : super(key: key);
@@ -10,42 +10,101 @@ class PaymentsScreen extends StatefulWidget {
 }
 
 class _PaymentsScreenState extends State<PaymentsScreen> {
-  bool _autoPay = MockData.subscriptionPlan['autoPay'] as bool;
-  String _selectedMethodId = 'upi_1';
+  bool _autoPay = true;
+  bool _isLoading = true;
+  Map<String, dynamic>? _profile;
+  Map<String, dynamic>? _policyContent;
+  List<Map<String, dynamic>> _payouts = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+    try {
+      final profile = await ApiService().getWorkerProfileCurrent();
+      final payouts = await ApiService().getPayouts();
+      Map<String, dynamic>? policy;
+      try {
+        policy = await ApiService().getPolicyContent();
+      } catch (_) {
+        policy = null;
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _profile = profile;
+        _payouts = payouts;
+        _policyContent = policy;
+        _isLoading = false;
+      });
+    } on ServerException {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Service temporarily unavailable. Please try again.',
+          ),
+          behavior: SnackBarBehavior.floating,
+          action: SnackBarAction(label: 'Retry', onPressed: _loadData),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final plan = MockData.subscriptionPlan;
-    final methods =
-        MockData.paymentMethods as List<Map<String, dynamic>>;
-    final history =
-        MockData.paymentHistory as List<Map<String, dynamic>>;
+    final plan = _buildPlanData();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Payments')),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildPlanCard(context, plan),
-              const SizedBox(height: 22),
-              _buildPaymentMethodsSection(context, methods),
-              const SizedBox(height: 22),
-              _buildPayNowButton(context),
-              const SizedBox(height: 28),
-              _buildPaymentHistory(context, history),
-              const SizedBox(height: 20),
-            ],
-          ),
-        ),
-      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildPlanCard(context, plan),
+                    const SizedBox(height: 22),
+                    _buildPayNowButton(context),
+                    const SizedBox(height: 28),
+                    _buildPaymentHistory(context, _payouts),
+                    const SizedBox(height: 20),
+                  ],
+                ),
+              ),
+            ),
     );
   }
 
-  Widget _buildPlanCard(
-      BuildContext context, Map<String, dynamic> plan) {
+  Map<String, dynamic> _buildPlanData() {
+    final tier = (_profile?['tier'] ?? 'Standard').toString();
+    final zone = (_profile?['zone_id'] ?? 'default').toString();
+    final hero = _policyContent?['hero'] as Map<String, dynamic>?;
+
+    return {
+      'planName': hero?['title']?.toString() ?? '$tier Tier Plan',
+      'coverage':
+          hero?['subtitle']?.toString() ?? 'Coverage active in zone $zone',
+      'weeklyCost': (_profile?['weekly_premium'] as num?)?.toStringAsFixed(0) ?? '—',
+      'nextBillingDate': 'Upcoming cycle',
+    };
+  }
+
+  Widget _buildPlanCard(BuildContext context, Map<String, dynamic> plan) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -69,7 +128,9 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 5),
+                  horizontal: 10,
+                  vertical: 5,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(20),
@@ -143,7 +204,9 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                       const SizedBox(height: 4),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 5),
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.15),
                           borderRadius: BorderRadius.circular(8),
@@ -151,9 +214,11 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.calendar_today_rounded,
-                                color: Colors.white.withOpacity(0.8),
-                                size: 12),
+                            Icon(
+                              Icons.calendar_today_rounded,
+                              color: Colors.white.withOpacity(0.8),
+                              size: 12,
+                            ),
                             const SizedBox(width: 6),
                             Text(
                               plan['nextBillingDate'] as String,
@@ -173,7 +238,9 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
               const SizedBox(height: 16),
               Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 12),
+                  horizontal: 14,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
@@ -203,11 +270,9 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                       value: _autoPay,
                       onChanged: (v) => setState(() => _autoPay = v),
                       activeColor: Colors.white,
-                      activeTrackColor:
-                          AppTheme.successGreen.withOpacity(0.7),
+                      activeTrackColor: AppTheme.successGreen.withOpacity(0.7),
                       inactiveThumbColor: Colors.white70,
-                      inactiveTrackColor:
-                          Colors.white.withOpacity(0.2),
+                      inactiveTrackColor: Colors.white.withOpacity(0.2),
                     ),
                   ],
                 ),
@@ -216,190 +281,6 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildPaymentMethodsSection(
-      BuildContext context, List<Map<String, dynamic>> methods) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Payment Methods',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: AppTheme.textPrimaryOf(context),
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppTheme.primary.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: GestureDetector(
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text('Add method tapped'),
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                    ),
-                  );
-                },
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.add_rounded,
-                        color: AppTheme.primary, size: 16),
-                    SizedBox(width: 4),
-                    Text(
-                      'Add new',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.primary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        ...methods.map((method) {
-          final isSelected = _selectedMethodId == method['id'];
-          final iconData = method['type'] == 'UPI'
-              ? Icons.account_balance_rounded
-              : Icons.credit_card_rounded;
-
-          return GestureDetector(
-            onTap: () =>
-                setState(() => _selectedMethodId = method['id'] as String),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppTheme.cardOf(context),
-                borderRadius:
-                    BorderRadius.circular(AppTheme.radiusMd),
-                border: Border.all(
-                  color: isSelected
-                      ? AppTheme.primary
-                      : AppTheme.dividerOf(context),
-                  width: isSelected ? 2 : 1.5,
-                ),
-                boxShadow: isSelected
-                    ? AppTheme.primaryGlow(0.1)
-                    : AppTheme.softShadowOf(context),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? AppTheme.primary.withOpacity(0.12)
-                          : AppTheme.textHintOf(context)
-                              .withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(
-                      iconData,
-                      color: isSelected
-                          ? AppTheme.primary
-                          : AppTheme.textSecondaryOf(context),
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          method['type'] as String,
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            color: AppTheme
-                                .textSecondaryOf(context),
-                            letterSpacing: 0.3,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          method['label'] as String,
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: AppTheme
-                                .textPrimaryOf(context),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (method['isDefault'] == true)
-                    Container(
-                      margin: const EdgeInsets.only(right: 8),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: AppTheme.successGreen
-                            .withOpacity(0.1),
-                        borderRadius:
-                            BorderRadius.circular(12),
-                      ),
-                      child: const Text(
-                        'Default',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          color: AppTheme.successGreen,
-                        ),
-                      ),
-                    ),
-                  Container(
-                    width: 22,
-                    height: 22,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: isSelected
-                            ? AppTheme.primary
-                            : AppTheme.dividerOf(context),
-                        width: 2,
-                      ),
-                    ),
-                    child: isSelected
-                        ? Center(
-                            child: Container(
-                              width: 12,
-                              height: 12,
-                              decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: AppTheme.primary,
-                              ),
-                            ),
-                          )
-                        : null,
-                  ),
-                ],
-              ),
-            ),
-          );
-        }),
-      ],
     );
   }
 
@@ -417,8 +298,8 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
             context: context,
             builder: (ctx) => AlertDialog(
               shape: RoundedRectangleBorder(
-                  borderRadius:
-                      BorderRadius.circular(AppTheme.radiusLg)),
+                borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+              ),
               title: Row(
                 children: [
                   Container(
@@ -428,21 +309,21 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Icon(
-                        Icons.check_circle_rounded,
-                        color: AppTheme.successGreen,
-                        size: 22),
+                      Icons.check_circle_rounded,
+                      color: AppTheme.successGreen,
+                      size: 22,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   const Text(
                     'Payment Initiated',
-                    style: TextStyle(
-                        fontWeight: FontWeight.w700, fontSize: 18),
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
                   ),
                 ],
               ),
-              content: const Text(
-                'Your payment of ₹57 has been initiated and will be processed shortly.',
-                style: TextStyle(height: 1.4),
+              content: Text(
+                'Your payment of ₹${(_profile?['weekly_premium'] as num?)?.toStringAsFixed(0) ?? '—'} has been initiated and will be processed shortly.',
+                style: const TextStyle(height: 1.4),
               ),
               actions: [
                 Container(
@@ -456,14 +337,15 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                       backgroundColor: Colors.transparent,
                       shadowColor: Colors.transparent,
                       shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(10)),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                     child: const Text(
                       'Done',
                       style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700),
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ),
@@ -476,18 +358,16 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
           shadowColor: Colors.transparent,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
-            borderRadius:
-                BorderRadius.circular(AppTheme.radiusMd),
+            borderRadius: BorderRadius.circular(AppTheme.radiusMd),
           ),
         ),
         child: const Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.payment_rounded,
-                color: Colors.white, size: 20),
+            Icon(Icons.payment_rounded, color: Colors.white, size: 20),
             SizedBox(width: 10),
             Text(
-              'Pay Now — ₹57',
+              'Pay Now',
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
@@ -501,7 +381,25 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
   }
 
   Widget _buildPaymentHistory(
-      BuildContext context, List<Map<String, dynamic>> history) {
+    BuildContext context,
+    List<Map<String, dynamic>> history,
+  ) {
+    if (history.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(18),
+        decoration: AppTheme.cardDecorationOf(context),
+        child: Text(
+          'No payout history yet.',
+          style: TextStyle(
+            color: AppTheme.textSecondaryOf(context),
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -517,50 +415,43 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
         ...history.asMap().entries.map((entry) {
           final idx = entry.key;
           final txn = entry.value;
-          final isSuccess = txn['status'] == 'Success';
-          final statusColor =
-              isSuccess ? AppTheme.successGreen : AppTheme.dangerRed;
+          final status = (txn['status'] ?? '').toString().toLowerCase();
+          final isSuccess = status == 'disbursed' || status == 'success';
+          final statusColor = isSuccess
+              ? AppTheme.successGreen
+              : AppTheme.dangerRed;
 
           return Container(
-            margin: EdgeInsets.only(
-                bottom: idx < history.length - 1 ? 10 : 0),
+            margin: EdgeInsets.only(bottom: idx < history.length - 1 ? 10 : 0),
             decoration: BoxDecoration(
               color: AppTheme.cardOf(context),
-              borderRadius:
-                  BorderRadius.circular(AppTheme.radiusMd),
+              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
               boxShadow: AppTheme.softShadowOf(context),
             ),
             child: ClipRRect(
-              borderRadius:
-                  BorderRadius.circular(AppTheme.radiusMd),
+              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
               child: Stack(
                 children: [
                   Positioned(
                     left: 0,
                     top: 0,
                     bottom: 0,
-                    child: Container(
-                        width: 4, color: statusColor),
+                    child: Container(width: 4, color: statusColor),
                   ),
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                        18, 14, 16, 14),
+                    padding: const EdgeInsets.fromLTRB(18, 14, 16, 14),
                     child: Row(
                       children: [
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: statusColor
-                                .withOpacity(0.1),
-                            borderRadius:
-                                BorderRadius.circular(10),
+                            color: statusColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(10),
                           ),
                           child: Icon(
                             isSuccess
-                                ? Icons
-                                    .check_circle_outline_rounded
-                                : Icons
-                                    .error_outline_rounded,
+                                ? Icons.check_circle_outline_rounded
+                                : Icons.error_outline_rounded,
                             color: statusColor,
                             size: 18,
                           ),
@@ -568,50 +459,35 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
                                 mainAxisAlignment:
-                                    MainAxisAlignment
-                                        .spaceBetween,
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
-                                    '₹${txn['amount']}',
+                                    '₹${txn['amount'] ?? txn['disbursed_amount'] ?? 0}',
                                     style: TextStyle(
                                       fontSize: 16,
-                                      fontWeight:
-                                          FontWeight.w800,
-                                      color: AppTheme
-                                          .textPrimaryOf(
-                                              context),
+                                      fontWeight: FontWeight.w800,
+                                      color: AppTheme.textPrimaryOf(context),
                                     ),
                                   ),
                                   Container(
-                                    padding: const EdgeInsets
-                                        .symmetric(
-                                        horizontal: 8,
-                                        vertical: 3),
-                                    decoration:
-                                        BoxDecoration(
-                                      color: statusColor
-                                          .withOpacity(
-                                              0.1),
-                                      borderRadius:
-                                          BorderRadius
-                                              .circular(
-                                                  12),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: statusColor.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: Text(
-                                      txn['status']
-                                          as String,
+                                      (txn['status'] ?? 'pending').toString(),
                                       style: TextStyle(
                                         fontSize: 10,
-                                        fontWeight:
-                                            FontWeight
-                                                .w800,
-                                        color:
-                                            statusColor,
+                                        fontWeight: FontWeight.w800,
+                                        color: statusColor,
                                       ),
                                     ),
                                   ),
@@ -619,22 +495,19 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                '${txn['method']} • ${txn['date']}',
+                                '${txn['method'] ?? 'UPI'} • ${txn['disbursed_at'] ?? txn['updated_at'] ?? txn['created_at'] ?? '—'}',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: AppTheme
-                                      .textSecondaryOf(
-                                          context),
+                                  color: AppTheme.textSecondaryOf(context),
                                 ),
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                txn['id'] as String,
+                                (txn['payout_id'] ?? txn['id'] ?? 'TXN')
+                                    .toString(),
                                 style: TextStyle(
                                   fontSize: 11,
-                                  color: AppTheme
-                                      .textHintOf(
-                                          context),
+                                  color: AppTheme.textHintOf(context),
                                 ),
                               ),
                             ],

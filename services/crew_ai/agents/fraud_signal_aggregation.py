@@ -4,6 +4,7 @@ and PostgreSQL claim history to produce a structured FraudAnalysisReport.
 """
 from __future__ import annotations
 
+from ..llm_factory import make_gemini_flash_llm, make_gemini_llm
 from ..tools.kg_cache_tool import make_kg_cache_tool
 from ..tools.postgres_tool import make_postgres_claim_history_tool
 from ..tools.vector_store_tool import make_vector_store_tool
@@ -25,7 +26,11 @@ def make_fraud_signal_aggregation_agent():
             "the worker's claim history. You weigh all signals to produce a confidence "
             "score and recommendation (approve / escalate / reject)."
         ),
+        llm=make_gemini_llm(),
+        function_calling_llm=make_gemini_flash_llm(),
         tools=[make_kg_cache_tool(), make_vector_store_tool(), make_postgres_claim_history_tool()],
+        max_iter=15,
+        max_execution_time=90,
         verbose=True,
         allow_delegation=False,
     )

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../data/mock_data.dart';
 import '../theme/app_theme.dart';
+import '../services/api_service.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({Key? key}) : super(key: key);
@@ -15,17 +15,42 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late TextEditingController _cityController;
   late TextEditingController _platformController;
   late TextEditingController _emergencyController;
+  bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
-    final user = MockData.user;
-    _nameController = TextEditingController(text: user['fullName']);
-    _phoneController = TextEditingController(text: user['phone']);
-    _cityController = TextEditingController(text: user['city']);
-    _platformController = TextEditingController(text: user['platform']);
-    _emergencyController =
-        TextEditingController(text: user['emergencyContact']);
+    _nameController = TextEditingController();
+    _phoneController = TextEditingController();
+    _cityController = TextEditingController();
+    _platformController = TextEditingController();
+    _emergencyController = TextEditingController();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    try {
+      final profile = await ApiService().getWorkerProfileCurrent();
+      if (!mounted) return;
+      _nameController.text = (profile['full_name'] ?? '').toString();
+      _phoneController.text = (profile['phone'] ?? '').toString();
+      _cityController.text = (profile['city'] ?? '').toString();
+      _platformController.text = (profile['platform'] ?? '').toString();
+      _emergencyController.text = (profile['emergency_contact'] ?? '')
+          .toString();
+      setState(() {});
+    } on ServerException {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Service temporarily unavailable. Please try again.',
+          ),
+          behavior: SnackBarBehavior.floating,
+          action: SnackBarAction(label: 'Retry', onPressed: _loadProfile),
+        ),
+      );
+    } catch (_) {}
   }
 
   @override
@@ -62,8 +87,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         gradient: AppTheme.accentGradient,
                         boxShadow: AppTheme.primaryGlow(0.25),
                       ),
-                      child: const Icon(Icons.person,
-                          color: Colors.white, size: 44),
+                      child: const Icon(
+                        Icons.person,
+                        color: Colors.white,
+                        size: 44,
+                      ),
                     ),
                     Positioned(
                       bottom: 0,
@@ -75,8 +103,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           shape: BoxShape.circle,
                           boxShadow: AppTheme.softShadowOf(context),
                         ),
-                        child: const Icon(Icons.camera_alt_rounded,
-                            color: AppTheme.primary, size: 16),
+                        child: const Icon(
+                          Icons.camera_alt_rounded,
+                          color: AppTheme.primary,
+                          size: 16,
+                        ),
                       ),
                     ),
                   ],
@@ -91,13 +122,23 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 context: context,
                 isDark: isDark,
                 children: [
-                  _buildField('Full Name', _nameController, Icons.badge_outlined),
+                  _buildField(
+                    'Full Name',
+                    _nameController,
+                    Icons.badge_outlined,
+                  ),
                   const SizedBox(height: 14),
-                  _buildField('Phone Number', _phoneController,
-                      Icons.phone_outlined),
+                  _buildField(
+                    'Phone Number',
+                    _phoneController,
+                    Icons.phone_outlined,
+                  ),
                   const SizedBox(height: 14),
-                  _buildField('City', _cityController,
-                      Icons.location_on_outlined),
+                  _buildField(
+                    'City',
+                    _cityController,
+                    Icons.location_on_outlined,
+                  ),
                 ],
               ),
               const SizedBox(height: 22),
@@ -108,8 +149,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 context: context,
                 isDark: isDark,
                 children: [
-                  _buildField('Platform (e.g. Swiggy, Zomato)',
-                      _platformController, Icons.delivery_dining_outlined),
+                  _buildField(
+                    'Platform (e.g. Swiggy, Zomato)',
+                    _platformController,
+                    Icons.delivery_dining_outlined,
+                  ),
                 ],
               ),
               const SizedBox(height: 22),
@@ -120,8 +164,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 context: context,
                 isDark: isDark,
                 children: [
-                  _buildField('Emergency Contact', _emergencyController,
-                      Icons.contact_phone_outlined),
+                  _buildField(
+                    'Emergency Contact',
+                    _emergencyController,
+                    Icons.contact_phone_outlined,
+                  ),
                 ],
               ),
               const SizedBox(height: 32),
@@ -135,31 +182,43 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   boxShadow: AppTheme.primaryGlow(0.25),
                 ),
                 child: ElevatedButton(
-                  onPressed: _save,
+                  onPressed: _isSaving ? null : _save,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.transparent,
                     shadowColor: Colors.transparent,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(AppTheme.radiusMd),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                     ),
                   ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.check_rounded, color: Colors.white, size: 20),
-                      SizedBox(width: 10),
-                      Text(
-                        'Save Changes',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 16,
+                  child: _isSaving
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.check_rounded,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                            SizedBox(width: 10),
+                            Text(
+                              'Save Changes',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
-                  ),
                 ),
               ),
               const SizedBox(height: 20),
@@ -200,7 +259,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Widget _buildField(
-      String label, TextEditingController controller, IconData icon) {
+    String label,
+    TextEditingController controller,
+    IconData icon,
+  ) {
     return TextField(
       controller: controller,
       style: TextStyle(
@@ -214,33 +276,64 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           color: AppTheme.textSecondaryOf(context),
           fontWeight: FontWeight.w500,
         ),
-        prefixIcon:
-            Icon(icon, color: AppTheme.primary, size: 20),
+        prefixIcon: Icon(icon, color: AppTheme.primary, size: 20),
       ),
     );
   }
 
-  void _save() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Row(
-          children: [
-            Icon(Icons.check_circle_rounded,
-                color: Colors.white, size: 18),
-            SizedBox(width: 10),
-            Text('Profile updated successfully',
-                style: TextStyle(fontWeight: FontWeight.w600)),
-          ],
+  Future<void> _save() async {
+    setState(() => _isSaving = true);
+    try {
+      await ApiService().updateWorkerProfileCurrent({
+        'full_name': _nameController.text.trim(),
+        'phone': _phoneController.text.trim(),
+        'city': _cityController.text.trim(),
+        'platform': _platformController.text.trim(),
+        'emergency_contact': _emergencyController.text.trim(),
+      });
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+              SizedBox(width: 10),
+              Text(
+                'Profile updated successfully',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+          backgroundColor: AppTheme.successGreen,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          margin: const EdgeInsets.all(16),
         ),
-        backgroundColor: AppTheme.successGreen,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10)),
-        margin: const EdgeInsets.all(16),
-      ),
-    );
-    Future.delayed(const Duration(milliseconds: 600), () {
-      if (mounted) Navigator.pop(context);
-    });
+      );
+      Future.delayed(const Duration(milliseconds: 600), () {
+        if (mounted) Navigator.pop(context);
+      });
+    } on ServerException {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Service temporarily unavailable. Please try again.',
+          ),
+          behavior: SnackBarBehavior.floating,
+          action: SnackBarAction(label: 'Retry', onPressed: _save),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to update profile right now.')),
+      );
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 }

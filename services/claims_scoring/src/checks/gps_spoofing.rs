@@ -30,6 +30,7 @@ pub struct GpsSpoofingResult {
 /// 2. 45-minute soak period (Req 4.5, 4.6)
 /// 3. Platform API order cross-reference (Req 4.7, 4.8)
 /// 4. Static-lock detection (Req 4.9, 4.10)
+#[allow(clippy::too_many_arguments)]
 pub async fn run_gps_spoofing_checks(
     pool: &PgPool,
     claim_id: Uuid,

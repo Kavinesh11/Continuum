@@ -77,7 +77,7 @@ router.post('/', authenticate, requireRole('worker'), async (req, res, next) => 
     );
     if (lockResult.rows.length > 0) {
       const lock = lockResult.rows[0];
-      return res.status(423).json({
+      return res.status(409).json({
         error: 'enrollment_locked',
         zone_id: lock.zone_id,
         reason: `Zone is under forecast-driven enrollment freeze until ${lock.expires_at}`,
@@ -187,6 +187,123 @@ router.post('/', authenticate, requireRole('worker'), async (req, res, next) => 
   } catch (err) {
     next(err);
   }
+});
+
+router.get('/content', authenticate, requireRole('worker', 'admin', 'insurer'), async (req, res, next) => {
+  try {
+    const result = await db.query(
+      `SELECT section_id, number, title, icon_key, body
+       FROM policy_content
+       ORDER BY number ASC`
+    );
+
+    return res.status(200).json({
+      hero: {
+        badge: 'COMPREHENSIVE',
+        title: 'Gig Worker Protection Plan',
+        subtitle: 'Complete coverage for disruptions, outages, and accidents on platform.'
+      },
+      sections: result.rows
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/content', authenticate, requireRole('admin', 'insurer'), async (req, res, next) => {
+  try {
+    const { number, title, icon_key, body } = req.body;
+    if (!number || !title || !icon_key || !body) return res.status(400).json({ error: 'missing_fields' });
+
+    const row = await db.query(
+      `INSERT INTO policy_content (section_id, number, title, icon_key, body)
+       VALUES (gen_random_uuid(), $1, $2, $3, $4)
+       RETURNING section_id, number, title, icon_key, body`,
+      [number, title, icon_key, body]
+    );
+
+    return res.status(201).json(row.rows[0]);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.put('/content/:sectionId', authenticate, requireRole('admin', 'insurer'), async (req, res, next) => {
+  try {
+    const { sectionId } = req.params;
+    const { number, title, icon_key, body } = req.body;
+
+    await db.query(
+      `UPDATE policy_content
+       SET number = COALESCE($1, number),
+           title = COALESCE($2, title),
+           icon_key = COALESCE($3, icon_key),
+           body = COALESCE($4, body)
+       WHERE section_id = $5`,
+      [number, title, icon_key, body, sectionId]
+    );
+
+    return res.status(200).json({ updated: true, section_id: sectionId });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete('/content/:sectionId', authenticate, requireRole('admin', 'insurer'), async (req, res, next) => {
+  try {
+    const { sectionId } = req.params;
+    await db.query(`DELETE FROM policy_content WHERE section_id = $1`, [sectionId]);
+    return res.status(200).json({ deleted: true, section_id: sectionId });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /policies/content
+ * Static CMS-style policy content for the Flutter app (V67).
+ * Must be registered before GET /:id to avoid Express capturing 'content' as an :id param.
+ */
+router.get('/content', authenticate, requireRole('worker', 'admin', 'insurer'), (req, res) => {
+  return res.status(200).json({
+    hero: {
+      badge: 'COMPREHENSIVE',
+      title: 'Gig Worker Protection Plan',
+      subtitle: 'Parametric income protection triggered automatically when a covered disruption is detected — no claims paperwork needed.',
+    },
+    sections: [
+      {
+        title: 'Coverage',
+        icon_key: 'coverage',
+        body: 'Covers income loss due to accidents, vehicle breakdown, medical emergencies, weather disruptions, and platform outages while on active duty.',
+      },
+      {
+        title: 'Eligibility',
+        icon_key: 'eligibility',
+        body: 'Active gig delivery workers with a verified policy. Coverage begins 72 hours after policy creation and resets 5 days after a tier upgrade.',
+      },
+      {
+        title: 'Claim Process',
+        icon_key: 'claim_process',
+        body: 'Submit a claim with incident details. Our oracle engine validates the disruption event automatically — no documents required for parametric triggers.',
+      },
+      {
+        title: 'Payouts',
+        icon_key: 'payouts',
+        body: 'Approved payouts are credited to your registered UPI wallet within 5 minutes of oracle authorization. A 7-day non-duplication window applies per billing cycle.',
+      },
+      {
+        title: 'Exclusions',
+        icon_key: 'exclusions',
+        body: 'Pre-existing conditions, incidents outside active duty hours, and events flagged for fraud are excluded. Device attestation failure blocks the claim pipeline.',
+      },
+      {
+        title: 'Renewal',
+        icon_key: 'renewal',
+        body: 'Weekly auto-renewal via eNACH mandate. Coverage lapses if the mandate payment fails. Re-enrollment is subject to zone availability and adverse-selection locks.',
+      },
+    ],
+  });
 });
 
 /**

@@ -3,6 +3,7 @@ KGCacheTool — HTTP calls to the Knowledge Graph Cache service.
 """
 from __future__ import annotations
 
+import json
 import os
 from typing import Any
 
@@ -53,8 +54,8 @@ def make_kg_cache_tool():
             )
             args_schema: type[BaseModel] = KGCacheInput
 
-            def _run(self, zone_id: str, event_type: str) -> dict[str, Any]:
-                return KGCacheTool().run(zone_id, event_type)
+            def _run(self, zone_id: str, event_type: str) -> str:
+                return json.dumps(KGCacheTool().run(zone_id, event_type))
 
         return _KGCacheTool()
     except ImportError:

@@ -1,8 +1,4 @@
-// Feature: continuum-ml-pipelines
-// Server entry point
-
 require('dotenv').config();
-
 const { validateEnv } = require('./config/env');
 
 let env;
@@ -14,7 +10,8 @@ try {
 }
 
 const app = require('./app');
+const HOST = process.env.HOST || '0.0.0.0';
 
-app.listen(env.PORT, () => {
-  console.log(`Core Backend listening on port ${env.PORT}`);
+app.listen(env.PORT, HOST, () => {
+  console.log(`Core Backend listening on http://${HOST}:${env.PORT}`);
 });

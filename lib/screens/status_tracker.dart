@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import '../data/mock_data.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 
@@ -14,9 +13,9 @@ class StatusTrackerScreen extends StatefulWidget {
 
 class _StatusTrackerScreenState extends State<StatusTrackerScreen> {
   Map<String, dynamic>? _liveData;
-  bool _isOffline = false;
   bool _isLoading = true;
   String? _claimId;
+  bool _invalidClaim = false;
   Timer? _pollTimer;
 
   @override
@@ -27,8 +26,10 @@ class _StatusTrackerScreenState extends State<StatusTrackerScreen> {
       _claimId = args;
       _loadStatus();
     } else if (_claimId == null) {
-      // No claimId — use mock data
-      setState(() => _isLoading = false);
+      setState(() {
+        _isLoading = false;
+        _invalidClaim = true;
+      });
     }
   }
 
@@ -42,14 +43,12 @@ class _StatusTrackerScreenState extends State<StatusTrackerScreen> {
       if (!mounted) return;
       setState(() {
         _liveData = result;
-        _isOffline = result['_isOffline'] == true;
         _isLoading = false;
       });
       _maybeStartPolling(result['status'] as String?);
     } on ServerException {
       if (!mounted) return;
       setState(() {
-        _isOffline = true;
         _isLoading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
@@ -64,17 +63,7 @@ class _StatusTrackerScreenState extends State<StatusTrackerScreen> {
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _isOffline = true;
         _isLoading = false;
-      });
-    }
-  }
-
-  void _maybeStartPolling(String? status) {
-    _pollTimer?.cancel();
-    if (status == 'processing') {
-      _pollTimer = Timer.periodic(const Duration(seconds: 30), (_) {
-        _loadStatus();
       });
     }
   }
@@ -85,15 +74,42 @@ class _StatusTrackerScreenState extends State<StatusTrackerScreen> {
     super.dispose();
   }
 
+  List<Map<String, dynamic>> _buildStages(Map<String, dynamic> data) {
+    final status = (data['status'] as String? ?? '').toLowerCase();
+    final decidedAt = data['decided_at']?.toString() ?? '';
+    final isDecided = status == 'approved' || status == 'rejected';
+    final isScoring = status == 'processing' || status == 'in review' ||
+        status == 'fraud_queue' || isDecided;
+    final isVerifying = status == 'in review' || isDecided;
+
+    String _fmt(String iso) {
+      final dt = DateTime.tryParse(iso);
+      if (dt == null) return '';
+      return '${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
+    }
+
+    return [
+      {'name': 'SUBMITTED', 'complete': true, 'time': ''},
+      {'name': 'SCORING', 'complete': isScoring, 'time': ''},
+      {'name': 'REVIEW', 'complete': isVerifying, 'time': ''},
+      {'name': 'DECISION', 'complete': isDecided, 'time': isDecided ? _fmt(decidedAt) : ''},
+    ];
+  }
+
+  void _maybeStartPolling(String? status) {
+    _pollTimer?.cancel();
+    final s = (status ?? '').toLowerCase();
+    if (s == 'processing' || s == 'in review') {
+      _pollTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+        _loadStatus();
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Use live data if available, otherwise fall back to mock
-    final data =
-        _liveData ?? MockData.claimStatusDetail as Map<String, dynamic>;
-    final stages =
-        data['stages'] as List<Map<String, dynamic>>? ??
-        (MockData.claimStatusDetail as Map<String, dynamic>)['stages']
-            as List<Map<String, dynamic>>;
+    final data = _liveData;
+    final stages = data != null ? _buildStages(data) : <Map<String, dynamic>>[];
 
     return Scaffold(
       appBar: AppBar(
@@ -140,29 +156,47 @@ class _StatusTrackerScreenState extends State<StatusTrackerScreen> {
       ),
       body: Column(
         children: [
-          if (_isOffline)
-            Container(
-              width: double.infinity,
-              color: Colors.amber.shade700,
-              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
-              child: const Row(
-                children: [
-                  Icon(Icons.wifi_off_rounded, color: Colors.white, size: 16),
-                  SizedBox(width: 8),
-                  Text(
-                    'Offline — showing cached data',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
+                : _invalidClaim
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.error_outline_rounded,
+                            size: 40,
+                            color: AppTheme.warningOrange,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Invalid claim reference. Please open status from a specific claim.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: AppTheme.textSecondaryOf(context),
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : data == null
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Text(
+                        'Unable to load claim status right now.',
+                        style: TextStyle(
+                          color: AppTheme.textSecondaryOf(context),
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  )
                 : SingleChildScrollView(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),

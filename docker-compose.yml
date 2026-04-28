@@ -23,6 +23,7 @@ services:
       - .env
     environment:
       - CORE_BACKEND_URL=http://core_backend:3000
+      - ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:5000,http://localhost:8080}
 
   rag_orchestrator:
     build:
@@ -81,7 +82,7 @@ services:
     build:
       context: ./services/claims_scoring
     ports:
-      - "8080:8080" # Update based on actual Rust port
+      - "8081:8080" # Mapped to 8081 to avoid Docker daemon conflict on macOS
     networks:
       - continuum_net
     volumes:
@@ -116,6 +117,7 @@ services:
       - POSTGRES_URL=postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/continuum
       - MONGODB_URI=mongodb://mongodb:27017/continuum
       - KG_CACHE_URL=http://kg_cache:8080
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
     depends_on:
       - kafka
       - postgres
@@ -177,7 +179,7 @@ services:
 
   cockroachdb:
     image: cockroachdb/cockroach:v23.2.0
-    command: start-single-node --insecure --store=type=mem,size=512MiB
+    command: start-single-node --insecure --store=type=mem,size=1GiB
     ports:
       - "26257:26257"
       - "26080:8080"

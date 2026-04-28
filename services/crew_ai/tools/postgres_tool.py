@@ -4,6 +4,7 @@ PostgresClaimHistoryTool — queries PostgreSQL for a worker's claim history.
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 from typing import Any
 
@@ -74,8 +75,8 @@ def make_postgres_claim_history_tool():
             )
             args_schema: type[BaseModel] = PostgresClaimHistoryInput
 
-            def _run(self, worker_id: str, days: int = 90) -> dict[str, Any]:
-                return PostgresClaimHistoryTool().run(worker_id, days)
+            def _run(self, worker_id: str, days: int = 90) -> str:
+                return json.dumps(PostgresClaimHistoryTool().run(worker_id, days))
 
         return _PostgresClaimHistoryTool()
     except ImportError:

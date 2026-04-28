@@ -1,7 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../routes/app_routes.dart';
-import '../data/mock_data.dart';
 import '../theme/app_theme.dart';
 import '../main.dart';
 import '../sandbox/driver_provider.dart';
@@ -16,7 +15,6 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   Map<String, dynamic>? _workerData;
-  bool _isOffline = false;
 
   @override
   void initState() {
@@ -26,17 +24,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _loadProfile() async {
     try {
-      final api = ApiService();
-      final workerId = await api.getWorkerId() ?? 'unknown';
-      final result = await api.getWorkerProfile(workerId);
+      final result = await ApiService().getWorkerProfileCurrent();
       if (!mounted) return;
       setState(() {
         _workerData = result;
-        _isOffline = result['_isOffline'] == true;
       });
     } on ServerException {
       if (!mounted) return;
-      setState(() => _isOffline = true);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text(
@@ -48,13 +42,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     } catch (_) {
       if (!mounted) return;
-      setState(() => _isOffline = true);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final driver = DriverProvider.of(context).driver;
+    final stats = (_workerData?['stats'] as Map<String, dynamic>?) ?? const {};
+    final history = ((_workerData?['recent_history'] as List<dynamic>?) ??
+            (_workerData?['recent_claims'] as List<dynamic>?) ??
+            const [])
+        .cast<Map<String, dynamic>>();
     // Use live data when available, fall back to sandbox driver
     final name = _workerData?['full_name'] as String? ?? driver.fullName;
     final initials = name.isNotEmpty
@@ -69,26 +67,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       body: Column(
         children: [
-          if (_isOffline)
-            Container(
-              width: double.infinity,
-              color: Colors.amber.shade700,
-              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
-              child: const Row(
-                children: [
-                  Icon(Icons.wifi_off_rounded, color: Colors.white, size: 16),
-                  SizedBox(width: 8),
-                  Text(
-                    'Offline — showing cached data',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
           Expanded(
             child: SingleChildScrollView(
               child: Column(
@@ -110,8 +88,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       children: [
                         _buildStatsPills(
                           context,
-                          '₹ ${driver.totalProtected.toStringAsFixed(0)}',
-                          driver.claimsApproved,
+                          '₹ ${((stats['total_protected_amount'] ?? _workerData?['total_protected_amount']) ?? driver.totalProtected).toString()}',
+                          (stats['claims_approved_count'] as num?)?.toInt() ??
+                              (_workerData?['claims_approved_count'] as num?)?.toInt() ??
+                              driver.claimsApproved,
                         ),
                         const SizedBox(height: 24),
                         _buildPersonalData(
@@ -136,10 +116,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         const SizedBox(height: 24),
                         _buildQuickLinks(context),
                         const SizedBox(height: 24),
-                        _buildHistorySection(
-                          context,
-                          MockData.profileHistory as List,
-                        ),
+                        _buildHistorySection(context, history),
                         const SizedBox(height: 24),
                         _buildSignOutButton(context),
                         const SizedBox(height: 20),
@@ -754,9 +731,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildHistorySection(BuildContext context, List history) {
+  Widget _buildHistorySection(
+    BuildContext context,
+    List<Map<String, dynamic>> history,
+  ) {
     if (history.isEmpty) return const SizedBox.shrink();
-    final recent = history[0] as Map<String, dynamic>;
+    final recent = history[0];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -811,7 +791,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         children: [
                           Expanded(
                             child: Text(
-                              recent['incident'] as String,
+                              (recent['incident'] ??
+                                      recent['event_type'] ??
+                                      'Recent claim')
+                                  .toString(),
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
@@ -863,7 +846,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            recent['date'] as String,
+                            (recent['date'] ?? recent['event_timestamp'] ?? '—')
+                                .toString(),
                             style: TextStyle(
                               fontSize: 12,
                               color: AppTheme.textSecondaryOf(context),
@@ -873,7 +857,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        recent['detail'] as String,
+                        (recent['detail'] ??
+                                recent['status'] ??
+                                'Claim activity')
+                            .toString(),
                         style: TextStyle(
                           fontSize: 12,
                           color: AppTheme.textSecondaryOf(context),

@@ -1,11 +1,60 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import '../services/api_service.dart';
 
-class PolicyScreen extends StatelessWidget {
+class PolicyScreen extends StatefulWidget {
   const PolicyScreen({Key? key}) : super(key: key);
 
   @override
+  State<PolicyScreen> createState() => _PolicyScreenState();
+}
+
+class _PolicyScreenState extends State<PolicyScreen> {
+  bool _isLoading = true;
+  Map<String, dynamic>? _content;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPolicy();
+  }
+
+  Future<void> _loadPolicy() async {
+    try {
+      final content = await ApiService().getPolicyContent();
+      if (!mounted) return;
+      setState(() {
+        _content = content;
+        _isLoading = false;
+      });
+    } on ServerException {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Service temporarily unavailable. Please try again.',
+          ),
+          behavior: SnackBarBehavior.floating,
+          action: SnackBarAction(label: 'Retry', onPressed: _loadPolicy),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final hero = (_content?['hero'] as Map<String, dynamic>?) ?? const {};
+    final sections = (_content?['sections'] as List<dynamic>? ?? const [])
+        .cast<Map<String, dynamic>>();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('CONTINUUM'),
@@ -40,91 +89,60 @@ class PolicyScreen extends StatelessWidget {
             ),
             child: IconButton(
               onPressed: () {},
-              icon: Icon(Icons.notifications_none_rounded,
-                  color: AppTheme.textSecondaryOf(context), size: 22),
+              icon: Icon(
+                Icons.notifications_none_rounded,
+                color: AppTheme.textSecondaryOf(context),
+                size: 22,
+              ),
             ),
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeroCard(),
-              const SizedBox(height: 24),
-              _buildSection(
-                context,
-                number: 1,
-                title: 'Coverage',
-                icon: Icons.shield_outlined,
-                body:
-                    'This plan covers income loss due to weather disruptions, '
-                    'platform app outages, and verified accidents during active '
-                    'delivery shifts.',
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildHeroCard(hero),
+                    const SizedBox(height: 24),
+                    ...sections.asMap().entries.map(
+                      (entry) => Padding(
+                        padding: EdgeInsets.only(
+                          bottom: entry.key == sections.length - 1 ? 0 : 16,
+                        ),
+                        child: _buildSection(
+                          context,
+                          number: entry.key + 1,
+                          title: (entry.value['title'] ?? 'Section').toString(),
+                          icon: _iconFor(entry.value['icon_key']?.toString()),
+                          body: (entry.value['body'] ?? '').toString(),
+                        ),
+                      ),
+                    ),
+                    if (sections.isEmpty)
+                      _buildSection(
+                        context,
+                        number: 1,
+                        title: 'Coverage',
+                        icon: Icons.shield_outlined,
+                        body: 'Policy content is currently unavailable.',
+                      ),
+                    const SizedBox(height: 20),
+                  ],
+                ),
               ),
-              const SizedBox(height: 16),
-              _buildSection(
-                context,
-                number: 2,
-                title: 'Eligibility',
-                icon: Icons.verified_user_outlined,
-                body:
-                    'Active gig workers on supported platforms (Swiggy, Zomato, etc.) '
-                    'who have completed at least 30 days on the platform.',
-              ),
-              const SizedBox(height: 16),
-              _buildSection(
-                context,
-                number: 3,
-                title: 'Claim Process',
-                icon: Icons.description_outlined,
-                body:
-                    'File a claim within 48 hours of the incident. '
-                    'Provide live photo evidence and a brief description. '
-                    'Claims are reviewed within 2-3 business days.',
-              ),
-              const SizedBox(height: 16),
-              _buildSection(
-                context,
-                number: 4,
-                title: 'Payouts',
-                icon: Icons.account_balance_wallet_outlined,
-                body:
-                    'Approved payouts are disbursed to your linked UPI or bank '
-                    'account within 1 business day after approval.',
-              ),
-              const SizedBox(height: 16),
-              _buildSection(
-                context,
-                number: 5,
-                title: 'Exclusions',
-                icon: Icons.block_outlined,
-                body:
-                    'Claims for incidents outside active shift hours, '
-                    'self-inflicted damage, or fraudulent submissions '
-                    'are not covered.',
-              ),
-              const SizedBox(height: 16),
-              _buildSection(
-                context,
-                number: 6,
-                title: 'Renewal',
-                icon: Icons.autorenew_rounded,
-                body:
-                    'Plan auto-renews weekly. You can cancel anytime '
-                    'from Profile → Payments & Subscription.',
-              ),
-              const SizedBox(height: 20),
-            ],
-          ),
-        ),
-      ),
+            ),
     );
   }
 
-  Widget _buildHeroCard() {
+  Widget _buildHeroCard(Map<String, dynamic> hero) {
+    final badge = (hero['badge'] ?? 'COMPREHENSIVE').toString();
+    final title = (hero['title'] ?? 'Gig Worker Protection Plan').toString();
+    final subtitle = (hero['subtitle'] ?? 'Coverage details').toString();
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(22),
@@ -149,13 +167,15 @@ class PolicyScreen extends StatelessWidget {
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 5),
+                  horizontal: 10,
+                  vertical: 5,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Text(
-                  'COMPREHENSIVE',
+                child: Text(
+                  badge,
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 10,
@@ -165,8 +185,8 @@ class PolicyScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 14),
-              const Text(
-                'Gig Worker Protection Plan',
+              Text(
+                title,
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 22,
@@ -175,7 +195,7 @@ class PolicyScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'Complete coverage for disruptions, outages, and accidents on platform.',
+                subtitle,
                 style: TextStyle(
                   fontSize: 14,
                   color: Colors.white.withOpacity(0.7),
@@ -187,6 +207,25 @@ class PolicyScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  IconData _iconFor(String? iconKey) {
+    switch (iconKey) {
+      case 'coverage':
+        return Icons.shield_outlined;
+      case 'eligibility':
+        return Icons.verified_user_outlined;
+      case 'claim_process':
+        return Icons.description_outlined;
+      case 'payouts':
+        return Icons.account_balance_wallet_outlined;
+      case 'exclusions':
+        return Icons.block_outlined;
+      case 'renewal':
+        return Icons.autorenew_rounded;
+      default:
+        return Icons.article_outlined;
+    }
   }
 
   Widget _buildSection(

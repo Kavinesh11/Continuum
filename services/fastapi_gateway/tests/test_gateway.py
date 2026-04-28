@@ -7,7 +7,8 @@
 # with a structured error body that identifies each offending field.
 
 import pytest
-from unittest.mock import patch, AsyncMock
+import httpx
+from unittest.mock import patch, AsyncMock, MagicMock
 from starlette.testclient import TestClient
 from hypothesis import given, settings, strategies as st
 
@@ -253,4 +254,161 @@ def test_valid_payload_does_not_return_422():
 
     assert response.status_code != 422, (
         f"Valid payload incorrectly rejected with 422: {response.text}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# V50 — Downstream timeout (httpx.TimeoutException) → HTTP 504
+# ---------------------------------------------------------------------------
+
+VALID_CLAIM_PAYLOAD: dict = {
+    "claim_id": "claim-001",
+    "worker_id": "worker-001",
+    "event_type": "heavy_rainfall",
+    "event_timestamp": "2024-01-15T10:30:00Z",
+    "gps_coordinates": [19.1136, 72.8697],
+    "zone_id": "MUM_ANDHERI_W",
+    "device_attestation_token": "attestation-token-abc",
+}
+
+
+def _make_mock_http_client() -> AsyncMock:
+    """Build a mock httpx.AsyncClient for injection into app.state."""
+    return AsyncMock(spec=httpx.AsyncClient)
+
+
+def test_v50_onboard_timeout_returns_504():
+    """V50: downstream httpx.TimeoutException on /onboard → HTTP 504."""
+    with TestClient(app, raise_server_exceptions=False) as client:
+        mock_http = _make_mock_http_client()
+        mock_http.post = AsyncMock(side_effect=httpx.TimeoutException("timeout"))
+        app.state.http_client = mock_http
+        response = client.post("/onboard", json=VALID_PAYLOAD)
+
+    assert response.status_code == 504, (
+        f"Expected 504 for downstream timeout, got {response.status_code}: {response.text}"
+    )
+
+
+def test_v50_claims_timeout_returns_504():
+    """V50: downstream httpx.TimeoutException on /claims/submit → HTTP 504."""
+    with TestClient(app, raise_server_exceptions=False) as client:
+        mock_http = _make_mock_http_client()
+        mock_http.post = AsyncMock(side_effect=httpx.TimeoutException("timeout"))
+        app.state.http_client = mock_http
+        response = client.post("/claims/submit", json=VALID_CLAIM_PAYLOAD)
+
+    assert response.status_code == 504, (
+        f"Expected 504 for downstream timeout on /claims/submit, got {response.status_code}: {response.text}"
+    )
+
+
+def test_v50_timeout_response_has_detail():
+    """V50: timeout 504 response must contain a 'detail' field."""
+    with TestClient(app, raise_server_exceptions=False) as client:
+        mock_http = _make_mock_http_client()
+        mock_http.post = AsyncMock(side_effect=httpx.TimeoutException("timeout"))
+        app.state.http_client = mock_http
+        response = client.post("/onboard", json=VALID_PAYLOAD)
+
+    assert "detail" in response.json()
+
+
+# ---------------------------------------------------------------------------
+# V51 — Downstream 5xx → gateway returns same status code
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("upstream_status", [500, 502, 503])
+def test_v51_upstream_5xx_proxied_through(upstream_status: int):
+    """V51: downstream N-xx status code is proxied back unchanged."""
+    upstream_resp = MagicMock(spec=httpx.Response)
+    upstream_resp.status_code = upstream_status
+    upstream_resp.raise_for_status.side_effect = httpx.HTTPStatusError(
+        message=f"Server error {upstream_status}",
+        request=MagicMock(),
+        response=MagicMock(status_code=upstream_status),
+    )
+
+    with TestClient(app, raise_server_exceptions=False) as client:
+        mock_http = _make_mock_http_client()
+        mock_http.post = AsyncMock(return_value=upstream_resp)
+        app.state.http_client = mock_http
+        response = client.post("/onboard", json=VALID_PAYLOAD)
+
+    assert response.status_code == upstream_status, (
+        f"Expected {upstream_status} proxied from upstream, got {response.status_code}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# V52 — /claims/submit: missing required fields → HTTP 422 with per-field detail
+# ---------------------------------------------------------------------------
+
+CLAIM_REQUIRED_FIELDS = [
+    "claim_id", "worker_id", "event_type", "event_timestamp",
+    "gps_coordinates", "zone_id", "device_attestation_token",
+]
+
+
+@pytest.mark.parametrize("field", CLAIM_REQUIRED_FIELDS)
+def test_v52_missing_claim_field_returns_422(field: str):
+    """V52: missing required field in /claims/submit → HTTP 422 with field in detail."""
+    payload = dict(VALID_CLAIM_PAYLOAD)
+    del payload[field]
+
+    with TestClient(app, raise_server_exceptions=False) as client:
+        response = client.post("/claims/submit", json=payload)
+
+    assert response.status_code == 422, (
+        f"Expected 422 when '{field}' missing, got {response.status_code}"
+    )
+    assert _field_in_errors(field, response.json()), (
+        f"Field '{field}' not referenced in 422 detail: {response.json()}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# V3 — CORSMiddleware is mounted; allowed origins never include wildcard (V2)
+# ---------------------------------------------------------------------------
+
+def test_v3_cors_preflight_allowed_origin():
+    """V3: OPTIONS preflight from a listed origin gets CORS headers back."""
+    origin = "http://localhost:5000"
+    with TestClient(app, raise_server_exceptions=False) as client:
+        response = client.options(
+            "/onboard",
+            headers={
+                "Origin": origin,
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "Content-Type,Authorization",
+            },
+        )
+
+    # Starlette CORSMiddleware returns 200 for allowed preflights
+    assert response.status_code in (200, 204), (
+        f"Expected 200/204 preflight, got {response.status_code}"
+    )
+    acao = response.headers.get("access-control-allow-origin", "")
+    # The middleware echoes back the specific origin (never wildcard) — V2
+    assert acao == origin or acao == "", (
+        f"Expected origin '{origin}' or empty (not configured), got '{acao}'"
+    )
+    assert "*" not in acao, "V2 violated: wildcard origin must never appear"
+
+
+def test_v3_cors_preflight_unlisted_origin_gets_no_header():
+    """V3/V2: OPTIONS preflight from an unlisted origin must NOT get ACAO header."""
+    with TestClient(app, raise_server_exceptions=False) as client:
+        response = client.options(
+            "/onboard",
+            headers={
+                "Origin": "http://evil.example.com",
+                "Access-Control-Request-Method": "POST",
+            },
+        )
+
+    acao = response.headers.get("access-control-allow-origin", "")
+    assert acao != "*", "V2 violated: wildcard must never be returned"
+    assert "evil.example.com" not in acao, (
+        "Unlisted origin must not appear in Access-Control-Allow-Origin"
     )

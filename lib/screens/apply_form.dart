@@ -5,7 +5,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
 import 'package:uuid/uuid.dart';
-import '../data/mock_data.dart';
 import '../routes/app_routes.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
@@ -18,6 +17,14 @@ class ApplyFormScreen extends StatefulWidget {
 }
 
 class _ApplyFormScreenState extends State<ApplyFormScreen> {
+  static const List<String> _claimReasons = [
+    'Accident',
+    'Vehicle Breakdown',
+    'Medical Emergency',
+    'Weather Disruption',
+    'Platform Outage',
+  ];
+
   late String _selectedReason;
   late TextEditingController _dateController;
   late TextEditingController _descriptionController;
@@ -31,7 +38,7 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedReason = (MockData.applyDefaults['reasons'] as List)[0];
+    _selectedReason = _claimReasons.first;
     _dateController = TextEditingController();
     _descriptionController = TextEditingController();
   }
@@ -243,7 +250,7 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
           fontSize: 14,
           fontWeight: FontWeight.w500,
         ),
-        items: (MockData.applyDefaults['reasons'] as List)
+        items: _claimReasons
             .cast<String>()
             .map(
               (reason) => DropdownMenuItem(value: reason, child: Text(reason)),
@@ -273,7 +280,7 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
         }
       },
       decoration: InputDecoration(
-        hintText: MockData.applyDefaults['dateHint'] as String,
+        hintText: 'DD/MM/YYYY',
         suffixIcon: Container(
           margin: const EdgeInsets.only(right: 8),
           child: const Icon(
@@ -579,15 +586,16 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
     setState(() => _isSubmitting = true);
     try {
       final claimId = const Uuid().v4();
-      final workerId = await ApiService().getWorkerId() ?? 'unknown';
+      final workerId = await ApiService().getCurrentWorkerId();
+      final profile = await ApiService().getWorkerProfileCurrent();
+      final zoneId = (profile['zone_id'] as String?) ?? 'default';
       final payload = {
         'claim_id': claimId,
         'worker_id': workerId,
         'event_type': _selectedReason,
         'event_timestamp': DateTime.now().toIso8601String(),
-        'gps_coordinates': [0.0, 0.0],
-        'zone_id': 'default',
-        'device_attestation_token': 'mock_token',
+        'zone_id': zoneId,
+        'claim_description': _descriptionController.text.trim(),
       };
 
       final result = await ApiService().submitClaim(payload);

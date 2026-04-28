@@ -17,12 +17,28 @@ const mandatesRoutes = require('./routes/mandates');
 const reservesRoutes = require('./routes/reserves');
 const consentRoutes = require('./routes/consent');
 const adminRoutes = require('./routes/admin');
+const assistRoutes = require('./routes/assist');
 const { createMetricsHandler } = require('./services/metrics');
 const { startAllConsumers } = require('./consumers/index');
 const db = require('./db');
 
 const app = express();
 
+// CORS middleware (must run before routes)
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+
+  return next();
+});
+
+// JSON body parser
+app.use(express.json());
 app.use(helmet());
 
 const allowedOrigins = process.env.CORS_ALLOWED_ORIGINS
@@ -73,6 +89,7 @@ app.use('/mandates', mandatesRoutes);
 app.use('/reserves', reservesRoutes);
 app.use('/consent', consentRoutes);
 app.use('/admin', adminRoutes);
+app.use('/assist', assistRoutes);
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });

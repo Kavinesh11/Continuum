@@ -3,7 +3,6 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import '../routes/app_routes.dart';
-import '../data/mock_data.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 
@@ -16,32 +15,71 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   String _selectedTrend = 'Monthly';
-  bool _isOffline = false;
   double? _riskScore;
   double? _weeklyPremium;
   bool _loadingRisk = true;
+  Map<String, dynamic>? _profile;
+  List<Map<String, dynamic>> _claims = [];
+  List<Map<String, dynamic>> _payouts = [];
 
   @override
   void initState() {
     super.initState();
-    _fetchRiskProfile();
+    _loadDashboardData();
+  }
+
+  Future<void> _loadDashboardData() async {
+    try {
+      final profile = await ApiService().getWorkerProfileCurrent();
+      final claims = await ApiService().getClaims();
+      final payouts = await ApiService().getPayouts();
+      if (!mounted) return;
+
+      setState(() {
+        _profile = profile;
+        _claims = claims;
+        _payouts = payouts;
+      });
+
+      await _fetchRiskProfile();
+    } on ServerException {
+      if (!mounted) return;
+      setState(() {
+        _loadingRisk = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Service temporarily unavailable. Please try again.',
+          ),
+          behavior: SnackBarBehavior.floating,
+          action: SnackBarAction(label: 'Retry', onPressed: _loadDashboardData),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loadingRisk = false;
+      });
+    }
   }
 
   Future<void> _fetchRiskProfile() async {
     try {
-      final api = ApiService();
-      final workerId = await api.getWorkerId() ?? 'unknown';
-      final result = await api.fetchRiskProfile({
+      final workerId = await ApiService().getCurrentWorkerId();
+      final zone = (_profile?['zone_id'] ?? 'default').toString();
+      final platform = (_profile?['platform'] ?? 'unknown').toString();
+      final tier = (_profile?['tier'] ?? 'silver').toString();
+      final result = await ApiService().fetchRiskProfile({
         'worker_id': workerId,
-        'zone_id': MockData.coverage['zone'] ?? 'default',
-        'platform': 'swiggy',
-        'tier': 'gold',
+        'zone_id': zone,
+        'platform': platform,
+        'tier': tier,
         'gps_coordinates': [0.0, 0.0],
         'activity_history': [],
       });
       if (!mounted) return;
       setState(() {
-        _isOffline = result['_isOffline'] == true;
         _riskScore = (result['risk_score'] as num?)?.toDouble();
         _weeklyPremium = (result['weekly_premium'] as num?)?.toDouble();
         _loadingRisk = false;
@@ -49,7 +87,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     } on ServerException {
       if (!mounted) return;
       setState(() {
-        _isOffline = true;
         _loadingRisk = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
@@ -64,7 +101,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _isOffline = true;
         _loadingRisk = false;
       });
     }
@@ -116,6 +152,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final name = (_profile?['full_name'] ?? 'Partner').toString();
+    final initials = name
+        .split(' ')
+        .where((p) => p.isNotEmpty)
+        .take(2)
+        .map((p) => p[0])
+        .join()
+        .toUpperCase();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('CONTINUUM'),
@@ -135,10 +180,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ],
               ),
-              child: const Center(
+              child: Center(
                 child: Text(
-                  'PS',
-                  style: TextStyle(
+                  initials.isEmpty ? 'DP' : initials,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w800,
                     fontSize: 12,
@@ -168,26 +213,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
       body: Column(
         children: [
-          if (_isOffline)
-            Container(
-              width: double.infinity,
-              color: Colors.amber.shade700,
-              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
-              child: const Row(
-                children: [
-                  Icon(Icons.wifi_off_rounded, color: Colors.white, size: 16),
-                  SizedBox(width: 8),
-                  Text(
-                    'Offline — showing cached data',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
           Expanded(
             child: SingleChildScrollView(
               child: Padding(
@@ -195,7 +220,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildGreeting(),
+                    _buildGreeting(name),
                     const SizedBox(height: 20),
                     _buildPlanStatusCard(),
                     const SizedBox(height: 16),
@@ -231,14 +256,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildGreeting() {
+  Widget _buildGreeting(String name) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
             Text(
-              'Hello, ${MockData.user['fullName']} ',
+              'Hello, $name ',
               style: Theme.of(context).textTheme.headlineMedium,
             ),
             const Text('👋', style: TextStyle(fontSize: 22)),
@@ -254,6 +279,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildPlanStatusCard() {
+    final zone = (_profile?['zone_id'] ?? 'default').toString();
+    final renewal = (_profile?['next_renewal'] ?? 'upcoming cycle').toString();
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -388,7 +415,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          'Next renewal on ${MockData.coverage['nextRenewal']}',
+                          'Next renewal on $renewal',
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.8),
                             fontSize: 12,
@@ -410,7 +437,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    'Zone: ${MockData.coverage['zone']}',
+                    'Zone: $zone',
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.85),
                       fontSize: 13,
@@ -427,15 +454,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildTwoPillsRow() {
+    final latestClaim = _claims.isNotEmpty ? _claims.first : null;
+    final claimStatus = (latestClaim?['status'] ?? 'No claims').toString();
+    final claimTime =
+        (latestClaim?['created_at'] ?? latestClaim?['event_timestamp'] ?? '—')
+            .toString();
+
     return Row(
       children: [
         Expanded(
           child: _buildInfoPill(
             label: 'CURRENT CLAIM',
-            value: MockData.currentClaim['status'] as String,
+            value: claimStatus,
             subtitle: _riskScore != null
                 ? 'Risk: ${(_riskScore! * 100).toStringAsFixed(0)}%'
-                : '2 days ago',
+                : claimTime,
             subtitleColor: AppTheme.warningOrange,
             accentColor: AppTheme.warningOrange,
           ),
@@ -862,7 +895,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildRecentActivity() {
-    final activity = MockData.recentActivity as List<Map<String, dynamic>>;
+    final activity = _buildRecentActivityItems();
+    if (activity.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppTheme.cardOf(context),
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+          boxShadow: AppTheme.softShadowOf(context),
+        ),
+        child: Text(
+          'No recent activity yet.',
+          style: TextStyle(
+            color: AppTheme.textSecondaryOf(context),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      );
+    }
+
     final icons = [
       Icons.bolt_rounded,
       Icons.payment_rounded,
@@ -953,6 +1005,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
         );
       }).toList(),
     );
+  }
+
+  List<Map<String, String>> _buildRecentActivityItems() {
+    final items = <Map<String, String>>[];
+    for (final c in _claims.take(3)) {
+      items.add({
+        'title': (c['event_type'] ?? 'Claim submitted').toString(),
+        'subtitle': 'Status: ${(c['status'] ?? 'processing').toString()}',
+        'time': (c['created_at'] ?? c['event_timestamp'] ?? '—').toString(),
+      });
+    }
+    for (final p in _payouts.take(2)) {
+      items.add({
+        'title': 'Payout ${(p['status'] ?? 'pending').toString()}',
+        'subtitle':
+            'Amount: ₹${(p['amount'] ?? p['disbursed_amount'] ?? 0).toString()}',
+        'time': (p['updated_at'] ?? p['created_at'] ?? '—').toString(),
+      });
+    }
+    return items;
   }
 }
 
