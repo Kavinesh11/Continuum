@@ -12,7 +12,6 @@ const db = require('../db');
 
 const router = express.Router();
 
-// Helper functions
 function toISO(v) {
   return v instanceof Date ? v.toISOString() : v;
 }
@@ -177,7 +176,7 @@ router.put('/:id', authenticate, requireRole('worker', 'admin', 'insurer'), asyn
            claim_description = COALESCE($4, claim_description),
            decided_at = CASE WHEN $1 IN ('approved','rejected') THEN NOW() ELSE decided_at END
          WHERE claim_id = $5`,
-        [status, estimated_payout, verification_message, claim_description, id]
+      [status, estimated_payout, verification_message, claim_description, id]
     );
 
     return res.status(200).json({ updated: true, claim_id: id });
@@ -226,41 +225,59 @@ router.get('/:id/status', authenticate, requireRole('worker', 'admin', 'insurer'
       [id]
     );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'not_found' });
-    }
+    if (result.rows.length === 0) return res.status(404).json({ error: 'not_found' });
 
     const claim = result.rows[0];
-
-    // Workers can only access their own claims (Requirements 6.1)
     if (req.user.role === 'worker' && claim.worker_id !== req.user.worker_id) {
       return res.status(403).json({ error: 'insufficient_role' });
     }
 
+    const payoutResult = await db.query(
+      `SELECT status, disbursed_at, created_at FROM payouts WHERE claim_id = $1 ORDER BY created_at DESC LIMIT 1`,
+      [id]
+    );
+
+    const payout = payoutResult.rows[0] || null;
+    const payoutStatus = payout?.status || null;
+    const payoutTime = payout
+      ? toISO(payout.disbursed_at || payout.created_at)
+      : 'Pending';
+
+    const status = claim.status || 'processing';
+    const submitted = toISO(claim.submitted_at) || '';
+    const decided = toISO(claim.decided_at) || 'Pending';
+    const isApproved = status === 'approved';
+    const isRejected = status === 'rejected';
+    const isPayoutDone = payoutStatus === 'disbursed';
+
+    const stages = [
+      { name: 'SUBMITTED', time: submitted, complete: true },
+      { name: 'REVIEW', time: status === 'processing' ? 'In Progress' : decided, complete: true },
+      { name: 'APPROVED', time: isApproved ? decided : 'Pending', complete: isApproved },
+      { name: 'PAYOUT', time: isApproved ? payoutTime : 'Pending', complete: isApproved && isPayoutDone }
+    ];
+
     return res.status(200).json({
-      claim_id:         claim.claim_id,
-      worker_id:        claim.worker_id,
-      policy_id:        claim.policy_id,
-      event_type:       claim.event_type,
-      event_timestamp:  claim.event_timestamp instanceof Date
-        ? claim.event_timestamp.toISOString()
-        : claim.event_timestamp,
-      gps_lat:          claim.gps_lat != null ? parseFloat(claim.gps_lat) : null,
-      gps_lon:          claim.gps_lon != null ? parseFloat(claim.gps_lon) : null,
-      zone_id:          claim.zone_id,
-      status:           claim.status,
-      fraud_score:      claim.fraud_score != null ? parseFloat(claim.fraud_score) : null,
+      claim_id: claim.claim_id,
+      worker_id: claim.worker_id,
+      policy_id: claim.policy_id,
+      event_type: claim.event_type,
+      event_timestamp: toISO(claim.event_timestamp),
+      gps_lat: claim.gps_lat != null ? parseFloat(claim.gps_lat) : null,
+      gps_lon: claim.gps_lon != null ? parseFloat(claim.gps_lon) : null,
+      zone_id: claim.zone_id,
+      status: isRejected ? 'rejected' : (isApproved ? 'approved' : 'processing'),
+      fraud_score: claim.fraud_score != null ? parseFloat(claim.fraud_score) : null,
       estimated_payout: claim.estimated_payout != null ? parseFloat(claim.estimated_payout) : null,
-      submitted_at:     claim.submitted_at instanceof Date
-        ? claim.submitted_at.toISOString()
-        : claim.submitted_at,
-      decided_at:       claim.decided_at
-        ? (claim.decided_at instanceof Date
-          ? claim.decided_at.toISOString()
-          : claim.decided_at)
-        : null,
-      verification_message: claim.verification_message,
-      claim_description: claim.claim_description
+      expectedPayout: claim.estimated_payout != null ? parseFloat(claim.estimated_payout) : null,
+      submitted_at: submitted,
+      decided_at: claim.decided_at ? decided : null,
+      stages,
+      timeline_text: isPayoutDone ? 'Completed' : (isApproved ? 'Payout in progress' : '2-3 business days'),
+      timelineText: isPayoutDone ? 'Completed' : (isApproved ? 'Payout in progress' : '2-3 business days'),
+      claim_description: claim.claim_description,
+      verification_message: claim.verification_message || 'Verification in progress',
+      verificationMessage: claim.verification_message || 'Verification in progress'
     });
   } catch (err) {
     next(err);

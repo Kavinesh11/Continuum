@@ -174,8 +174,9 @@ class _AssistsScreenState extends State<AssistsScreen> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
       child: Row(
-        mainAxisAlignment:
-            isBot ? MainAxisAlignment.start : MainAxisAlignment.end,
+        mainAxisAlignment: isBot
+            ? MainAxisAlignment.start
+            : MainAxisAlignment.end,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (isBot) ...[
@@ -276,8 +277,7 @@ class _AssistsScreenState extends State<AssistsScreen> {
                 onSubmitted: (_) => _send(),
                 decoration: InputDecoration(
                   hintText: 'Ask Assist anything...',
-                  hintStyle:
-                      TextStyle(color: AppTheme.textHintOf(context)),
+                  hintStyle: TextStyle(color: AppTheme.textHintOf(context)),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 20,

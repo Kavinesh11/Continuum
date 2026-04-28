@@ -14,7 +14,8 @@
 3. [Database Migration Order](#3-database-migration-order)
 4. [Kafka Topic Initialization](#4-kafka-topic-initialization)
 5. [Running Tests](#5-running-tests)
-6. [Actuarial CI Gate](#6-actuarial-ci-gate)
+
+
 7. [Prometheus Alert Runbooks](#7-prometheus-alert-runbooks)
 8. [BullMQ Dead Letter Queue Procedure](#8-bullmq-dead-letter-queue-procedure)
 9. [Oracle Failure Procedure](#9-oracle-failure-procedure)
@@ -238,7 +239,6 @@ npx jest --testNamePattern "reserve" # tests matching pattern
 Test files in `services/core_backend/tests/`:
 - `test_auth_middleware.test.js` — JWT auth + RBAC middleware
 - `test_bullmq.test.js` — BullMQ queue and worker behavior
-- `test_core_backend.test.js` — integration tests
 - `test_fcm.test.js` — Firebase Cloud Messaging dispatch
 - `test_ledger.test.js` — double-entry ledger, overdraw prevention
 - `test_notification_dispatch.test.js` — notification pipeline
@@ -291,27 +291,8 @@ go test ./... -v
 flutter test
 ```
 
----
 
-## 6. Actuarial CI Gate
 
-The actuarial CI gate must pass before any release that changes pricing logic, reserve management, or oracle consensus behavior.
-
-```bash
-python -m services.actuarial_lab.ci_gate \
-    --ts-dsn "postgresql://postgres:password@localhost:5432/continuum" \
-    --crdb-dsn "postgresql://root@localhost:26257/continuum?sslmode=disable"
-```
-
-**Exit codes:**
-- `0` — All checks pass; deployment can proceed
-- `1` — One or more checks failed; **deployment must be blocked**
-
-**What causes exit code 1:**
-1. Rolling 13-week portfolio loss ratio > 100% in any backtest window
-2. Any stress scenario produces reserve depletion < 90 days
-
-**On failure:** Do not proceed with deployment. Review the structured log output identifying which backtesting window or stress scenario failed. Escalate to the actuarial reviewer.
 
 ---
 

@@ -145,6 +145,9 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
       'weeklyCost':
           (_profile?['weekly_premium'] as num?)?.toStringAsFixed(0) ?? '—',
       'nextBillingDate': _formatRenewalDate(_profile?['next_renewal']),
+      'weeklyCost':
+          (_profile?['weekly_premium'] as num?)?.toStringAsFixed(0) ?? '—',
+      'nextBillingDate': _formatRenewalDate(_profile?['next_renewal']),
     };
   }
 

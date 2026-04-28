@@ -25,6 +25,7 @@ function canAccess(req, workerId) {
  *
  * Requirements: 15.5
  */
+
 router.put('/fcm-token', authenticate, requireRole('worker'), async (req, res, next) => {
   try {
     const { fcm_token } = req.body;
@@ -89,7 +90,6 @@ router.get('/:id', authenticate, requireRole('worker', 'admin', 'insurer'), asyn
       [id]
     );
 
-    // Fetch active policy for weekly_premium and next_renewal (V70, V69)
     const policyQ = db.query(
       `SELECT weekly_premium, billing_cycle_end
        FROM policies
@@ -100,13 +100,19 @@ router.get('/:id', authenticate, requireRole('worker', 'admin', 'insurer'), asyn
     );
 
     const [workerR, statsR, protectedR, historyR, policyR] = await Promise.all([
-      workerQ, statsQ, protectedQ, historyQ, policyQ,
+      workerQ,
+      statsQ,
+      protectedQ,
+      historyQ,
+      policyQ,
     ]);
+
     if (workerR.rows.length === 0) return res.status(404).json({ error: 'not_found' });
 
     const w = workerR.rows[0];
-    const s = statsR.rows[0];
+    const s = statsR.rows[0] || {};
     const p = policyR.rows[0];
+    const totalProtected = protectedR.rows[0]?.total_protected_amount || 0;
 
     return res.status(200).json({
       worker_id: w.worker_id,
@@ -120,7 +126,7 @@ router.get('/:id', authenticate, requireRole('worker', 'admin', 'insurer'), asyn
       registered_at: w.registered_at instanceof Date ? w.registered_at.toISOString() : w.registered_at,
       emergency_contact: w.emergency_contact || null,
       claims_approved_count: s?.claims_approved_count || 0,
-      total_protected_amount: protectedR.rows[0]?.total_protected_amount || 0,
+      total_protected_amount: totalProtected,
       weekly_premium: p?.weekly_premium ? parseFloat(p.weekly_premium) : null,
       next_renewal: p?.billing_cycle_end instanceof Date
         ? p.billing_cycle_end.toISOString()
@@ -131,6 +137,25 @@ router.get('/:id', authenticate, requireRole('worker', 'admin', 'insurer'), asyn
         status: c.status,
         submitted_at: c.submitted_at instanceof Date ? c.submitted_at.toISOString() : c.submitted_at,
       })),
+      member_since: w.registered_at instanceof Date ? w.registered_at.toISOString() : w.registered_at,
+      stats: {
+        total_protected_amount: totalProtected,
+        claims_approved_count: s?.claims_approved_count || 0,
+        weekly_order_count: 0,
+        weekly_earnings: 0,
+        completion_rate: 0
+      },
+      location: {
+        current_address: '',
+        current_zone: w.zone_id || '',
+        ping_count: 0
+      },
+      recent_history: historyR.rows.map((r) => ({
+        incident: r.event_type || 'Incident',
+        status: r.status || 'processing',
+        submitted_at: r.submitted_at instanceof Date ? r.submitted_at.toISOString() : r.submitted_at,
+        detail: `Claim ${r.claim_id}`
+      }))
     });
   } catch (err) {
     next(err);
@@ -146,23 +171,20 @@ router.get('/:id', authenticate, requireRole('worker', 'admin', 'insurer'), asyn
 router.put('/:id', authenticate, requireRole('worker', 'admin'), async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { full_name, city, phone, emergency_contact } = req.body;
-
-    // Authorization check
     if (!canAccess(req, id)) {
       return res.status(403).json({ error: 'insufficient_role' });
     }
 
-    // Validate the worker exists
-    const existingResult = await db.query(
-      'SELECT worker_id FROM workers WHERE worker_id = $1',
-      [id]
-    );
-    if (existingResult.rows.length === 0) {
-      return res.status(404).json({ error: 'not_found' });
-    }
+    const {
+      full_name,
+      city,
+      phone,
+      platform,
+      zone_id,
+      tier,
+      emergency_contact
+    } = req.body;
 
-    // Build update query dynamically
     const updates = [];
     const values = [id];
     let paramIndex = 2;
@@ -180,6 +202,21 @@ router.put('/:id', authenticate, requireRole('worker', 'admin'), async (req, res
     if (phone !== undefined && phone !== null) {
       updates.push(`phone = $${paramIndex}`);
       values.push(phone);
+      paramIndex++;
+    }
+    if (platform !== undefined && platform !== null) {
+      updates.push(`platform = $${paramIndex}`);
+      values.push(platform);
+      paramIndex++;
+    }
+    if (zone_id !== undefined && zone_id !== null) {
+      updates.push(`zone_id = $${paramIndex}`);
+      values.push(zone_id);
+      paramIndex++;
+    }
+    if (tier !== undefined && tier !== null) {
+      updates.push(`tier = $${paramIndex}`);
+      values.push(tier);
       paramIndex++;
     }
     if (emergency_contact !== undefined && emergency_contact !== null) {
@@ -205,9 +242,28 @@ router.put('/:id', authenticate, requireRole('worker', 'admin'), async (req, res
       full_name: w.full_name || '',
       city: w.city || '',
       phone: w.phone || '',
+      platform: w.platform || '',
+      zone_id: w.zone_id || '',
+      tier: w.tier || '',
       emergency_contact: w.emergency_contact || null,
       updated: true,
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/:id/fcm-token', authenticate, requireRole('worker', 'admin'), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { fcm_token } = req.body;
+    if (!canAccess(req, id)) return res.status(403).json({ error: 'insufficient_role' });
+    if (!fcm_token || typeof fcm_token !== 'string' || fcm_token.trim() === '') {
+      return res.status(400).json({ error: 'fcm_token is required' });
+    }
+
+    await db.query(`UPDATE workers SET fcm_token = $1 WHERE worker_id = $2`, [fcm_token.trim(), id]);
+    return res.status(200).json({ updated: true });
   } catch (err) {
     next(err);
   }

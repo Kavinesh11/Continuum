@@ -38,7 +38,10 @@ class ApiService {
     if (envVal != null && envVal.isNotEmpty) {
       return envVal;
     }
-    return const String.fromEnvironment('API_HOST', defaultValue: '57.159.30.7');
+    return const String.fromEnvironment(
+      'API_HOST',
+      defaultValue: '192.168.1.10',
+    );
   }
 
   // For physical phones, pass --dart-define=API_HOST=<laptop-lan-ip>
@@ -390,7 +393,6 @@ class ApiService {
       return {};
     }
   }
-
   /// DELETE /assist/messages → Core Backend
   Future<void> clearAssistHistory() async {
     try {

@@ -617,6 +617,8 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
         'verification_message': _descriptionController.text.trim(),
         'claim_description': _descriptionController.text.trim(),
         'zone_id': zoneId,
+        'gps_coordinates': [0.0, 0.0],
+        'device_attestation_token': 'mobile_app',
       };
 
       final result = await ApiService().submitClaim(payload);

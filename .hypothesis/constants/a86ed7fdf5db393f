@@ -1,0 +1,4 @@
+# file: D:\Continuum\services\web_intelligence\scrapers\municipal.py
+# hypothesis_version: 6.151.5
+
+[10.0, 'ALL', 'advisories', 'critical', 'description', 'high', 'lockdown', 'low', 'medium', 'severity', 'source_url', 'zone_id']
