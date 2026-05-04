@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../routes/app_routes.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
 import '../../services/demo_backend.dart';
@@ -245,6 +246,207 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
     };
   }
 
+  void _confirmAutoPayOff() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: AppTheme.cardOf(context),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.warningOrange.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.warning_amber_rounded,
+                  color: AppTheme.warningOrange, size: 28),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Turn off auto-pay?',
+              style: TextStyle(
+                fontSize: 18, fontWeight: FontWeight.w800,
+                color: AppTheme.textPrimaryOf(context),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Coverage pauses after 7 days without payment. You\'ll need to pay manually each week.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13, color: AppTheme.textSecondaryOf(context), height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primary,
+                      shadowColor: Colors.transparent,
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppTheme.radiusMd)),
+                    ),
+                    child: const Text(
+                      'Keep auto-pay ON',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      setState(() => _autoPay = false);
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.dangerRed,
+                      side: BorderSide(color: AppTheme.dangerRed.withOpacity(0.4)),
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppTheme.radiusMd)),
+                    ),
+                    child: const Text(
+                      'Turn off',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _handlePayNow() {
+    final amount = (_profile?['weekly_premium'] as num?)?.toStringAsFixed(0) ?? '—';
+    showAdaptiveDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusLg)),
+        title: Text(
+          'Pay ₹$amount now?',
+          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+        ),
+        content: Text(
+          _autoPay
+              ? 'Auto-pay is already enabled. This will charge ₹$amount immediately in addition to your scheduled debit.'
+              : 'This will immediately charge ₹$amount to your selected payment method.',
+          style: const TextStyle(height: 1.4, fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Cancel',
+                style: TextStyle(color: AppTheme.textSecondaryOf(context))),
+          ),
+          Container(
+            decoration: BoxDecoration(
+              gradient: AppTheme.accentGradient,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _executePay();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+              child: const Text('Pay Now',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _executePay() {
+    DemoOrchestrator.instance.premiumDebited();
+    final driver = DemoBackend.instance.activeDriver;
+    final upiHandle =
+        '${driver.partnerId.toLowerCase().replaceAll('-', '')}@okaxis';
+    setState(() {
+      _payouts = [
+        {
+          'id': 'TXN-${DateTime.now().millisecondsSinceEpoch % 100000}',
+          'date': _todayLabel(),
+          'amount': (_profile?['weekly_premium'] as num?)?.round() ?? 199,
+          'method': 'UPI • $upiHandle',
+          'status': 'Success',
+          'isDebit': true,
+        },
+        ..._payouts,
+      ];
+    });
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusLg)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppTheme.successGreen.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.check_circle_rounded,
+                  color: AppTheme.successGreen, size: 22),
+            ),
+            const SizedBox(width: 12),
+            const Text('Payment Initiated',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
+          ],
+        ),
+        content: Text(
+          'Your payment of ₹${(_profile?['weekly_premium'] as num?)?.toStringAsFixed(0) ?? '—'} has been initiated and will be processed shortly.',
+          style: const TextStyle(height: 1.4),
+        ),
+        actions: [
+          Container(
+            decoration: BoxDecoration(
+              gradient: AppTheme.accentGradient,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: ElevatedButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+              child: const Text('Done',
+                  style: TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.w700)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final plan = _buildPlanData();
@@ -266,8 +468,12 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                     _buildPaymentMethodsSection(context, methods),
                     const SizedBox(height: 22),
                     _buildPayNowButton(context),
+                    const SizedBox(height: 14),
+                    _buildRoiRow(context),
                     const SizedBox(height: 28),
                     _buildPaymentHistory(context, history),
+                    const SizedBox(height: 16),
+                    _buildTaxHint(context),
                     const SizedBox(height: 20),
                   ],
                 ),
@@ -440,7 +646,13 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                     ),
                     Switch(
                       value: _autoPay,
-                      onChanged: (v) => setState(() => _autoPay = v),
+                      onChanged: (newVal) {
+                        if (!newVal) {
+                          _confirmAutoPayOff();
+                        } else {
+                          setState(() => _autoPay = true);
+                        }
+                      },
                       activeColor: Colors.white,
                       activeTrackColor: AppTheme.successGreen.withOpacity(0.7),
                       inactiveThumbColor: Colors.white70,
@@ -635,83 +847,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
         boxShadow: AppTheme.primaryGlow(0.25),
       ),
       child: ElevatedButton(
-        onPressed: () {
-          DemoOrchestrator.instance.premiumDebited();
-          final driver = DemoBackend.instance.activeDriver;
-          final upiHandle =
-              '${driver.partnerId.toLowerCase().replaceAll('-', '')}@okaxis';
-          setState(() {
-            _payouts = [
-              {
-                'id': 'TXN-${DateTime.now().millisecondsSinceEpoch % 100000}',
-                'date': _todayLabel(),
-                'amount': (_profile?['weekly_premium'] as num?)?.round() ?? 199,
-                'method': 'UPI • $upiHandle',
-                'status': 'Success',
-                'isDebit': true,
-              },
-              ..._payouts,
-            ];
-          });
-          showDialog(
-            context: context,
-            builder: (ctx) => AlertDialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-              ),
-              title: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppTheme.successGreen.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(
-                      Icons.check_circle_rounded,
-                      color: AppTheme.successGreen,
-                      size: 22,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  const Text(
-                    'Payment Initiated',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
-                  ),
-                ],
-              ),
-              content: Text(
-                'Your payment of ₹${(_profile?['weekly_premium'] as num?)?.toStringAsFixed(0) ?? '—'} has been initiated and will be processed shortly.',
-                style: const TextStyle(height: 1.4),
-              ),
-              actions: [
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: AppTheme.accentGradient,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.of(ctx).pop(),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      shadowColor: Colors.transparent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    child: const Text(
-                      'Done',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
+        onPressed: _handlePayNow,
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,
           shadowColor: Colors.transparent,
@@ -740,6 +876,96 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
       ),
     );
   }
+
+  Widget _buildRoiRow(BuildContext context) {
+    final driver = DemoBackend.instance.activeDriver;
+    final premium = driver.weeklyPremium * 4;
+    final payoutTotal = _tier == 'Platinum' ? 620.0 : _tier == 'Gold' ? 430.0 : 180.0;
+    final net = payoutTotal - premium;
+    final netSign = net >= 0 ? '+' : '';
+    final remaining = (premium - payoutTotal).clamp(0.0, double.infinity);
+
+    return GestureDetector(
+      onTap: () => Navigator.pushNamed(context, AppRoutes.roi),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppTheme.primary.withOpacity(0.06),
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+          border: Border.all(color: AppTheme.primary.withOpacity(0.15)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppTheme.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.trending_up_rounded,
+                  color: AppTheme.primary, size: 18),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'This month: Paid ₹${premium.round()} · Received ₹${payoutTotal.round()} · Net $netSign₹${net.abs().round()}',
+                    style: TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.w600,
+                      color: AppTheme.textPrimaryOf(context),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    net < 0
+                        ? '₹${remaining.round()} more in payouts to break even'
+                        : 'You\'ve broken even this month!',
+                    style: TextStyle(
+                      fontSize: 11, color: AppTheme.textSecondaryOf(context),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded,
+                color: AppTheme.textHintOf(context), size: 18),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTaxHint(BuildContext context) {
+    final annualPremium = (DemoBackend.instance.activeDriver.weeklyPremium * 52).round();
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppTheme.textHintOf(context).withOpacity(0.06),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.info_outline_rounded,
+              size: 14, color: AppTheme.textHintOf(context)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Premiums paid (FY 2025–26): ₹$annualPremium · '
+              'May be deductible under Section 80D for self-employed. Consult your CA.',
+              style: TextStyle(
+                fontSize: 11, color: AppTheme.textSecondaryOf(context), height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String get _tier => (_profile?['tier'] ?? DemoBackend.instance.activeDriver.tier).toString();
 
   Widget _buildPaymentHistory(
     BuildContext context,

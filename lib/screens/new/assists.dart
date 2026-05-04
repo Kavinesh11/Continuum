@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../routes/app_routes.dart';
 import '../../services/api_service.dart';
+import '../../services/demo_backend.dart';
 import '../../services/gemini_service.dart';
 import '../../state/demo_orchestrator.dart';
 import '../../theme/app_theme.dart';
@@ -135,14 +137,14 @@ class _AssistsScreenState extends State<AssistsScreen> {
     });
   }
 
-  void _showCallSheet() {
+  void _showEscalationSheet() {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (ctx) => _VoiceAgentSheet(
-        driverName: 'Partner',
-        onEnd: () => Navigator.pop(ctx),
+      builder: (ctx) => _EscalationSheet(
+        messages: List.from(_messages),
+        onClose: () => Navigator.pop(ctx),
       ),
     );
   }
@@ -176,10 +178,10 @@ class _AssistsScreenState extends State<AssistsScreen> {
         ),
         actions: [
           IconButton(
-            onPressed: _showCallSheet,
-            icon: const Icon(Icons.phone_rounded),
+            onPressed: _showEscalationSheet,
+            icon: const Icon(Icons.headset_mic_rounded),
             color: AppTheme.primary,
-            tooltip: 'Voice Agent',
+            tooltip: 'Get more help',
           ),
           const NotificationAction(),
         ],
@@ -228,7 +230,7 @@ class _AssistsScreenState extends State<AssistsScreen> {
     );
   }
 
-  static const _quickReplies = [
+  static const _defaultReplies = [
     'What is Continuum?',
     'How does oracle work?',
     'How long do payouts take?',
@@ -237,8 +239,74 @@ class _AssistsScreenState extends State<AssistsScreen> {
     'How does auto-debit work?',
   ];
 
+  List<String> _buildContextualQuickReplies() {
+    final driver = DemoBackend.instance.activeDriver;
+    final replies = <String>[];
+
+    // Priority contextual suggestions
+    final claims = _messages
+        .where((m) => m['isBot'] == true)
+        .map((m) => m['text'] as String)
+        .join(' ')
+        .toLowerCase();
+
+    final hasPendingClaim = claims.contains('in review') || claims.contains('pending');
+    final hadRecentPayout = claims.contains('payout') || claims.contains('credited');
+    final isSilver = driver.tier == 'Silver';
+
+    if (hasPendingClaim) {
+      replies.add('What\'s happening with my claim?');
+    }
+    if (hadRecentPayout) {
+      replies.add('Explain my recent auto-payout');
+    }
+    if (isSilver) {
+      replies.add('Should I upgrade to Gold?');
+    }
+
+    // Fill remaining with defaults
+    for (final r in _defaultReplies) {
+      if (!replies.contains(r) && replies.length < 5) {
+        replies.add(r);
+      }
+    }
+    return replies;
+  }
+
+  // Detect if bot response suggests a navigation action
+  String? _detectActionRoute(String text) {
+    final lower = text.toLowerCase();
+    if (lower.contains('apply claim') || lower.contains('tap "apply claim"') ||
+        lower.contains('file a claim') || lower.contains('submit a claim')) {
+      return AppRoutes.apply;
+    }
+    if (lower.contains('policy screen') || lower.contains('upgrade') ||
+        lower.contains('switch plan') || lower.contains('plan details')) {
+      return AppRoutes.planDetails;
+    }
+    if (lower.contains('payments section') || lower.contains('debit history') ||
+        lower.contains('view in payment')) {
+      return AppRoutes.payments;
+    }
+    if (lower.contains('oracle') && (lower.contains('screen') || lower.contains('view'))) {
+      return AppRoutes.oracle;
+    }
+    return null;
+  }
+
+  String _actionLabel(String route) {
+    return switch (route) {
+      AppRoutes.apply => 'Open claim form',
+      AppRoutes.planDetails => 'View plans',
+      AppRoutes.payments => 'See payments',
+      AppRoutes.oracle => 'View oracle',
+      _ => 'Go →',
+    };
+  }
+
   Widget _buildQuickReplies(BuildContext context) {
     if (_isTyping || _isSending) return const SizedBox.shrink();
+    final replies = _buildContextualQuickReplies();
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: SizedBox(
@@ -246,10 +314,10 @@ class _AssistsScreenState extends State<AssistsScreen> {
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          itemCount: _quickReplies.length,
+          itemCount: replies.length,
           separatorBuilder: (_, __) => const SizedBox(width: 8),
           itemBuilder: (context, i) => GestureDetector(
-            onTap: () => _sendQuickMessage(_quickReplies[i]),
+            onTap: () => _sendQuickMessage(replies[i]),
             child: Container(
               alignment: Alignment.center,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -259,7 +327,7 @@ class _AssistsScreenState extends State<AssistsScreen> {
                 border: Border.all(color: AppTheme.primary.withOpacity(0.25)),
               ),
               child: Text(
-                _quickReplies[i],
+                replies[i],
                 style: TextStyle(
                   color: AppTheme.primary,
                   fontSize: 12,
@@ -271,6 +339,39 @@ class _AssistsScreenState extends State<AssistsScreen> {
         ),
       ),
     );
+  }
+
+  List<Widget> _buildActionChips(BuildContext context, String text) {
+    final route = _detectActionRoute(text);
+    if (route == null) return [];
+    return [
+      const SizedBox(height: 6),
+      GestureDetector(
+        onTap: () => Navigator.pushNamed(context, route),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(
+            color: AppTheme.primary.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppTheme.primary.withOpacity(0.25)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.arrow_forward_rounded, size: 12, color: AppTheme.primary),
+              const SizedBox(width: 6),
+              Text(
+                _actionLabel(route),
+                style: TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w700,
+                  color: AppTheme.primary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ];
   }
 
   Widget _buildTypingIndicator(BuildContext context) {
@@ -349,47 +450,54 @@ class _AssistsScreenState extends State<AssistsScreen> {
             ),
           ],
           Flexible(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: isBot
-                    ? AppTheme.cardOf(context)
-                    : AppTheme.primary.withOpacity(0.9),
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(16),
-                  topRight: const Radius.circular(16),
-                  bottomLeft: Radius.circular(isBot ? 0 : 16),
-                  bottomRight: Radius.circular(isBot ? 16 : 0),
+            child: Column(
+              crossAxisAlignment: isBot ? CrossAxisAlignment.start : CrossAxisAlignment.end,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: isBot
+                        ? AppTheme.cardOf(context)
+                        : AppTheme.primary.withOpacity(0.9),
+                    borderRadius: BorderRadius.only(
+                      topLeft: const Radius.circular(16),
+                      topRight: const Radius.circular(16),
+                      bottomLeft: Radius.circular(isBot ? 0 : 16),
+                      bottomRight: Radius.circular(isBot ? 16 : 0),
+                    ),
+                    boxShadow: AppTheme.softShadowOf(context),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: isBot
+                        ? CrossAxisAlignment.start
+                        : CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        text,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: isBot
+                              ? AppTheme.textPrimaryOf(context)
+                              : Colors.white,
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        time,
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: isBot
+                              ? AppTheme.textHintOf(context)
+                              : Colors.white.withOpacity(0.7),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                boxShadow: AppTheme.softShadowOf(context),
-              ),
-              child: Column(
-                crossAxisAlignment: isBot
-                    ? CrossAxisAlignment.start
-                    : CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    text,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: isBot
-                          ? AppTheme.textPrimaryOf(context)
-                          : Colors.white,
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    time,
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: isBot
-                          ? AppTheme.textHintOf(context)
-                          : Colors.white.withOpacity(0.7),
-                    ),
-                  ),
-                ],
-              ),
+                // Inline action chip for bot messages that suggest navigation
+                if (isBot) ..._buildActionChips(context, text),
+              ],
             ),
           ),
           if (!isBot) const SizedBox(width: 24),
@@ -456,41 +564,18 @@ class _AssistsScreenState extends State<AssistsScreen> {
   }
 }
 
-// ── Voice agent call sheet ─────────────────────────────────────────────────────
+// ── Escalation / help sheet ────────────────────────────────────────────────────
 
-class _VoiceAgentSheet extends StatefulWidget {
-  final String driverName;
-  final VoidCallback onEnd;
-  const _VoiceAgentSheet({required this.driverName, required this.onEnd});
-
-  @override
-  State<_VoiceAgentSheet> createState() => _VoiceAgentSheetState();
-}
-
-class _VoiceAgentSheetState extends State<_VoiceAgentSheet>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _pulse;
-
-  @override
-  void initState() {
-    super.initState();
-    _pulse = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 1),
-    )..repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _pulse.dispose();
-    super.dispose();
-  }
+class _EscalationSheet extends StatelessWidget {
+  final List<Map<String, dynamic>> messages;
+  final VoidCallback onClose;
+  const _EscalationSheet({required this.messages, required this.onClose});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 32),
-      padding: const EdgeInsets.all(28),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: AppTheme.cardOf(context),
         borderRadius: BorderRadius.circular(24),
@@ -498,87 +583,169 @@ class _VoiceAgentSheetState extends State<_VoiceAgentSheet>
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 4,
-            height: 4,
-            decoration: BoxDecoration(
-              color: AppTheme.dividerOf(context),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(height: 24),
-          AnimatedBuilder(
-            animation: _pulse,
-            builder: (_, __) => Container(
-              width: 90,
-              height: 90,
+          Center(
+            child: Container(
+              width: 40, height: 4,
               decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: AppTheme.accentGradient,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.primary.withOpacity(0.2 + _pulse.value * 0.25),
-                    blurRadius: 20 + _pulse.value * 20,
-                    spreadRadius: _pulse.value * 6,
-                  ),
-                ],
-              ),
-              child: const Icon(
-                Icons.support_agent_rounded,
-                color: Colors.white,
-                size: 42,
+                color: AppTheme.dividerOf(context),
+                borderRadius: BorderRadius.circular(2),
               ),
             ),
           ),
           const SizedBox(height: 20),
-          const Text(
-            'Voice Agent',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Connecting you to a live voice agent...',
-            style: TextStyle(
-              fontSize: 13,
-              color: AppTheme.textSecondaryOf(context),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Continuum Assist • Secured',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: AppTheme.successGreen,
-            ),
-          ),
-          const SizedBox(height: 32),
-          GestureDetector(
-            onTap: widget.onEnd,
-            child: Container(
-              width: 64,
-              height: 64,
-              decoration: const BoxDecoration(
-                color: AppTheme.dangerRed,
-                shape: BoxShape.circle,
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  gradient: AppTheme.accentGradient,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.headset_mic_rounded, color: Colors.white, size: 20),
               ),
-              child: const Icon(
-                Icons.call_end_rounded,
-                color: Colors.white,
-                size: 28,
+              const SizedBox(width: 12),
+              Text(
+                'Get more help',
+                style: TextStyle(
+                  fontSize: 18, fontWeight: FontWeight.w800,
+                  color: AppTheme.textPrimaryOf(context),
+                ),
               ),
-            ),
+            ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            'End Call',
-            style: TextStyle(
-              fontSize: 12,
-              color: AppTheme.textSecondaryOf(context),
+          const SizedBox(height: 20),
+          _EscalationOption(
+            icon: Icons.chat_bubble_outline_rounded,
+            title: 'Chat transcript',
+            subtitle: '${messages.length} messages in this session',
+            onTap: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text('Transcript saved to your email.'),
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 10),
+          _EscalationOption(
+            icon: Icons.email_outlined,
+            title: 'Email support',
+            subtitle: 'support@continuum.in · response within 24h',
+            onTap: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text('Opening email...'),
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 10),
+          _EscalationOption(
+            icon: Icons.chat_rounded,
+            title: 'WhatsApp',
+            subtitle: '+91 98765 43210 · typically replies in 2h',
+            onTap: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text('Opening WhatsApp...'),
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 10),
+          _EscalationOption(
+            icon: Icons.flag_outlined,
+            title: 'Report an issue',
+            subtitle: 'Incorrect payout, claim error, fraud concerns',
+            onTap: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text('Report form coming soon.'),
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: TextButton(
+              onPressed: onClose,
+              child: Text('Close',
+                  style: TextStyle(color: AppTheme.textSecondaryOf(context))),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _EscalationOption extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+  const _EscalationOption({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppTheme.primary.withOpacity(0.04),
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+          border: Border.all(color: AppTheme.dividerOf(context)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppTheme.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: AppTheme.primary, size: 18),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: TextStyle(
+                    fontSize: 14, fontWeight: FontWeight.w700,
+                    color: AppTheme.textPrimaryOf(context),
+                  )),
+                  Text(subtitle, style: TextStyle(
+                    fontSize: 11, color: AppTheme.textSecondaryOf(context),
+                  )),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded,
+                color: AppTheme.textHintOf(context), size: 18),
+          ],
+        ),
       ),
     );
   }

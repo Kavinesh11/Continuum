@@ -17,6 +17,8 @@ import 'screens/new/registration.dart';
 import 'screens/new/status_tracker.dart';
 import 'screens/new/oracle_engine.dart';
 import 'screens/new/notifications_screen.dart';
+import 'screens/new/roi_screen.dart';
+import 'screens/new/privacy_screen.dart';
 import 'sandbox/sandbox_selector_screen.dart';
 import 'sandbox/driver_provider.dart';
 import 'services/api_service.dart';
@@ -118,6 +120,8 @@ class _ContinuumAppState extends State<ContinuumApp> {
               AppRoutes.payments: (context) => const PaymentsScreen(),
               AppRoutes.oracle: (context) => const OracleEngineScreen(),
               AppRoutes.notifications: (context) => const NotificationsScreen(),
+              AppRoutes.roi: (context) => const RoiScreen(),
+              AppRoutes.privacy: (context) => const PrivacyScreen(),
             },
           ),
         );

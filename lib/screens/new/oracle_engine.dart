@@ -75,6 +75,8 @@ class _OracleEngineScreenState extends State<OracleEngineScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildConsensusCard(context),
+                        const SizedBox(height: 12),
+                        _buildInfoBanner(context),
                         const SizedBox(height: 20),
                         Text(
                           'Oracle Sources',
@@ -91,6 +93,8 @@ class _OracleEngineScreenState extends State<OracleEngineScreen>
                         ),
                         const SizedBox(height: 12),
                         _buildEventsFeed(context),
+                        const SizedBox(height: 24),
+                        _buildForecastCard(context),
                       ],
                     ),
                   ),
@@ -412,7 +416,20 @@ class _OracleEngineScreenState extends State<OracleEngineScreen>
         final date = (event['date'] ?? '').toString();
         final upiRef = event['upiRef'] as String?;
 
-        return Container(
+        return GestureDetector(
+          onTap: () {
+            showModalBottomSheet(
+              context: context,
+              backgroundColor: Colors.transparent,
+              builder: (ctx) => _EventDetailSheet(
+                title: title,
+                amount: amount,
+                date: date,
+                upiRef: upiRef,
+              ),
+            );
+          },
+          child: Container(
           margin: const EdgeInsets.only(bottom: 10),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
@@ -495,8 +512,117 @@ class _OracleEngineScreenState extends State<OracleEngineScreen>
               ),
             ],
           ),
+        ),
         );
       }).toList(),
+    );
+  }
+
+  Widget _buildInfoBanner(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      decoration: BoxDecoration(
+        color: AppTheme.primary.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: AppTheme.primary.withOpacity(0.15)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.info_outline_rounded, size: 15, color: AppTheme.primary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Continuum uses 5 independent data sources to verify disruptions. '
+              'A payout triggers when 3 or more sources confirm the same event in your zone.',
+              style: TextStyle(
+                fontSize: 12, color: AppTheme.textSecondaryOf(context), height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildForecastCard(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.warningOrange.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        border: Border.all(color: AppTheme.warningOrange.withOpacity(0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.wb_cloudy_outlined, color: AppTheme.warningOrange, size: 18),
+              const SizedBox(width: 8),
+              Text(
+                'Next 24 Hours Forecast',
+                style: TextStyle(
+                  fontSize: 14, fontWeight: FontWeight.w700,
+                  color: AppTheme.textPrimaryOf(context),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Thunderstorm 70% likely by 4 PM in your zone (IMD forecast)',
+            style: TextStyle(
+              fontSize: 13, fontWeight: FontWeight.w600,
+              color: AppTheme.textPrimaryOf(context),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '→ Auto-payout possible: ₹200–400 if oracle consensus reached',
+            style: TextStyle(
+              fontSize: 12, color: AppTheme.textSecondaryOf(context), height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 12),
+          GestureDetector(
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text(
+                      'You\'ll be notified when oracle consensus is reached.'),
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                ),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppTheme.warningOrange.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppTheme.warningOrange.withOpacity(0.3)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.notifications_none_rounded,
+                      size: 14, color: AppTheme.warningOrange),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Notify me when confirmed',
+                    style: TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.w700,
+                      color: AppTheme.warningOrange,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -509,5 +635,152 @@ class _OracleEngineScreenState extends State<OracleEngineScreen>
       case 'signal_wifi_off': return Icons.signal_wifi_off;
       default: return Icons.sensors_rounded;
     }
+  }
+}
+
+// ── Event detail bottom sheet ──────────────────────────────────────────────────
+
+class _EventDetailSheet extends StatelessWidget {
+  final String title;
+  final double amount;
+  final String date;
+  final String? upiRef;
+
+  const _EventDetailSheet({
+    required this.title,
+    required this.amount,
+    required this.date,
+    this.upiRef,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppTheme.cardOf(context),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(
+                color: AppTheme.dividerOf(context),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF8B5CF6).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.bolt_rounded,
+                    color: Color(0xFF8B5CF6), size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 17, fontWeight: FontWeight.w800,
+                    color: AppTheme.textPrimaryOf(context),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            '₹${amount.toInt()}',
+            style: const TextStyle(
+              fontSize: 32, fontWeight: FontWeight.w800,
+              color: Color(0xFF8B5CF6),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Auto-approved · $date',
+            style: TextStyle(
+              fontSize: 12, color: AppTheme.textSecondaryOf(context),
+            ),
+          ),
+          if (upiRef != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.successGreen.withOpacity(0.06),
+                borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                border: Border.all(color: AppTheme.successGreen.withOpacity(0.15)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.tag_rounded, size: 14,
+                      color: AppTheme.successGreen.withOpacity(0.8)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      upiRef!,
+                      style: TextStyle(
+                        fontSize: 11, fontWeight: FontWeight.w700,
+                        color: AppTheme.textPrimaryOf(context),
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppTheme.primary.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.verified_outlined, size: 14, color: AppTheme.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Oracle consensus: 3 of 5 sources confirmed · IMD Rainfall + AccuWeather + Traffic Index',
+                    style: TextStyle(
+                      fontSize: 11, color: AppTheme.textSecondaryOf(context), height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: () => Navigator.pop(context),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.textSecondaryOf(context),
+                side: BorderSide(color: AppTheme.dividerOf(context)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppTheme.radiusMd)),
+              ),
+              child: const Text('Close'),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

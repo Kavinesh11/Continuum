@@ -281,6 +281,9 @@ INSTRUCTIONS: Be concise (2–4 sentences), empathetic, and conversational. Addr
       return 'To file a claim, tap "Apply Claim" on your dashboard, $name. Select the event type, add the date and a brief description — photos are optional. Most covered events are auto-detected by oracle before you even file, so check your notifications first.';
     }
 
-    return 'I\'m here to help with your coverage and claims, $name. Ask me about your active claims, payouts, policy details, how the oracle works, or anything about your Continuum plan.';
+    return 'I\'m not sure I caught that, $name. Did you mean to ask about:\n'
+        '• Your recent claim or payout?\n'
+        '• Your ₹${d.weeklyPremium.toStringAsFixed(0)}/week premium?\n'
+        '• How to file a new claim?';
   }
 }

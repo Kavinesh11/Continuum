@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../theme/app_theme.dart';
+import 'package:flutter/services.dart';
+import '../../routes/app_routes.dart';
+import '../../services/demo_backend.dart';
 import '../../state/demo_state.dart';
+import '../../theme/app_theme.dart';
 
 /// Full zero-touch claim flow shown as a modal bottom sheet.
 /// Plays through 5 animated steps then shows a success payout screen.
@@ -22,11 +25,20 @@ class _ClaimFlowSheetState extends State<ClaimFlowSheet>
     'Initiating UPI transfer to linked account...',
   ];
 
-  static const _stepDurations = [1500, 2000, 1000, 1500, 2000];
+  static const _stepDurations = [1500, 2800, 1000, 1500, 2000];
+
+  // ── Oracle source data shown during step 2 ────────────────────────────────
+  static const _oracleSources = [
+    (name: 'IMD Rainfall', reading: '8.2 mm detected', confirmed: true),
+    (name: 'AccuWeather', reading: 'Precip probability 82%', confirmed: true),
+    (name: 'NASA GPM', reading: '5.4 mm/hr confirmed', confirmed: true),
+    (name: 'Downdetector', reading: 'No platform outage', confirmed: false),
+  ];
 
   // ── State ─────────────────────────────────────────────────────────────────
-  int _currentStep = 0; // 0-4 = active, 5 = all done
+  int _currentStep = 0;
   bool _completed = false;
+  int _oracleRowsVisible = 0; // how many oracle source rows have appeared
 
   late final AnimationController _checkmarkController;
   late final Animation<double> _checkmarkScale;
@@ -58,31 +70,43 @@ class _ClaimFlowSheetState extends State<ClaimFlowSheet>
     _startFlow();
   }
 
+  // ── Tier-aware payout amount ──────────────────────────────────────────────
+  int get _payoutAmount {
+    final tier = DemoBackend.instance.activeDriver.tier;
+    return tier == 'Platinum' ? 380 : tier == 'Gold' ? 247 : 180;
+  }
+
+  String get _driverTier => DemoBackend.instance.activeDriver.tier;
+
   // ── Flow logic ─────────────────────────────────────────────────────────────
   Future<void> _startFlow() async {
     for (int i = 0; i < _steps.length; i++) {
       if (!mounted) return;
-      setState(() => _currentStep = i);
-      await Future.delayed(Duration(milliseconds: _stepDurations[i]));
+      setState(() {
+        _currentStep = i;
+        if (i == 1) _oracleRowsVisible = 0; // reset oracle rows when step 2 starts
+      });
+
+      // During step 2: stagger oracle source rows every 450ms
+      if (i == 1) {
+        for (int r = 0; r < _oracleSources.length; r++) {
+          await Future.delayed(const Duration(milliseconds: 450));
+          if (!mounted) return;
+          setState(() => _oracleRowsVisible = r + 1);
+        }
+        // Wait a moment after all rows before moving on
+        await Future.delayed(const Duration(milliseconds: 500));
+      } else {
+        await Future.delayed(Duration(milliseconds: _stepDurations[i]));
+      }
     }
 
     if (!mounted) return;
 
-    // Build the auto-claim record
     final now = DateTime.now();
     const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
     ];
     final dateStr =
         '${now.day} ${months[now.month - 1]} ${now.year}, '
@@ -93,7 +117,7 @@ class _ClaimFlowSheetState extends State<ClaimFlowSheet>
       'id': '#AUTO-847291',
       'title': 'Weather + Platform Outage',
       'date': dateStr,
-      'amount': 247,
+      'amount': _payoutAmount,
       'status': 'Auto-Approved',
       'statusColor': const Color(0xFF6366F1),
       'progressPct': 1.0,
@@ -113,18 +137,8 @@ class _ClaimFlowSheetState extends State<ClaimFlowSheet>
   String _formatTimestamp() {
     final now = DateTime.now();
     const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
     ];
     return '${now.day} ${months[now.month - 1]} ${now.year}, '
         '${now.hour.toString().padLeft(2, '0')}:'
@@ -154,7 +168,6 @@ class _ClaimFlowSheetState extends State<ClaimFlowSheet>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Handle bar
           Container(
             width: 40,
             height: 4,
@@ -183,7 +196,6 @@ class _ClaimFlowSheetState extends State<ClaimFlowSheet>
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Header
         Row(
           children: [
             Container(
@@ -225,8 +237,14 @@ class _ClaimFlowSheetState extends State<ClaimFlowSheet>
           ],
         ),
         const SizedBox(height: 28),
-        // Steps
         ...List.generate(_steps.length, _buildStepRow),
+        // Oracle source breakdown — visible only during step 2
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          child: _currentStep == 1
+              ? _buildOracleBreakdown()
+              : const SizedBox.shrink(),
+        ),
         const SizedBox(height: 4),
       ],
     );
@@ -241,7 +259,6 @@ class _ClaimFlowSheetState extends State<ClaimFlowSheet>
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Circle indicator
           AnimatedContainer(
             duration: const Duration(milliseconds: 350),
             width: 34,
@@ -285,7 +302,6 @@ class _ClaimFlowSheetState extends State<ClaimFlowSheet>
                   ),
           ),
           const SizedBox(width: 14),
-          // Step label
           Expanded(
             child: AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 300),
@@ -312,15 +328,101 @@ class _ClaimFlowSheetState extends State<ClaimFlowSheet>
     );
   }
 
+  // ── Oracle breakdown (step 2 only) ─────────────────────────────────────────
+  Widget _buildOracleBreakdown() {
+    final confirmedCount = _oracleSources
+        .take(_oracleRowsVisible)
+        .where((s) => s.confirmed)
+        .length;
+
+    return Padding(
+      padding: const EdgeInsets.only(left: 48, bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ...List.generate(_oracleSources.length, (i) {
+            if (i >= _oracleRowsVisible) return const SizedBox.shrink();
+            final src = _oracleSources[i];
+            return AnimatedOpacity(
+              opacity: i < _oracleRowsVisible ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 300),
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  children: [
+                    Icon(
+                      src.confirmed ? Icons.check_circle_rounded : Icons.cancel_rounded,
+                      size: 14,
+                      color: src.confirmed
+                          ? AppTheme.successGreen
+                          : AppTheme.textHintOf(context),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      src.name,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.textPrimaryOf(context),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        src.reading,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppTheme.textSecondaryOf(context),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+          // Consensus summary row
+          if (_oracleRowsVisible == _oracleSources.length) ...[
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppTheme.successGreen.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppTheme.successGreen.withOpacity(0.25)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.verified_rounded, size: 13, color: AppTheme.successGreen),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Consensus: $confirmedCount of ${_oracleSources.length}  ·  THRESHOLD MET',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.successGreen,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   // ── Success view ───────────────────────────────────────────────────────────
   Widget _buildSuccessView() {
+    final isLowerTier = _driverTier != 'Platinum';
     return AnimatedBuilder(
       animation: _checkmarkController,
       builder: (context, _) {
         return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Animated checkmark circle
             Transform.scale(
               scale: _checkmarkScale.value,
               child: Container(
@@ -345,19 +447,34 @@ class _ClaimFlowSheetState extends State<ClaimFlowSheet>
               ),
             ),
             const SizedBox(height: 22),
-            // Fade-in amount + subtitle
             Opacity(
               opacity: _amountFade.value,
               child: Column(
                 children: [
                   Text(
-                    '₹247 credited to your UPI',
+                    '₹$_payoutAmount credited to your UPI',
                     style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.w800,
                       color: AppTheme.textPrimaryOf(context),
                     ),
                     textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '$_driverTier tier payout',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.primary,
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 6),
                   Text(
@@ -367,8 +484,7 @@ class _ClaimFlowSheetState extends State<ClaimFlowSheet>
                       color: AppTheme.textSecondaryOf(context),
                     ),
                   ),
-                  const SizedBox(height: 22),
-                  // Detail card
+                  const SizedBox(height: 18),
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
@@ -398,10 +514,107 @@ class _ClaimFlowSheetState extends State<ClaimFlowSheet>
                           'Trigger Reason',
                           'Weather + Platform Outage',
                         ),
+                        const SizedBox(height: 12),
+                        _buildDetailRow(
+                          Icons.shield_rounded,
+                          'Oracle Consensus',
+                          '3 of 4 sources confirmed',
+                        ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 22),
+                  const SizedBox(height: 16),
+                  // Post-success CTAs
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            // Navigate to claims tab (index 1 in HomeShell)
+                            Navigator.pushNamedAndRemoveUntil(
+                              context,
+                              AppRoutes.home,
+                              (route) => false,
+                              arguments: 1,
+                            );
+                          },
+                          icon: const Icon(Icons.history_rounded, size: 16),
+                          label: const Text('View Claims'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppTheme.primary,
+                            side: BorderSide(color: AppTheme.primary.withOpacity(0.4)),
+                            padding: const EdgeInsets.symmetric(vertical: 11),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            HapticFeedback.lightImpact();
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: const Text('Share link copied!'),
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.share_rounded, size: 16),
+                          label: const Text('Share'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppTheme.textSecondaryOf(context),
+                            side: BorderSide(color: AppTheme.dividerOf(context)),
+                            padding: const EdgeInsets.symmetric(vertical: 11),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  // Upgrade nudge for Silver / Gold
+                  if (isLowerTier) ...[
+                    const SizedBox(height: 10),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, AppRoutes.planDetails);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primary.withOpacity(0.06),
+                          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                          border: Border.all(color: AppTheme.primary.withOpacity(0.15)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.arrow_upward_rounded, size: 14, color: AppTheme.primary),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Platinum holders get ₹380 for this event. See plans →',
+                                style: TextStyle(
+                                  fontSize: 11, color: AppTheme.primary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 14),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -411,9 +624,7 @@ class _ClaimFlowSheetState extends State<ClaimFlowSheet>
                         shadowColor: Colors.transparent,
                         padding: const EdgeInsets.symmetric(vertical: 15),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(
-                            AppTheme.radiusMd,
-                          ),
+                          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                         ),
                       ),
                       child: const Text(

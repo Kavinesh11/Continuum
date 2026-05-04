@@ -377,7 +377,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                       child: _buildPlanStatusCard(),
                     ),
                     const SizedBox(height: 16),
-                    _buildTwoPillsRow(),
+                    _buildEarningsProtectionCard(),
                     const SizedBox(height: 24),
                     Text(
                       'Quick Actions',
@@ -387,7 +387,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                     ),
                     const SizedBox(height: 14),
                     _buildQuickActions(context),
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 16),
+                    _buildForecastBanner(),
+                    const SizedBox(height: 16),
                     _buildLiveTriggersSection(),
                     const SizedBox(height: 28),
                     _buildEarningsTrendSection(),
@@ -927,107 +929,107 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  Widget _buildTwoPillsRow() {
-    final currentClaimStatus = _claims.isNotEmpty
-        ? (_claims.first['status'] ?? 'No active claim').toString()
-        : 'No active claim';
-    final premium = _loadingRisk ? '...' : '₹${(_weeklyPremium ?? 99).round()}';
-    return Row(
-      children: [
-        Expanded(
-          child: _buildInfoPill(
-            label: 'CURRENT CLAIM',
-            value: currentClaimStatus,
-            subtitle: '2 days ago',
-            subtitleColor: AppTheme.warningOrange,
-            accentColor: AppTheme.warningOrange,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: EasterEggDetector(
-            taps: 3,
-            onTrigger: () => DemoOrchestrator.instance.killSwitchTrip(),
-            child: _buildInfoPill(
-              label: 'WEEKLY PREMIUM',
-              value: premium,
-              subtitle: 'Auto-pay active',
-              subtitleColor: AppTheme.textSecondaryOf(context),
-              accentColor: AppTheme.primary,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+  Widget _buildEarningsProtectionCard() {
+    final driver = DemoBackend.instance.activeDriver;
+    final tier = driver.tier;
+    final weeklyPremium = driver.weeklyPremium.toDouble();
+    // Weekly earned: seeded from trend data last weekly value
+    final tierData = _trendByTier[tier] ?? _trendByTier['Silver']!;
+    final weeklySeries = tierData['Weekly']!;
+    final weeklyPayout = weeklySeries.payout.reduce((a, b) => a + b);
+    final net = weeklyPayout - weeklyPremium;
+    final isPositive = net >= 0;
 
-  Widget _buildInfoPill({
-    required String label,
-    required String value,
-    required String subtitle,
-    required Color subtitleColor,
-    required Color accentColor,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppTheme.cardOf(context),
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        boxShadow: AppTheme.softShadowOf(context),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        child: Stack(
+    return GestureDetector(
+      onTap: () => Navigator.pushNamed(context, AppRoutes.roi),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: AppTheme.cardOf(context),
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+          boxShadow: AppTheme.softShadowOf(context),
+          border: Border.all(color: AppTheme.dividerOf(context)),
+        ),
+        child: Row(
           children: [
-            Positioned(
-              left: 0,
-              top: 0,
-              bottom: 0,
-              child: Container(
-                width: 4,
-                decoration: BoxDecoration(
-                  color: accentColor,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(14),
-                    bottomLeft: Radius.circular(14),
-                  ),
-                ),
+            Container(
+              padding: const EdgeInsets.all(9),
+              decoration: BoxDecoration(
+                color: AppTheme.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
               ),
+              child: Icon(Icons.shield_outlined, color: AppTheme.primary, size: 18),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 14, 16),
+            const SizedBox(width: 12),
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    label,
+                    'THIS WEEK',
                     style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      color: AppTheme.textSecondaryOf(context),
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    value,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: AppTheme.textPrimaryOf(context),
+                      fontSize: 10, fontWeight: FontWeight.w800,
+                      letterSpacing: 0.8, color: AppTheme.textSecondaryOf(context),
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: subtitleColor,
-                      fontWeight: FontWeight.w500,
-                    ),
+                  Wrap(
+                    spacing: 14,
+                    children: [
+                      _EarningsPill(label: 'Paid', value: '₹${weeklyPremium.toInt()}',
+                          color: AppTheme.textSecondaryOf(context)),
+                      _EarningsPill(label: 'Received', value: '₹${weeklyPayout.toInt()}',
+                          color: AppTheme.primary),
+                      _EarningsPill(
+                        label: 'Net',
+                        value: '${isPositive ? '+' : ''}₹${net.toInt()}',
+                        color: isPositive ? AppTheme.successGreen : AppTheme.textSecondaryOf(context),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
+            Icon(Icons.chevron_right_rounded, size: 18, color: AppTheme.textHintOf(context)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildForecastBanner() {
+    return GestureDetector(
+      onTap: () => Navigator.pushNamed(context, AppRoutes.oracle),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        decoration: BoxDecoration(
+          color: AppTheme.warningOrange.withOpacity(0.07),
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+          border: Border.all(color: AppTheme.warningOrange.withOpacity(0.25)),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.wb_cloudy_outlined, color: AppTheme.warningOrange, size: 16),
+            const SizedBox(width: 10),
+            Expanded(
+              child: RichText(
+                text: TextSpan(
+                  style: TextStyle(fontSize: 12, color: AppTheme.textPrimaryOf(context)),
+                  children: [
+                    TextSpan(
+                      text: 'Heavy rain expected Wed–Fri in your zone. ',
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    TextSpan(
+                      text: 'Auto-payout likely if confirmed (₹200–400)',
+                      style: TextStyle(color: AppTheme.textSecondaryOf(context)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Icon(Icons.chevron_right_rounded, size: 16, color: AppTheme.warningOrange),
           ],
         ),
       ),
@@ -1055,7 +1057,14 @@ class _DashboardScreenState extends State<DashboardScreen>
           AppRoutes.policy,
           true,
         ),
-        _buildTrackClaimButton(context),
+        _buildActionButton(
+          context,
+          Icons.insights_rounded,
+          'My Value',
+          AppTheme.primary,
+          AppRoutes.roi,
+          true,
+        ),
         _buildActionButton(
           context,
           Icons.hub_rounded,
@@ -1116,75 +1125,6 @@ class _DashboardScreenState extends State<DashboardScreen>
           const SizedBox(height: 8),
           Text(
             label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: AppTheme.textPrimaryOf(context),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTrackClaimButton(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        // Use the most recent claim's ID so Status Tracker has valid data
-        final allClaims = [
-          ...DemoState.instance.autoClaims,
-          ...DemoState.instance.manualClaims,
-          ..._claims,
-        ];
-        if (allClaims.isNotEmpty) {
-          final claimId =
-              (allClaims.first['id'] ?? allClaims.first['claim_id'] ?? '')
-                  .toString();
-          if (claimId.isNotEmpty) {
-            Navigator.pushNamed(
-              context,
-              AppRoutes.claimStatus,
-              arguments: claimId,
-            );
-            return;
-          }
-        }
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('No claims yet — submit a claim first.'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      },
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppTheme.primary, AppTheme.primary.withOpacity(0.7)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-              boxShadow: [
-                BoxShadow(
-                  color: AppTheme.primary.withOpacity(0.3),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: const Icon(
-              Icons.track_changes_rounded,
-              color: Colors.white,
-              size: 24,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Track Claim',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 11,
@@ -1456,6 +1396,8 @@ class _DashboardScreenState extends State<DashboardScreen>
           'subtitle':
               'Amount ₹${((_payouts.first['payout_amount'] as num?) ?? 0).round()}',
           'time': 'Recent',
+          'isPayoutItem': true,
+          'payoutAmount': ((_payouts.first['payout_amount'] as num?) ?? 0).round(),
         },
       if (_riskScore != null)
         {
@@ -1492,6 +1434,8 @@ class _DashboardScreenState extends State<DashboardScreen>
         final item = entry.value;
         final color = colors[idx % colors.length];
         final icon = icons[idx % icons.length];
+        final isPayoutItem = item['isPayoutItem'] == true;
+        final payoutAmount = (item['payoutAmount'] as int?) ?? 0;
         return Container(
           margin: const EdgeInsets.only(bottom: 10),
           decoration: BoxDecoration(
@@ -1511,49 +1455,96 @@ class _DashboardScreenState extends State<DashboardScreen>
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: color.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(icon, color: color, size: 18),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              item['title'] as String,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: AppTheme.textPrimaryOf(context),
-                              ),
+                      Row(
+                        children: [
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: color.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(10),
                             ),
-                            const SizedBox(height: 2),
-                            Text(
-                              item['subtitle'] as String,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppTheme.textSecondaryOf(context),
-                              ),
+                            child: Icon(icon, color: color, size: 18),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item['title'] as String,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppTheme.textPrimaryOf(context),
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  item['subtitle'] as String,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppTheme.textSecondaryOf(context),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
+                          ),
+                          Text(
+                            item['time'] as String,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppTheme.textHintOf(context),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
-                      Text(
-                        item['time'] as String,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppTheme.textHintOf(context),
-                          fontWeight: FontWeight.w500,
+                      if (isPayoutItem) ...[
+                        const SizedBox(height: 10),
+                        GestureDetector(
+                          onTap: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Share sheet: "Continuum paid me ₹$payoutAmount for a disruption — no form needed."',
+                                ),
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10)),
+                              ),
+                            );
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                  color: AppTheme.primary.withOpacity(0.3)),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.share_outlined,
+                                    size: 12, color: AppTheme.primary),
+                                const SizedBox(width: 5),
+                                Text(
+                                  'Share with a partner →',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppTheme.primary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ),
@@ -1567,6 +1558,44 @@ class _DashboardScreenState extends State<DashboardScreen>
 }
 
 // ── Supporting widgets ─────────────────────────────────────────────────────────
+
+class _EarningsPill extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+
+  const _EarningsPill({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return RichText(
+      text: TextSpan(
+        children: [
+          TextSpan(
+            text: '$label ',
+            style: TextStyle(
+              fontSize: 11,
+              color: AppTheme.textHintOf(context),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          TextSpan(
+            text: value,
+            style: TextStyle(
+              fontSize: 13,
+              color: color,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _LegendDot extends StatelessWidget {
   final Color color;

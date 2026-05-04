@@ -12,4 +12,6 @@ class AppRoutes {
   static const String payments = '/payments';
   static const String oracle = '/oracle';
   static const String notifications = '/notifications';
+  static const String roi = '/roi';
+  static const String privacy = '/privacy';
 }

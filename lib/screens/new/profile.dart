@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../routes/app_routes.dart';
 import '../../sandbox/driver_provider.dart';
+import '../../services/demo_backend.dart';
 import '../../state/notification_state.dart';
 import '../../theme/app_theme.dart';
 import '../../main.dart';
@@ -112,6 +113,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           '₹ $totalProtected',
                           claimsApproved,
                         ),
+                        const SizedBox(height: 12),
+                        _buildValueSummaryCard(context),
                         const SizedBox(height: 24),
                         _buildPersonalData(
                           context,
@@ -486,13 +489,155 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: _buildDataRow(context, Icons.location_on_outlined, 'Zone', zone),
         ),
         const SizedBox(height: 8),
-        _buildDataRow(
-          context,
-          Icons.emergency_outlined,
-          'Emergency Contact',
-          emergency,
-        ),
+        _buildEmergencyRow(context, emergency),
       ],
+    );
+  }
+
+  Widget _buildEmergencyRow(BuildContext context, String emergency) {
+    final isMissing = emergency == '--' || emergency.isEmpty;
+    if (isMissing) {
+      return GestureDetector(
+        onTap: () async {
+          await Navigator.pushNamed(context, AppRoutes.editProfile);
+          if (!mounted) return;
+          _loadProfile();
+        },
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: AppTheme.cardDecorationOf(context),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.warningOrange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(Icons.emergency_outlined,
+                    color: AppTheme.warningOrange, size: 18),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Emergency Contact',
+                  style: TextStyle(
+                    fontSize: 13, color: AppTheme.textSecondaryOf(context),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              Text(
+                'Not set',
+                style: TextStyle(
+                  fontSize: 12, color: AppTheme.textHintOf(context),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppTheme.warningOrange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'Set now →',
+                  style: TextStyle(
+                    fontSize: 11, fontWeight: FontWeight.w700,
+                    color: AppTheme.warningOrange,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    return _buildDataRow(context, Icons.emergency_outlined, 'Emergency Contact', emergency);
+  }
+
+  Widget _buildValueSummaryCard(BuildContext context) {
+    final driver = DemoBackend.instance.activeDriver;
+    final premium = (driver.weeklyPremium * 4).round();
+    final tier = driver.tier;
+    final payoutTotal = tier == 'Platinum' ? 620 : tier == 'Gold' ? 430 : 180;
+    final net = payoutTotal - premium;
+    final netSign = net >= 0 ? '+' : '';
+    final netColor = net >= 0 ? AppTheme.successGreen : AppTheme.textSecondaryOf(context);
+    const months = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final monthName = months[DateTime.now().month];
+    final year = DateTime.now().year;
+
+    return GestureDetector(
+      onTap: () => Navigator.pushNamed(context, AppRoutes.roi),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: AppTheme.cardDecorationOf(context),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '$monthName $year',
+                  style: TextStyle(
+                    fontSize: 12, fontWeight: FontWeight.w800,
+                    color: AppTheme.textSecondaryOf(context),
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    'View full ROI →',
+                    style: TextStyle(
+                      fontSize: 10, fontWeight: FontWeight.w700,
+                      color: AppTheme.primary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                _MiniStat(
+                  label: 'Premiums paid',
+                  value: '₹$premium',
+                  color: AppTheme.textSecondaryOf(context),
+                ),
+                Container(
+                  width: 1, height: 32,
+                  color: AppTheme.dividerOf(context),
+                  margin: const EdgeInsets.symmetric(horizontal: 12),
+                ),
+                _MiniStat(
+                  label: 'Payouts received',
+                  value: '₹$payoutTotal',
+                  color: AppTheme.successGreen,
+                ),
+                Container(
+                  width: 1, height: 32,
+                  color: AppTheme.dividerOf(context),
+                  margin: const EdgeInsets.symmetric(horizontal: 12),
+                ),
+                _MiniStat(
+                  label: 'Net',
+                  value: '$netSign₹${net.abs()}',
+                  color: netColor,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -678,6 +823,111 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Icons.chevron_right_rounded,
                   color: AppTheme.textHintOf(context),
                   size: 22,
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+
+        // ── Data & Privacy row ──
+        const SizedBox(height: 8),
+        GestureDetector(
+          onTap: () => Navigator.pushNamed(context, AppRoutes.privacy),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: AppTheme.cardDecorationOf(context),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.successGreen.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.privacy_tip_outlined,
+                    color: AppTheme.successGreen,
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Data & Privacy',
+                    style: TextStyle(
+                      fontSize: 14, fontWeight: FontWeight.w600,
+                      color: AppTheme.textPrimaryOf(context),
+                    ),
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppTheme.textHintOf(context),
+                  size: 22,
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+
+        // ── Refer a Partner row ──
+        GestureDetector(
+          onTap: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text(
+                  'Referral link copied! Share with a partner to earn ₹150 credit each.',
+                ),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: AppTheme.cardDecorationOf(context),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF6366F1).withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.group_add_outlined,
+                    color: Color(0xFF6366F1),
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Refer a Partner',
+                        style: TextStyle(
+                          fontSize: 14, fontWeight: FontWeight.w600,
+                          color: AppTheme.textPrimaryOf(context),
+                        ),
+                      ),
+                      Text(
+                        'You & your friend each get ₹150 credit',
+                        style: TextStyle(
+                          fontSize: 11, color: AppTheme.textSecondaryOf(context),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.share_outlined,
+                  color: AppTheme.textHintOf(context),
+                  size: 20,
                 ),
               ],
             ),
@@ -992,6 +1242,38 @@ class _StatCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _MiniStat extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+  const _MiniStat({required this.label, required this.value, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10, fontWeight: FontWeight.w600,
+              color: AppTheme.textHintOf(context),
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 14, fontWeight: FontWeight.w800, color: color,
+            ),
+          ),
+        ],
       ),
     );
   }
