@@ -27,9 +27,14 @@ class DemoBackend {
   Map<String, dynamic> _profileOverlay = {};
 
   // ── Claim / payout / assist stores ────────────────────────────────────────
+  // _runtimeClaims: claims added during the demo session (dynamic)
+  // _seededOverrides: admin-approved updates to seeded claims (keyed by claim ID)
+  // Seeded claims/payouts are always recomputed fresh via _seededClaims/_seededPayouts
+  // so dates are always relative to today, regardless of hot-reload state.
 
-  final List<Map<String, dynamic>> _claims = [];
-  final List<Map<String, dynamic>> _payouts = [];
+  final List<Map<String, dynamic>> _runtimeClaims = [];
+  final Map<String, Map<String, dynamic>> _seededOverrides = {};
+  final List<Map<String, dynamic>> _runtimePayouts = [];
   final List<Map<String, dynamic>> _assistMessages = [];
 
   // Track which new claims are auto-advancing (claimId → timer subscription)
@@ -49,18 +54,29 @@ class DemoBackend {
   }
 
   void _seedStores() {
-    _claims
-      ..clear()
-      ..addAll(_seededClaims(_driver));
-    _payouts
-      ..clear()
-      ..addAll(_seededPayouts(_driver));
+    _runtimeClaims.clear();
+    _seededOverrides.clear();
+    _runtimePayouts.clear();
     _assistMessages
       ..clear()
       ..addAll(_seededAssistHistory(_driver));
     _profileOverlay = {};
     fraudFlagActive = false;
   }
+
+  // Combines runtime (demo-session) claims with freshly-computed seeded claims.
+  // Seeded claims always use DateTime.now()-relative dates.
+  List<Map<String, dynamic>> _allClaims() {
+    final seeded = _seededClaims(_driver).map((c) {
+      final id = c['id'] as String;
+      final override = _seededOverrides[id];
+      return override != null ? <String, dynamic>{...c, ...override} : c;
+    }).toList();
+    return [..._runtimeClaims, ...seeded];
+  }
+
+  List<Map<String, dynamic>> _allPayouts() =>
+      [..._runtimePayouts, ..._seededPayouts(_driver)];
 
   // ── Simulated latency ──────────────────────────────────────────────────────
 
@@ -100,7 +116,7 @@ class DemoBackend {
       'claims_approved_count': d.claimsApproved,
       'total_protected_amount': d.totalProtected,
       'coverage_status': d.coverageStatus,
-      'recent_claims': _claims.take(3).toList(),
+      'recent_claims': _allClaims().take(3).toList(),
     };
   }
 
@@ -117,7 +133,7 @@ class DemoBackend {
 
   Future<List<Map<String, dynamic>>> getClaims() async {
     await _delay();
-    return List<Map<String, dynamic>>.from(_claims);
+    return _allClaims();
   }
 
   Future<Map<String, dynamic>> getClaimStatus(String claimId) async {
@@ -126,7 +142,8 @@ class DemoBackend {
     final adminData = await _fetchFromAdmin(claimId);
     if (adminData != null) {
       final adminStatus = adminData['status'] as String? ?? '';
-      final local = _claims.firstWhere(
+      final combined = _allClaims();
+      final local = combined.firstWhere(
         (c) => c['id'] == claimId,
         orElse: () => <String, dynamic>{},
       );
@@ -144,16 +161,28 @@ class DemoBackend {
           'verificationMsg': adminData['reviewNote'] ?? 'Reviewed by admin.',
           'upiRef': adminStatus == 'Approved' ? generateUpiRef() : null,
         };
-        final idx = _claims.indexWhere((c) => c['id'] == claimId);
-        if (idx != -1) {
-          _claims[idx] = updated;
+        // Persist update in the right store
+        final runtimeIdx = _runtimeClaims.indexWhere((c) => c['id'] == claimId);
+        if (runtimeIdx != -1) {
+          _runtimeClaims[runtimeIdx] = updated;
+        } else {
+          // Seeded claim — store the override so it persists across fresh seed calls
+          _seededOverrides[claimId] = {
+            'statusCode': updated['statusCode'],
+            'status': updated['status'],
+            'amount': updated['amount'],
+            'progressPct': updated['progressPct'],
+            'verificationMsg': updated['verificationMsg'],
+            'upiRef': updated['upiRef'],
+          };
         }
         return _claimToStatus(updated);
       }
     }
-    final claim = _claims.firstWhere(
+    final combined2 = _allClaims();
+    final claim = combined2.firstWhere(
       (c) => c['id'] == claimId,
-      orElse: () => _claims.isNotEmpty ? _claims.first : _defaultClaimStatus(claimId),
+      orElse: () => combined2.isNotEmpty ? combined2.first : _defaultClaimStatus(claimId),
     );
     return _claimToStatus(claim);
   }
@@ -243,7 +272,7 @@ class DemoBackend {
       'submitted_at': DateTime.now().toIso8601String(),
     };
 
-    _claims.insert(0, claim);
+    _runtimeClaims.insert(0, claim);
 
     if (status == 'APPROVED' && isAuto) {
       // Only auto-advance oracle-approved auto-claims through stages
@@ -260,11 +289,11 @@ class DemoBackend {
 
   Future<List<Map<String, dynamic>>> getPayouts() async {
     await _delay();
-    return List<Map<String, dynamic>>.from(_payouts);
+    return _allPayouts();
   }
 
   void addPayoutEntry(Map<String, dynamic> entry) {
-    _payouts.insert(0, entry);
+    _runtimePayouts.insert(0, entry);
   }
 
   // ── Admin bridge ───────────────────────────────────────────────────────────
@@ -273,9 +302,9 @@ class DemoBackend {
 
   void startManualClaimWatcher(String claimId) {
     Timer.periodic(const Duration(seconds: 6), (timer) {
-      final idx = _claims.indexWhere((c) => c['id'] == claimId);
+      final idx = _runtimeClaims.indexWhere((c) => c['id'] == claimId);
       if (idx == -1) { timer.cancel(); return; }
-      final code = _claims[idx]['statusCode'] as String? ?? '';
+      final code = _runtimeClaims[idx]['statusCode'] as String? ?? '';
       if (code == 'APPROVED' || code == 'REJECTED') { timer.cancel(); return; }
       getClaimStatus(claimId);
     });
@@ -399,15 +428,16 @@ class DemoBackend {
   Future<Map<String, dynamic>> getOracleStatus() async {
     await _delay();
     final d = _driver;
+    final allClaims = _allClaims();
     final hasAlert = fraudFlagActive ||
-        _claims.any((c) => (c['statusCode'] as String? ?? '') == 'APPROVED' &&
+        allClaims.any((c) => (c['statusCode'] as String? ?? '') == 'APPROVED' &&
             c['isAuto'] == true);
     final platformStatus = fraudFlagActive ? 'Alert' : 'Nominal';
     final platformReading = fraudFlagActive
         ? '${d.platform}: 3,741 anomaly reports'
         : '${d.platform}: 0 reports';
 
-    final autoEvents = _claims
+    final autoEvents = allClaims
         .where((c) => c['isAuto'] == true)
         .take(3)
         .toList();
@@ -634,22 +664,22 @@ class DemoBackend {
 
   // ── Claim store helpers used by orchestrator ───────────────────────────────
 
-  List<Map<String, dynamic>> get claims => List.unmodifiable(_claims);
+  List<Map<String, dynamic>> get claims => List.unmodifiable(_allClaims());
 
   void injectClaim(Map<String, dynamic> claim) {
-    _claims.insert(0, claim);
+    _runtimeClaims.insert(0, claim);
   }
 
   void updateClaim(String claimId, Map<String, dynamic> updates) {
-    final index = _claims.indexWhere((c) => c['id'] == claimId);
+    final index = _runtimeClaims.indexWhere((c) => c['id'] == claimId);
     if (index != -1) {
-      _claims[index] = {..._claims[index], ...updates};
+      _runtimeClaims[index] = {..._runtimeClaims[index], ...updates};
     }
   }
 
   Map<String, dynamic>? latestInReviewClaim() {
     try {
-      return _claims.firstWhere(
+      return _allClaims().firstWhere(
         (c) =>
             (c['status'] as String? ?? '').toLowerCase().contains('review') ||
             (c['statusCode'] as String? ?? '') == 'REVIEW',
@@ -663,7 +693,7 @@ class DemoBackend {
 
   void _startAutoAdvancer(String claimId) {
     _advancers[claimId]?.cancel();
-    _advancers[claimId] = _ClaimAdvancer(claimId, _claims, () {
+    _advancers[claimId] = _ClaimAdvancer(claimId, _runtimeClaims, () {
       _advancers.remove(claimId);
     });
   }
@@ -794,7 +824,8 @@ class DemoBackend {
 
   List<Map<String, dynamic>> _seededAssistHistory(SandboxDriver d) {
     final firstName = d.fullName.split(' ').first;
-    final latestClaim = _claims.isNotEmpty ? _claims.first : null;
+    final allC = _allClaims();
+    final latestClaim = allC.isNotEmpty ? allC.first : null;
     final latestClaimId = latestClaim?['id'] as String? ?? 'your latest claim';
     return [
       {
