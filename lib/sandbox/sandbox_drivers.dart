@@ -183,7 +183,7 @@ final _sudarshanOrders = [
   SandboxOrder(
     orderId: 'ZMT-${_todayId()}-003',
     platform: 'Zomato',
-    status: 'failed',
+    status: 'cancelled',
     earnings: 0.0,
     pickupAddress: 'Pizza Hut, BTM',
     dropAddress: 'BTM 1st Stage',

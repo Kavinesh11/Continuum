@@ -736,11 +736,20 @@ class _DashboardScreenState extends State<DashboardScreen>
         ),
         const SizedBox(height: 4),
         Text(
-          'Your shift ends in 3 hours. Drive safe!',
+          _shiftSubtitle(),
           style: Theme.of(context).textTheme.bodyMedium,
         ),
       ],
     );
+  }
+
+  String _shiftSubtitle() {
+    final hour = DateTime.now().hour;
+    if (hour < 6) return 'Early start today — coverage is active. Stay safe.';
+    if (hour < 12) return 'Good morning! Ready for the shift? Coverage is active.';
+    if (hour < 15) return 'Afternoon rush starting. Your coverage is active.';
+    if (hour < 19) return 'Peak delivery hours — you\'re covered. Drive safe.';
+    return 'Evening shift. Coverage active all night.';
   }
 
   Widget _buildPlanStatusCard() {

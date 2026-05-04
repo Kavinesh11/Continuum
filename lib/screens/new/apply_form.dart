@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
 import '../../routes/app_routes.dart';
+import '../../services/demo_backend.dart';
 import '../../state/demo_state.dart';
 import '../../state/demo_orchestrator.dart';
 import '../../theme/app_theme.dart';
@@ -65,12 +66,14 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
 
   void _prefillDemoData() {
     final now = DateTime.now();
+    final driver = DemoBackend.instance.activeDriver;
+    final zone = driver.zone.split(' — ').last;
     setState(() {
       _selectedReason = 'Heavy Rain / Waterlogging';
       _dateController.text = '${now.day}/${now.month}/${now.year}';
       _descriptionController.text =
           'Heavy rainfall caused waterlogging in my delivery zone. '
-          'Unable to complete deliveries due to flooded roads in Zone 4B. '
+          'Unable to complete deliveries due to flooded roads in $zone. '
           'Streets impassable since 09:00 AM. Orders cancelled by platform.';
     });
   }

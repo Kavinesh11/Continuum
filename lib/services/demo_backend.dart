@@ -194,12 +194,22 @@ class DemoBackend {
             'Payouts paused — safety review in progress (PAYOUT_KILL_SWITCH active).';
       } else {
         status = 'APPROVED';
-        amount = 247.0;
+        amount = _driver.tier == 'Platinum'
+            ? 450.0
+            : _driver.tier == 'Gold'
+                ? 312.0
+                : 247.0;
         isAuto = true;
       }
     } else if (reason.contains('outage') || reason.contains('app')) {
       status = killSwitch ? 'REVIEW' : 'APPROVED';
-      amount = killSwitch ? 0 : 180.0;
+      amount = killSwitch
+          ? 0
+          : _driver.tier == 'Platinum'
+              ? 312.0
+              : _driver.tier == 'Gold'
+                  ? 180.0
+                  : 99.0;
       verificationMsg = killSwitch
           ? 'Payouts paused — safety review in progress.'
           : null;
@@ -411,7 +421,7 @@ class DemoBackend {
           'icon_key': 'cloud',
           'status': hasAlert ? 'Alert' : 'Nominal',
           'reading': hasAlert
-              ? 'Red Alert — Zone 4B, ${d.city}'
+              ? 'Red Alert — ${d.zone.split(' — ').last}, ${d.city}'
               : 'No active advisories',
           'confidence': hasAlert ? 0.94 : 0.72,
         },
@@ -583,6 +593,14 @@ class DemoBackend {
         lower.contains('flood')) {
       reply =
           'Yes — IMD, AccuWeather and NASA-GPM oracles run continuously. 3-of-4 consensus triggers an auto-claim within 2 minutes of alert confirmation.';
+    } else if (lower.contains('platinum') ||
+        lower.contains('gold') ||
+        lower.contains('silver') ||
+        lower.contains('tier') ||
+        lower.contains('coverage') ||
+        lower.contains('plan')) {
+      reply =
+          'You\'re on the ${_driver.tier} Shield Plan — ₹${_driver.totalProtected.toStringAsFixed(0)} total coverage at ₹${_driver.weeklyPremium.toStringAsFixed(0)}/week. Covered events: severe weather, platform outages, bandh/strikes, and roadblocks. Oracle consensus triggers auto-approval within minutes.';
     } else if (lower.contains('fraud') || lower.contains('review')) {
       reply =
           'Fraud detection runs an isolation-forest model + crew-AI guardrails. ESCALATED_TO_HUMAN claims clear within 24h after human review.';
@@ -672,13 +690,13 @@ class DemoBackend {
           date: _daysAgoLabel(7),
           status: 'In Review',
           statusCode: 'REVIEW',
-          amount: 0,
+          amount: 180.0,
           progressPct: 0.5,
-          verificationMsg: 'Cross-referencing platform incident logs.',
+          verificationMsg: 'Cross-referencing Swiggy + Zomato incident logs for Bangalore South. Expected resolution: 24h.',
         ),
         _makeClaim(
           id: 'CLM-8833-12',
-          eventType: 'Weather + Outage',
+          eventType: 'Severe Weather + Platform Outage',
           date: _daysAgoLabel(13),
           status: 'Auto-Approved',
           statusCode: 'APPROVED',
@@ -686,6 +704,7 @@ class DemoBackend {
           progressPct: 1.0,
           upiRef: 'UPI/${_upiDatePrefix(13)}/CONT829130',
           isAuto: true,
+          verificationMsg: 'IMD + NASA-GPM oracle consensus (4/4 sources). Auto-approved.',
         ),
       ];
     } else if (d.partnerId == sandboxDriverDakshina.partnerId) {
@@ -755,8 +774,8 @@ class DemoBackend {
       return [
         _makePayout('PAY-4721', _daysAgoLabel(2), 450.0, 'UPI/${_upiDatePrefix(2)}/CONT847291', 'Success'),
         _makePayout('PAY-4512', _daysAgoLabel(13), 247.0, 'UPI/${_upiDatePrefix(13)}/CONT829130', 'Success'),
-        _makePayout('PAY-4101', _daysAgoLabel(35), 199.0, 'UPI/${_upiDatePrefix(35)}/CONT410100', 'Success'),
-        _makePayout('PAY-3988', _daysAgoLabel(49), 247.0, 'UPI/${_upiDatePrefix(49)}/CONT398801', 'Pending'),
+        _makePayout('PAY-4101', _daysAgoLabel(35), 312.0, 'UPI/${_upiDatePrefix(35)}/CONT410100', 'Success'),
+        _makePayout('PAY-3988', _daysAgoLabel(49), 247.0, 'UPI/${_upiDatePrefix(49)}/CONT398801', 'Failed'),
       ];
     } else if (d.partnerId == sandboxDriverDakshina.partnerId) {
       return [
@@ -774,12 +793,15 @@ class DemoBackend {
   }
 
   List<Map<String, dynamic>> _seededAssistHistory(SandboxDriver d) {
+    final firstName = d.fullName.split(' ').first;
+    final latestClaim = _claims.isNotEmpty ? _claims.first : null;
+    final latestClaimId = latestClaim?['id'] as String? ?? 'your latest claim';
     return [
       {
         'id': 'seed_1',
         'role': 'assistant',
         'content':
-            'Hi ${d.fullName.split(' ').first}! I\'m your Continuum Assist bot. Ask me about claims, payouts, your premium, or policy details — I\'m here to help.',
+            'Hi $firstName! I\'m your Continuum Assist bot. You\'re on the ${d.tier} Shield Plan — ₹${d.totalProtected.toStringAsFixed(0)} coverage, ₹${d.weeklyPremium.toStringAsFixed(0)}/week. Ask me anything about claims, payouts, or your policy.',
         'timestamp': DateTime.now()
             .subtract(const Duration(hours: 2))
             .toIso8601String(),
@@ -787,7 +809,7 @@ class DemoBackend {
       {
         'id': 'seed_2',
         'role': 'user',
-        'content': 'How does payout work?',
+        'content': 'What\'s the status of my claim $latestClaimId?',
         'timestamp': DateTime.now()
             .subtract(const Duration(hours: 1, minutes: 55))
             .toIso8601String(),
@@ -796,9 +818,26 @@ class DemoBackend {
         'id': 'seed_3',
         'role': 'assistant',
         'content':
-            'Approved payouts hit your linked UPI within 5 minutes. We use eNACH on PayU — reference format UPI/DDMMYY/CONT{txn_id}. Your next scheduled premium debit is ${d.nextRenewal}.',
+            'Claim $latestClaimId is currently ${latestClaim?['status'] ?? 'In Review'}. ${latestClaim?['verificationMsg'] ?? 'Our oracle network is verifying your report.'} Tap the claim card for a live progress view.',
         'timestamp': DateTime.now()
             .subtract(const Duration(hours: 1, minutes: 54))
+            .toIso8601String(),
+      },
+      {
+        'id': 'seed_4',
+        'role': 'user',
+        'content': 'When is my next premium due?',
+        'timestamp': DateTime.now()
+            .subtract(const Duration(hours: 1, minutes: 30))
+            .toIso8601String(),
+      },
+      {
+        'id': 'seed_5',
+        'role': 'assistant',
+        'content':
+            'Your next ₹${d.weeklyPremium.toStringAsFixed(0)} premium debit is on ${d.nextRenewal}, auto-pulled via eNACH. You\'re covered until then — ${d.zone} is active.',
+        'timestamp': DateTime.now()
+            .subtract(const Duration(hours: 1, minutes: 29))
             .toIso8601String(),
       },
     ];

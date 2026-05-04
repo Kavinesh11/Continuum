@@ -109,8 +109,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   static const Map<String, _TrendSeries> _trendSeriesByRange = {
     'Yearly': _TrendSeries(
       labels: ['2022', '2023', '2024', '2025', '2026'],
-      payout: [15800, 18150, 20500, 24200, 27650],
-      premium: [1480, 1560, 1620, 1710, 1830],
+      payout: [247, 1140, 2840, 4230, 1143],
+      premium: [0, 2756, 10348, 10348, 3980],
     ),
     'Monthly': _TrendSeries(
       labels: [
@@ -128,25 +128,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
         'Dec',
       ],
       payout: [
-        980,
-        1180,
-        1510,
-        1780,
-        2010,
-        1880,
-        2320,
-        2480,
-        2690,
-        2790,
-        3110,
-        2850,
+        0,
+        0,
+        558,
+        697,
+        0,
+        0,
+        247,
+        450,
+        0,
+        312,
+        247,
+        331,
       ],
-      premium: [120, 132, 148, 138, 130, 166, 178, 170, 196, 220, 208, 170],
+      premium: [796, 796, 796, 597, 199, 0, 796, 796, 796, 796, 796, 796],
     ),
     'Weekly': _TrendSeries(
       labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-      payout: [320, 410, 380, 460, 520, 610, 570],
-      premium: [24, 28, 26, 30, 33, 37, 35],
+      payout: [0, 0, 450, 0, 0, 0, 0],
+      premium: [199, 0, 0, 0, 0, 0, 0],
     ),
   };
 
@@ -256,6 +256,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  String _shiftSubtitle() {
+    final hour = DateTime.now().hour;
+    if (hour < 6) return 'Early start today — coverage is active. Stay safe.';
+    if (hour < 12) return 'Good morning! Ready for the shift? Coverage is active.';
+    if (hour < 15) return 'Afternoon rush starting. Your coverage is active.';
+    if (hour < 19) return 'Peak delivery hours — you\'re covered. Drive safe.';
+    return 'Evening shift. Coverage active all night.';
+  }
+
   Widget _buildGreeting(String name) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -271,7 +280,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         const SizedBox(height: 4),
         Text(
-          'Your shift ends in 3 hours. Drive safe!',
+          _shiftSubtitle(),
           style: Theme.of(context).textTheme.bodyMedium,
         ),
       ],
@@ -481,7 +490,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ? '...'
                 : _weeklyPremium != null
                 ? '₹${_weeklyPremium!.toStringAsFixed(0)}'
-                : '₹57',
+                : '₹199',
             subtitle: 'Paid via Autopay',
             subtitleColor: AppTheme.textSecondaryOf(context),
             accentColor: AppTheme.primary,

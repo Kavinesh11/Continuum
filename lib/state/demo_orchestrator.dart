@@ -61,7 +61,7 @@ class DemoOrchestrator {
         id: 'notif_flood_${DateTime.now().millisecondsSinceEpoch}',
         title: 'Red Alert: Flood advisory active',
         detail:
-            'Municipal corporation has issued a red flood alert in your zone. Oracle consensus reached — assessing eligibility.',
+            'Municipal corporation has issued a red flood alert in ${_driver.zone.split(' — ').last}, ${_driver.city}. Oracle consensus reached — assessing eligibility.',
         timeLabel: 'Just now',
       ),
     );
@@ -79,8 +79,8 @@ class DemoOrchestrator {
         'progressPct': 1.0,
         'upiRef': ref,
         'isAuto': true,
-        'verificationMsg': '3-of-4 oracle consensus. Auto-approved.',
-        'claim_description': 'Flood advisory — auto-triggered.',
+        'verificationMsg': 'IMD + AccuWeather + NASA-GPM consensus (3/4 sources). Auto-approved.',
+        'claim_description': 'Heavy flooding in ${_driver.zone.split(' — ').last} — roads blocked, deliveries halted. Auto-triggered via oracle network.',
         'submitted_at': DateTime.now().toIso8601String(),
       };
       _state.addAutoClaim(claim);
@@ -120,6 +120,8 @@ class DemoOrchestrator {
   void autoClaimAndPayout() {
     final ref = DemoBackend.instance.generateUpiRef();
     final claimId = DemoBackend.instance.generateClaimId();
+    final tier = _driver.tier;
+    final amount = tier == 'Platinum' ? 312.0 : tier == 'Gold' ? 180.0 : 99.0;
 
     final claim = <String, dynamic>{
       'id': claimId,
@@ -128,12 +130,12 @@ class DemoOrchestrator {
       'date': DemoBackend.instance.todayLabel(),
       'status': 'Auto-Approved',
       'statusCode': 'APPROVED',
-      'amount': 247.0,
+      'amount': amount,
       'progressPct': 1.0,
       'upiRef': ref,
       'isAuto': true,
-      'verificationMsg': 'Oracle consensus. Auto-approved.',
-      'claim_description': 'Auto-triggered outage claim.',
+      'verificationMsg': 'DownDetector + platform API oracle consensus. Auto-approved.',
+      'claim_description': '${_driver.platform} outage detected in ${_driver.zone.split(' — ').last} — income window protected.',
       'submitted_at': DateTime.now().toIso8601String(),
     };
     _state.addAutoClaim(claim);
@@ -143,7 +145,7 @@ class DemoOrchestrator {
       _partnerId,
       NotificationItem(
         id: 'notif_autoclaim_${DateTime.now().millisecondsSinceEpoch}',
-        title: '₹247 credited to your UPI',
+        title: '₹${amount.toStringAsFixed(0)} credited to your UPI',
         detail: 'Platform outage auto-claim approved. Ref: $ref',
         timeLabel: 'Just now',
       ),
@@ -340,9 +342,9 @@ class DemoOrchestrator {
       _partnerId,
       NotificationItem(
         id: 'notif_bandh_${DateTime.now().millisecondsSinceEpoch}',
-        title: 'Bandh advisory — Zone 4B',
+        title: 'Bandh advisory — ${_driver.zone.split(' — ').last}',
         detail:
-            'Municipal authorities declared general bandh in your delivery zone. Parametric coverage is now active.',
+            'Municipal authorities have declared a general bandh in ${_driver.zone.split(' — ').last}, ${_driver.city}. Parametric coverage is now active for affected zones.',
         timeLabel: 'Just now',
       ),
     );
@@ -365,7 +367,7 @@ class DemoOrchestrator {
         'isAuto': true,
         'date': DemoBackend.instance.todayLabel(),
         'claim_description':
-            'Auto-triggered: Bandh detected in Zone 4B. Oracle consensus reached (3/4 sources).',
+            'Auto-triggered: Bandh detected in ${_driver.zone.split(' — ').last}, ${_driver.city}. Oracle consensus reached (3/4 sources).',
         'submitted_at': DateTime.now().toIso8601String(),
       };
       DemoBackend.instance.injectClaim(claim);
@@ -376,7 +378,7 @@ class DemoOrchestrator {
           id: 'notif_bandh_pay_${DateTime.now().millisecondsSinceEpoch}',
           title: 'Bandh payout credited — ₹${amount.toStringAsFixed(0)}',
           detail:
-              'Compensation for Zone 4B bandh disruption. UPI Ref: $ref',
+              'Compensation for ${_driver.zone.split(' — ').last} bandh disruption. UPI Ref: $ref',
           timeLabel: 'Just now',
         ),
       );
@@ -392,7 +394,7 @@ class DemoOrchestrator {
         id: 'notif_wx_${DateTime.now().millisecondsSinceEpoch}',
         title: 'Weather alert in your zone',
         detail:
-            'IMD has issued an orange advisory. Monitor for auto-claim updates.',
+            'IMD has issued an orange advisory for ${_driver.zone.split(' — ').last}, ${_driver.city}. Monitor for auto-claim updates.',
         timeLabel: 'Just now',
       ),
     );
@@ -411,7 +413,7 @@ class DemoOrchestrator {
       NotificationItem(
         id: 'notif_approv_${DateTime.now().millisecondsSinceEpoch}',
         title: 'Claim approved',
-        detail: 'Your recent claim has been approved and payout initiated.',
+        detail: 'Your claim CLM-9824-21 (Severe Weather) has been approved. ₹450 payout initiated.',
         timeLabel: '15m ago',
       ),
     );
@@ -475,10 +477,10 @@ class DemoOrchestrator {
       'date': DemoBackend.instance.todayLabel(),
       'status': 'In Review',
       'statusCode': 'REVIEW',
-      'amount': 0.0,
+      'amount': 380.0,
       'progressPct': 0.4,
       'upiRef': null,
-      'verificationMsg': 'Claim submitted. Under review by Continuum admin team.',
+      'verificationMsg': 'Claim submitted. Under review by Continuum admin team — expected resolution within 24h.',
       'isAuto': false,
       'claim_description':
           'Road closure near ${d.zone} — police barricade blocking all delivery routes.',
