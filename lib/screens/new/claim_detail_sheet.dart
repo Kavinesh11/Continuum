@@ -143,7 +143,10 @@ class ClaimDetailSheet extends StatelessWidget {
 
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: _buildTimeline(status, isAuto, statusColor, context),
+            child: _buildTimeline(
+              status, isAuto, statusColor, context,
+              claim['date']?.toString() ?? 'Recent',
+            ),
           ),
 
           const SizedBox(height: 32),
@@ -245,27 +248,28 @@ class ClaimDetailSheet extends StatelessWidget {
     bool isAuto,
     Color statusColor,
     BuildContext context,
+    String date,
   ) {
     if (isAuto) {
       return Column(
         children: [
           _buildTimelineStep(
             'Submitted',
-            '6:42 PM',
+            '$date, 2:30 PM',
             true,
             AppTheme.successGreen,
             context,
           ),
           _buildTimelineStep(
             'Processed via Oracle',
-            '6:42 PM',
+            '$date, 2:31 PM',
             true,
             AppTheme.successGreen,
             context,
           ),
           _buildTimelineStep(
             'Approved',
-            '6:43 PM',
+            '$date, 2:32 PM',
             true,
             AppTheme.successGreen,
             context,
@@ -278,21 +282,21 @@ class ClaimDetailSheet extends StatelessWidget {
         children: [
           _buildTimelineStep(
             'Submitted',
-            'Yesterday, 4:10 PM',
+            date,
             true,
             AppTheme.successGreen,
             context,
           ),
           _buildTimelineStep(
             'Review Completed',
-            'Yesterday, 5:30 PM',
+            '$date, 5:30 PM',
             true,
             AppTheme.successGreen,
             context,
           ),
           _buildTimelineStep(
             'Approved',
-            'Yesterday, 5:30 PM',
+            '$date, 5:30 PM',
             true,
             AppTheme.successGreen,
             context,
@@ -305,14 +309,14 @@ class ClaimDetailSheet extends StatelessWidget {
         children: [
           _buildTimelineStep(
             'Submitted',
-            '2 days ago',
+            date,
             true,
             AppTheme.primary,
             context,
           ),
           _buildTimelineStep(
             'In Review',
-            'Expected by tomorrow 6:00 PM',
+            'Expected within 24h',
             false,
             AppTheme.warningOrange,
             context,
