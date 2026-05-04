@@ -457,7 +457,7 @@ class DemoBackend {
       'ml_model': {
         'name': 'IsoForest-XGB Ensemble v2.4',
         'version': '2.4.1',
-        'last_trained': 'Apr 24, 2026',
+        'last_trained': _daysAgoLabel(10),
         'accuracy': 0.947,
         'precision': 0.931,
         'recall': 0.962,
@@ -658,18 +658,18 @@ class DemoBackend {
         _makeClaim(
           id: 'CLM-9824-21',
           eventType: 'Severe Weather',
-          date: 'Apr 2, 2026',
+          date: _daysAgoLabel(2),
           status: 'Approved',
           statusCode: 'APPROVED',
           amount: 450.0,
           progressPct: 1.0,
-          upiRef: 'UPI/020426/CONT847291',
+          upiRef: 'UPI/${_upiDatePrefix(2)}/CONT847291',
           isAuto: false,
         ),
         _makeClaim(
           id: 'CLM-9102-54',
           eventType: 'Platform Outage',
-          date: 'Mar 28, 2026',
+          date: _daysAgoLabel(7),
           status: 'In Review',
           statusCode: 'REVIEW',
           amount: 0,
@@ -679,12 +679,12 @@ class DemoBackend {
         _makeClaim(
           id: 'CLM-8833-12',
           eventType: 'Weather + Outage',
-          date: 'Mar 22, 2026',
+          date: _daysAgoLabel(13),
           status: 'Auto-Approved',
           statusCode: 'APPROVED',
           amount: 247.0,
           progressPct: 1.0,
-          upiRef: 'UPI/220326/CONT829130',
+          upiRef: 'UPI/${_upiDatePrefix(13)}/CONT829130',
           isAuto: true,
         ),
       ];
@@ -693,17 +693,17 @@ class DemoBackend {
         _makeClaim(
           id: 'CLM-7711-08',
           eventType: 'Heavy Rain',
-          date: 'Apr 1, 2026',
+          date: _daysAgoLabel(3),
           status: 'Approved',
           statusCode: 'APPROVED',
           amount: 312.0,
           progressPct: 1.0,
-          upiRef: 'UPI/010426/CONT711082',
+          upiRef: 'UPI/${_upiDatePrefix(3)}/CONT711082',
         ),
         _makeClaim(
           id: 'CLM-7611-22',
           eventType: 'App Outage',
-          date: 'Mar 25, 2026',
+          date: _daysAgoLabel(10),
           status: 'In Review',
           statusCode: 'REVIEW',
           amount: 0,
@@ -713,7 +713,7 @@ class DemoBackend {
         _makeClaim(
           id: 'CLM-7322-90',
           eventType: 'Vehicle Breakdown',
-          date: 'Mar 18, 2026',
+          date: _daysAgoLabel(17),
           status: 'Rejected',
           statusCode: 'REJECTED',
           amount: 0,
@@ -728,22 +728,22 @@ class DemoBackend {
         _makeClaim(
           id: 'CLM-5510-44',
           eventType: 'Network Failure',
-          date: 'Mar 30, 2026',
+          date: _daysAgoLabel(5),
           status: 'Approved',
           statusCode: 'APPROVED',
           amount: 180.0,
           progressPct: 1.0,
-          upiRef: 'UPI/300326/CONT551044',
+          upiRef: 'UPI/${_upiDatePrefix(5)}/CONT551044',
         ),
         _makeClaim(
           id: 'CLM-5388-19',
           eventType: 'Severe Weather',
-          date: 'Mar 20, 2026',
+          date: _daysAgoLabel(15),
           status: 'Auto-Approved',
           statusCode: 'APPROVED',
           amount: 224.0,
           progressPct: 1.0,
-          upiRef: 'UPI/200326/CONT538819',
+          upiRef: 'UPI/${_upiDatePrefix(15)}/CONT538819',
           isAuto: true,
         ),
       ];
@@ -753,22 +753,22 @@ class DemoBackend {
   List<Map<String, dynamic>> _seededPayouts(SandboxDriver d) {
     if (d.partnerId == sandboxDriverSudarshan.partnerId) {
       return [
-        _makePayout('PAY-4721', 'Apr 2, 2026', 450.0, 'UPI/020426/CONT847291', 'Success'),
-        _makePayout('PAY-4512', 'Mar 22, 2026', 247.0, 'UPI/220326/CONT829130', 'Success'),
-        _makePayout('PAY-4101', 'Feb 28, 2026', 199.0, 'UPI/280226/CONT410100', 'Success'),
-        _makePayout('PAY-3988', 'Feb 14, 2026', 247.0, 'UPI/140226/CONT398801', 'Pending'),
+        _makePayout('PAY-4721', _daysAgoLabel(2), 450.0, 'UPI/${_upiDatePrefix(2)}/CONT847291', 'Success'),
+        _makePayout('PAY-4512', _daysAgoLabel(13), 247.0, 'UPI/${_upiDatePrefix(13)}/CONT829130', 'Success'),
+        _makePayout('PAY-4101', _daysAgoLabel(35), 199.0, 'UPI/${_upiDatePrefix(35)}/CONT410100', 'Success'),
+        _makePayout('PAY-3988', _daysAgoLabel(49), 247.0, 'UPI/${_upiDatePrefix(49)}/CONT398801', 'Pending'),
       ];
     } else if (d.partnerId == sandboxDriverDakshina.partnerId) {
       return [
-        _makePayout('PAY-3311', 'Apr 1, 2026', 312.0, 'UPI/010426/CONT711082', 'Success'),
-        _makePayout('PAY-3102', 'Mar 10, 2026', 99.0, 'UPI/100326/CONT310200', 'Success'),
-        _makePayout('PAY-2988', 'Feb 20, 2026', 247.0, 'UPI/200226/CONT298801', 'Pending'),
+        _makePayout('PAY-3311', _daysAgoLabel(3), 312.0, 'UPI/${_upiDatePrefix(3)}/CONT711082', 'Success'),
+        _makePayout('PAY-3102', _daysAgoLabel(25), 99.0, 'UPI/${_upiDatePrefix(25)}/CONT310200', 'Success'),
+        _makePayout('PAY-2988', _daysAgoLabel(43), 247.0, 'UPI/${_upiDatePrefix(43)}/CONT298801', 'Pending'),
       ];
     } else {
       return [
-        _makePayout('PAY-1821', 'Mar 30, 2026', 180.0, 'UPI/300326/CONT551044', 'Success'),
-        _makePayout('PAY-1710', 'Mar 20, 2026', 224.0, 'UPI/200326/CONT538819', 'Success'),
-        _makePayout('PAY-1601', 'Mar 1, 2026', 49.0, 'UPI/010326/CONT160100', 'Success'),
+        _makePayout('PAY-1821', _daysAgoLabel(5), 180.0, 'UPI/${_upiDatePrefix(5)}/CONT551044', 'Success'),
+        _makePayout('PAY-1710', _daysAgoLabel(15), 224.0, 'UPI/${_upiDatePrefix(15)}/CONT538819', 'Success'),
+        _makePayout('PAY-1601', _daysAgoLabel(34), 49.0, 'UPI/${_upiDatePrefix(34)}/CONT160100', 'Success'),
       ];
     }
   }
@@ -960,6 +960,22 @@ class DemoBackend {
       'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
     ];
     return '${months[now.month]} ${now.day}, ${now.year}';
+  }
+
+  String _daysAgoLabel(int daysAgo) {
+    final dt = DateTime.now().subtract(Duration(days: daysAgo));
+    const months = [
+      '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return '${months[dt.month]} ${dt.day}, ${dt.year}';
+  }
+
+  String _upiDatePrefix(int daysAgo) {
+    final dt = DateTime.now().subtract(Duration(days: daysAgo));
+    return '${dt.day.toString().padLeft(2, '0')}'
+        '${dt.month.toString().padLeft(2, '0')}'
+        '${dt.year.toString().substring(2)}';
   }
 
   String _formatTime(DateTime dt) {

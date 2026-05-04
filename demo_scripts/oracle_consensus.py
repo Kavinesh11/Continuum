@@ -10,13 +10,14 @@ oracle cross-checks 5 sources → consensus reached → payout approved.
 Used standalone to walk through the oracle architecture in detail.
 """
 
+import datetime
 import time
 import random
 import hashlib
 
 BASE_URL = "http://4.186.27.77:8000/api/simulate"
 
-EVENT_ID   = "EVT-ORG-2024-0118"
+EVENT_ID   = f"EVT-ORG-{datetime.date.today().strftime('%Y-%m%d')}"
 ZONE       = "Bangalore South — HSR Layout / Koramangala"
 EVENT_TYPE = "Heavy Rainfall — Urban Flooding"
 

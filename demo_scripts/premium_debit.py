@@ -9,12 +9,13 @@ Demo scenario: Weekly Sunday 06:00 IST debit run for BLR-South zone →
 3 partners debited → reserve updated → receipts pushed.
 """
 
+import datetime
 import time
 import random
 
 BASE_URL  = "http://4.186.27.77:8000/api/simulate"
 BATCH_REF = f"ENACH/WEEKLY/{int(time.time()) % 100000}"
-RUN_DATE  = "2024-01-21"  # Sunday
+RUN_DATE  = datetime.date.today().strftime('%Y-%m-%d')
 
 
 class Response:

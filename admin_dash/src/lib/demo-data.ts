@@ -1,3 +1,12 @@
+function daysAgo(n: number, time: string): string {
+  const dt = new Date();
+  dt.setDate(dt.getDate() - n);
+  const y = dt.getFullYear();
+  const m = String(dt.getMonth() + 1).padStart(2, "0");
+  const d = String(dt.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d} ${time}`;
+}
+
 export const initialReviewerProfile = {
   reviewer_id: "REV-001",
   full_name: "Preethi Nair",
@@ -33,7 +42,7 @@ export const initialClaims = [
     fraudScore: 0.08,
     zone: "BLR-South",
     justification: "",
-    submittedAt: "2026-04-26 08:30",
+    submittedAt: daysAgo(0, "08:30"),
     isFraud: false,
   },
   {
@@ -48,7 +57,7 @@ export const initialClaims = [
     fraudScore: 0.12,
     zone: "CHN-Central",
     justification: "",
-    submittedAt: "2026-04-26 07:50",
+    submittedAt: daysAgo(0, "07:50"),
     isFraud: false,
   },
   {
@@ -63,7 +72,7 @@ export const initialClaims = [
     fraudScore: 0.09,
     zone: "KOL-South",
     justification: "",
-    submittedAt: "2026-04-25 18:10",
+    submittedAt: daysAgo(1, "18:10"),
     isFraud: false,
   },
   {
@@ -78,7 +87,7 @@ export const initialClaims = [
     fraudScore: 0.71,
     zone: "BLR-South",
     justification: "",
-    submittedAt: "2026-04-25 15:45",
+    submittedAt: daysAgo(1, "15:45"),
     isFraud: true,
   },
   {
@@ -93,7 +102,7 @@ export const initialClaims = [
     fraudScore: 0.44,
     zone: "CHN-Central",
     justification: "GPS proximity log shows worker outside disruption zone.",
-    submittedAt: "2026-04-24 14:00",
+    submittedAt: daysAgo(2, "14:00"),
     isFraud: false,
   },
   {
@@ -108,7 +117,7 @@ export const initialClaims = [
     fraudScore: 0.06,
     zone: "KOL-South",
     justification: "Oracle consensus confirmed. IMD red alert active.",
-    submittedAt: "2026-04-24 10:30",
+    submittedAt: daysAgo(2, "10:30"),
     isFraud: false,
   },
   {
@@ -123,7 +132,7 @@ export const initialClaims = [
     fraudScore: 0.15,
     zone: "BLR-South",
     justification: "",
-    submittedAt: "2026-04-26 09:00",
+    submittedAt: daysAgo(0, "09:00"),
     isFraud: false,
   },
   {
@@ -138,7 +147,7 @@ export const initialClaims = [
     fraudScore: 0.19,
     zone: "CHN-Central",
     justification: "",
-    submittedAt: "2026-04-26 06:45",
+    submittedAt: daysAgo(0, "06:45"),
     isFraud: false,
   },
 ];
@@ -202,35 +211,35 @@ export const initialDrivers = [
 
 export const initialAuditLogs = [
   {
-    timestamp: "2026-04-26 09:14",
+    timestamp: daysAgo(0, "09:14"),
     actor: "Preethi Nair",
     action: "APPROVED",
     target: "CLM-5388-19",
     details: "₹224, Severe Weather — oracle consensus confirmed",
   },
   {
-    timestamp: "2026-04-26 09:02",
+    timestamp: daysAgo(0, "09:02"),
     actor: "Preethi Nair",
     action: "REJECTED",
     target: "CLM-7322-90",
     details: "₹0, Vehicle Breakdown — outside disruption zone",
   },
   {
-    timestamp: "2026-04-25 17:41",
+    timestamp: daysAgo(1, "17:41"),
     actor: "System",
     action: "AUTO-APPROVED",
     target: "CLM-8833-12",
     details: "₹247, oracle 3/4 consensus (IMD + AccuWeather + NASA-GPM)",
   },
   {
-    timestamp: "2026-04-25 16:22",
+    timestamp: daysAgo(1, "16:22"),
     actor: "Preethi Nair",
     action: "REJECTED",
     target: "CLM-9102-54",
     details: "fraud score 0.71 — isolation-forest anomaly detected",
   },
   {
-    timestamp: "2026-04-25 14:09",
+    timestamp: daysAgo(1, "14:09"),
     actor: "Preethi Nair",
     action: "APPROVED",
     target: "CLM-6101-88",

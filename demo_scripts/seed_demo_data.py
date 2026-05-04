@@ -8,6 +8,7 @@ Arjun S.) so the Flutter app and admin dashboard start in a rich state.
 Run this once before a demo to populate everything from a clean slate.
 """
 
+import datetime
 import time
 import random
 
@@ -112,7 +113,7 @@ for d in DRIVERS:
             "status":      c["status"],
             "fraudScore":  0.05 if d["name"] != "Arjun S." else 0.71,
             "priority":    "High" if c["status"] == "PENDING" else "Medium",
-            "submittedAt": "2024-01-15T08:30:00Z",
+            "submittedAt": datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
             "isFraud":     d["name"] == "Arjun S.",
         })
 
