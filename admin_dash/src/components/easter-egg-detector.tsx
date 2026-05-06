@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useState, useCallback, useRef } from "react";
+import { ReactNode, useCallback, useRef } from "react";
 
 type EasterEggDetectorProps = {
   taps: number;
@@ -21,21 +21,20 @@ export function EasterEggDetector({
   children,
   className = "",
 }: EasterEggDetectorProps) {
-  const [, setClickTimestamps] = useState<number[]>([]);
+  const tapTimestamps = useRef<number[]>([]);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleClick = useCallback(() => {
     if (!onTrigger) return;
     const now = Date.now();
-    setClickTimestamps((prev) => {
-      const validTaps = prev.filter((t) => now - t < windowMs);
-      const newTaps = [...validTaps, now];
-      if (newTaps.length >= taps) {
-        onTrigger();
-        return [];
-      }
-      return newTaps;
-    });
+    const validTaps = tapTimestamps.current.filter((t) => now - t < windowMs);
+    const newTaps = [...validTaps, now];
+    if (newTaps.length >= taps) {
+      tapTimestamps.current = [];
+      onTrigger();
+    } else {
+      tapTimestamps.current = newTaps;
+    }
   }, [taps, windowMs, onTrigger]);
 
   const handleMouseDown = useCallback(() => {
