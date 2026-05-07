@@ -110,7 +110,7 @@ export function AdminShell({
   return (
     <div className="min-h-screen flex bg-background">
       {/* ── Sidebar ────────────────────────────────────────────────────── */}
-      <aside className="w-56 shrink-0 flex flex-col border-r border-border/50 relative overflow-hidden">
+      <aside className="w-56 shrink-0 flex flex-col border-r border-border/50 relative overflow-hidden sticky top-0 h-screen">
         {/* Background gradient */}
         <div className="absolute inset-0 bg-gradient-to-b from-[#0F172A] via-[#111827] to-[#0F172A]" />
         <div
@@ -222,7 +222,7 @@ export function AdminShell({
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar */}
         <header
-          className="h-14 flex items-center justify-between px-6 border-b border-border/50 shrink-0"
+          className="h-14 flex items-center justify-between px-6 border-b border-border/50 shrink-0 sticky top-0 z-40"
           style={{
             background: "rgba(15,23,42,0.9)",
             backdropFilter: "blur(12px)",
