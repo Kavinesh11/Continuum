@@ -5,7 +5,6 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../routes/app_routes.dart';
 import '../../sandbox/driver_provider.dart';
-import '../../sandbox/sandbox_drivers.dart';
 import '../../services/api_service.dart';
 import '../../services/demo_backend.dart';
 import '../../services/registration_storage_service.dart';
@@ -47,7 +46,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
   int _step = 0;
   bool _isBusy = false;
-  String _platform = 'Swiggy';
+  Set<String> _selectedPlatforms = {'Swiggy'};
   String _vehicleType = 'Bike';
   String _plan = 'Silver';
   bool _acceptedTerms = false;
@@ -57,11 +56,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   bool _imageWarningShown = false;
 
   // Plan → weekly premium mapping (consistent with app tiers)
-  static const _planPremiums = {
-    'Silver': 49,
-    'Gold': 99,
-    'Platinum': 199,
-  };
+  static const _planPremiums = {'Silver': 49, 'Gold': 99, 'Platinum': 199};
 
   @override
   void dispose() {
@@ -129,22 +124,48 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
     if (_step == 2) {
       if (!_workKey.currentState!.validate()) return;
-      if (_platform == 'Swiggy + Zomato') {
-        if (_swiggyPartnerIdController.text.trim().isEmpty ||
-            _zomatoPartnerIdController.text.trim().isEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content:
-                  const Text('Please enter both Swiggy and Zomato partner IDs.'),
-              backgroundColor: AppTheme.dangerRed,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
+      if (_selectedPlatforms.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Please select at least one delivery platform.',
             ),
-          );
-          return;
-        }
+            backgroundColor: AppTheme.dangerRed,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+        return;
+      }
+      if (_selectedPlatforms.contains('Swiggy') &&
+          _swiggyPartnerIdController.text.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Please enter your Swiggy Partner ID.'),
+            backgroundColor: AppTheme.dangerRed,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+        return;
+      }
+      if (_selectedPlatforms.contains('Zomato') &&
+          _zomatoPartnerIdController.text.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Please enter your Zomato Partner ID.'),
+            backgroundColor: AppTheme.dangerRed,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+        return;
       }
       setState(() => _step = 3);
       return;
@@ -170,11 +191,13 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         fullName: _nameController.text,
         phone: _phoneController.text,
         email: _emailController.text,
-        platform: _platform,
+        platform: _selectedPlatforms.join(', '),
         city: _cityController.text,
-        partnerId: _platform == 'Swiggy + Zomato'
-            ? '${_swiggyPartnerIdController.text.trim()} | ${_zomatoPartnerIdController.text.trim()}'
-            : _partnerIdController.text,
+        partnerId: _selectedPlatforms.contains('Swiggy')
+            ? _swiggyPartnerIdController.text.trim()
+            : (_selectedPlatforms.contains('Zomato')
+                  ? _zomatoPartnerIdController.text.trim()
+                  : ''),
         vehicleType: _vehicleType,
         plan: _plan,
         upiId: _upiController.text,
@@ -183,7 +206,9 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
       // Sync the DriverProvider tree with the newly assigned driver
       if (mounted) {
-        DriverProvider.of(context).switchDriver(DemoBackend.instance.activeDriver);
+        DriverProvider.of(
+          context,
+        ).switchDriver(DemoBackend.instance.activeDriver);
         DemoOrchestrator.instance.seedInitialNotifications();
       }
 
@@ -200,14 +225,13 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           'profileImagePath': _profileImage?.path,
         },
         'work': {
-          'platform': _platform,
-          'partnerId': _partnerIdController.text.trim(),
+          'platforms': _selectedPlatforms.toList(),
           'swiggyPartnerId': _swiggyPartnerIdController.text.trim(),
           'zomatoPartnerId': _zomatoPartnerIdController.text.trim(),
           'city': _cityController.text.trim(),
           'vehicleType': _vehicleType,
-          'vehicleRegistrationNumber':
-              _vehicleRegistrationController.text.trim(),
+          'vehicleRegistrationNumber': _vehicleRegistrationController.text
+              .trim(),
         },
         'plan': {
           'selectedPlan': _plan,
@@ -265,7 +289,9 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           content: Text(e.toString().replaceFirst('Exception: ', '')),
           backgroundColor: AppTheme.dangerRed,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
     } finally {
@@ -570,45 +596,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
             'Work Profile',
             'Your gig work details help us tailor your policy.',
           ),
-          _darkDropdown(
-            label: 'Delivery Platform',
-            value: _platform,
-            items: const ['Swiggy', 'Zomato', 'Swiggy + Zomato'],
-            icon: Icons.delivery_dining_outlined,
-            onChanged: (v) => setState(() => _platform = v ?? _platform),
-          ),
-          const SizedBox(height: 12),
-          if (_platform == 'Swiggy + Zomato') ...[
-            _field(
-              controller: _swiggyPartnerIdController,
-              label: 'Swiggy Partner ID',
-              hint: 'SWG-XXXX-XXX',
-              icon: Icons.badge_outlined,
-              validator: (v) => (v == null || v.trim().isEmpty)
-                  ? 'Swiggy partner ID required'
-                  : null,
-            ),
-            const SizedBox(height: 12),
-            _field(
-              controller: _zomatoPartnerIdController,
-              label: 'Zomato Partner ID',
-              hint: 'ZMT-XXXX-XXX',
-              icon: Icons.badge_outlined,
-              validator: (v) => (v == null || v.trim().isEmpty)
-                  ? 'Zomato partner ID required'
-                  : null,
-            ),
-          ] else
-            _field(
-              controller: _partnerIdController,
-              label: 'Partner ID',
-              hint: _platform == 'Swiggy' ? 'SWG-XXXX-XXX' : 'ZMT-XXXX-XXX',
-              icon: Icons.badge_outlined,
-              validator: (v) => (v == null || v.trim().isEmpty)
-                  ? 'Partner ID required'
-                  : null,
-            ),
-          const SizedBox(height: 12),
           _field(
             controller: _cityController,
             label: 'City',
@@ -617,15 +604,15 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
             validator: (v) =>
                 (v == null || v.trim().isEmpty) ? 'City is required' : null,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           _darkDropdown(
             label: 'Vehicle Type',
             value: _vehicleType,
-            items: const ['Bike', 'Scooter', 'Cycle'],
+            items: const ['Bike', 'Scooter'],
             icon: Icons.two_wheeler_outlined,
             onChanged: (v) => setState(() => _vehicleType = v ?? _vehicleType),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           _field(
             controller: _vehicleRegistrationController,
             label: 'Vehicle Registration Number',
@@ -635,6 +622,17 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 ? 'Registration number required'
                 : null,
           ),
+          const SizedBox(height: 20),
+          Text(
+            'Delivery Platforms',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ..._platformCheckboxes(),
           const SizedBox(height: 8),
         ],
       ),
@@ -718,7 +716,11 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           const SizedBox(height: 6),
           Text(
             subtitle,
-            style: const TextStyle(fontSize: 13, color: Colors.white54, height: 1.4),
+            style: const TextStyle(
+              fontSize: 13,
+              color: Colors.white54,
+              height: 1.4,
+            ),
           ),
         ],
       ),
@@ -749,8 +751,11 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           hintText: hint,
           labelStyle: const TextStyle(color: Colors.white54, fontSize: 13),
           hintStyle: const TextStyle(color: Colors.white24, fontSize: 13),
-          prefixIcon:
-              Icon(icon, color: Colors.white.withOpacity(0.35), size: 19),
+          prefixIcon: Icon(
+            icon,
+            color: Colors.white.withOpacity(0.35),
+            size: 19,
+          ),
           filled: true,
           fillColor: Colors.transparent,
           border: OutlineInputBorder(
@@ -818,8 +823,11 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   value: item,
                   child: Row(
                     children: [
-                      Icon(icon,
-                          color: Colors.white.withOpacity(0.35), size: 18),
+                      Icon(
+                        icon,
+                        color: Colors.white.withOpacity(0.35),
+                        size: 18,
+                      ),
                       const SizedBox(width: 10),
                       Text(
                         item,
@@ -855,9 +863,21 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       'Platinum': const Color(0xFF7C3AED),
     };
     final features = {
-      'Silver': ['Weather & outage coverage', 'UPI payout in 5 min', 'Standard claim review'],
-      'Gold': ['Everything in Silver', 'Priority claim processing', 'Higher coverage limit'],
-      'Platinum': ['Everything in Gold', 'Dedicated support line', 'Maximum coverage limit'],
+      'Silver': [
+        'Weather & outage coverage',
+        'UPI payout in 5 min',
+        'Standard claim review',
+      ],
+      'Gold': [
+        'Everything in Silver',
+        'Priority claim processing',
+        'Higher coverage limit',
+      ],
+      'Platinum': [
+        'Everything in Gold',
+        'Dedicated support line',
+        'Maximum coverage limit',
+      ],
     };
     final color = tierColors[plan] ?? Colors.grey;
 
@@ -869,7 +889,9 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(14),
-          color: selected ? color.withOpacity(0.12) : Colors.white.withOpacity(0.04),
+          color: selected
+              ? color.withOpacity(0.12)
+              : Colors.white.withOpacity(0.04),
           border: Border.all(
             color: selected ? color : Colors.white.withOpacity(0.08),
             width: selected ? 1.5 : 1,
@@ -992,7 +1014,9 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
               ? AppTheme.accent.withOpacity(0.08)
               : Colors.white.withOpacity(0.04),
           border: Border.all(
-            color: value ? AppTheme.accent.withOpacity(0.4) : Colors.white.withOpacity(0.07),
+            color: value
+                ? AppTheme.accent.withOpacity(0.4)
+                : Colors.white.withOpacity(0.07),
           ),
         ),
         child: Row(
@@ -1074,7 +1098,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           ),
           const SizedBox(height: 3),
           Text(
-            captured ? file!.name : subtitle,
+            captured ? file.name : subtitle,
             style: const TextStyle(color: Colors.white38, fontSize: 11),
             overflow: TextOverflow.ellipsis,
           ),
@@ -1127,6 +1151,99 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     );
   }
 
+  List<Widget> _platformCheckboxes() {
+    const platforms = ['Swiggy', 'Zomato'];
+    final widgets = <Widget>[];
+
+    for (final platform in platforms) {
+      final isSelected = _selectedPlatforms.contains(platform);
+
+      // Platform checkbox
+      widgets.add(
+        GestureDetector(
+          onTap: () {
+            setState(() {
+              if (isSelected && _selectedPlatforms.length > 1) {
+                // Allow unselect only if more than one platform is selected
+                _selectedPlatforms.remove(platform);
+                if (platform == 'Swiggy') _swiggyPartnerIdController.clear();
+                if (platform == 'Zomato') _zomatoPartnerIdController.clear();
+              } else if (!isSelected) {
+                // Allow select
+                _selectedPlatforms.add(platform);
+              }
+              // If last platform and user tries to unselect, do nothing
+            });
+          },
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              color: isSelected
+                  ? AppTheme.primary.withOpacity(0.1)
+                  : Colors.white.withOpacity(0.04),
+              border: Border.all(
+                color: isSelected
+                    ? AppTheme.primary.withOpacity(0.5)
+                    : Colors.white.withOpacity(0.07),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 20,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(5),
+                    color: isSelected ? AppTheme.primary : Colors.transparent,
+                    border: Border.all(
+                      color: isSelected ? AppTheme.primary : Colors.white30,
+                      width: 1.5,
+                    ),
+                  ),
+                  child: isSelected
+                      ? const Icon(Icons.check, size: 13, color: Colors.white)
+                      : null,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  platform,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: isSelected ? Colors.white : Colors.white70,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      // Partner ID field if selected
+      if (isSelected) {
+        widgets.add(const SizedBox(height: 8));
+        widgets.add(
+          _field(
+            controller: platform == 'Swiggy'
+                ? _swiggyPartnerIdController
+                : _zomatoPartnerIdController,
+            label: '$platform Partner ID',
+            hint: platform == 'Swiggy' ? 'SWG-XXXX-XXX' : 'ZMT-XXXX-XXX',
+            icon: Icons.badge_outlined,
+            validator: (v) => (v == null || v.trim().isEmpty)
+                ? '$platform partner ID required'
+                : null,
+          ),
+        );
+        widgets.add(const SizedBox(height: 12));
+      }
+    }
+
+    return widgets;
+  }
+
   Future<void> _pickImage(
     void Function(XFile) onPicked,
     ImageSource source,
@@ -1168,9 +1285,7 @@ class _StepProgress extends StatelessWidget {
                     duration: const Duration(milliseconds: 300),
                     height: 3,
                     decoration: BoxDecoration(
-                      gradient: active
-                          ? AppTheme.accentGradient
-                          : null,
+                      gradient: active ? AppTheme.accentGradient : null,
                       color: active ? null : const Color(0xFF1E293B),
                       borderRadius: BorderRadius.circular(6),
                       boxShadow: current
@@ -1188,9 +1303,7 @@ class _StepProgress extends StatelessWidget {
                     labels[index],
                     style: TextStyle(
                       fontSize: 10,
-                      fontWeight: current
-                          ? FontWeight.w700
-                          : FontWeight.w400,
+                      fontWeight: current ? FontWeight.w700 : FontWeight.w400,
                       color: active ? Colors.white70 : Colors.white24,
                     ),
                   ),
@@ -1210,7 +1323,7 @@ class RegistrationSuccessScreen extends StatelessWidget {
   final String policyId;
 
   const RegistrationSuccessScreen({Key? key, required this.policyId})
-      : super(key: key);
+    : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -1223,8 +1336,10 @@ class RegistrationSuccessScreen extends StatelessWidget {
             tween: Tween(begin: 0.0, end: 1.0),
             duration: const Duration(milliseconds: 600),
             curve: Curves.easeOutBack,
-            builder: (_, v, child) =>
-                Transform.scale(scale: 0.85 + 0.15 * v, child: Opacity(opacity: v, child: child)),
+            builder: (_, v, child) => Transform.scale(
+              scale: 0.85 + 0.15 * v,
+              child: Opacity(opacity: v, child: child),
+            ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -1267,7 +1382,10 @@ class RegistrationSuccessScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 20),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.06),
                     borderRadius: BorderRadius.circular(10),

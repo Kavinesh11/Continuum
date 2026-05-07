@@ -18,6 +18,7 @@ const reservesRoutes = require('./routes/reserves');
 const consentRoutes = require('./routes/consent');
 const adminRoutes = require('./routes/admin');
 const assistRoutes = require('./routes/assist');
+const dashboardRoutes = require('./routes/dashboard');
 const { createMetricsHandler } = require('./services/metrics');
 const { startAllConsumers } = require('./consumers/index');
 const db = require('./db');
@@ -75,6 +76,7 @@ app.use('/reserves', reservesRoutes);
 app.use('/consent', consentRoutes);
 app.use('/admin', adminRoutes);
 app.use('/assist', assistRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
