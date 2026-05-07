@@ -6,6 +6,8 @@ const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const { signToken } = require('../utils/jwt');
 const db = require('../db');
+const { createKmsAdapter } = require('../adapters/kms');
+const { pinToIPFS, buildWorkerProfile } = require('../utils/pinata');
 
 const router = express.Router();
 
@@ -48,6 +50,29 @@ router.post('/register', async (req, res, next) => {
 
     if (result.rowCount === 0) {
       return res.status(409).json({ error: 'worker_already_exists' });
+    }
+
+    // Pin worker profile to Pinata IPFS for decentralised immutable record.
+    // upi_id is AES-256-GCM encrypted before upload — IPFS is a public network.
+    let pinataCid = null;
+    try {
+      const kms = createKmsAdapter();
+      const encryptedUpiId = await kms.encrypt(upi_id);
+      const profile = buildWorkerProfile({
+        worker_id,
+        platform,
+        tier,
+        encrypted_upi_id: encryptedUpiId,
+        registered_at: new Date().toISOString(),
+      });
+      pinataCid = await pinToIPFS(profile, `worker-${worker_id}`);
+      await db.query(
+        'UPDATE workers SET pinata_cid = $1 WHERE worker_id = $2',
+        [pinataCid, worker_id]
+      );
+    } catch (pinataErr) {
+      // Non-fatal: log and continue — registration succeeds even if Pinata is unreachable.
+      console.error('[pinata] upload failed for worker', worker_id, pinataErr.message);
     }
 
     const now = new Date();

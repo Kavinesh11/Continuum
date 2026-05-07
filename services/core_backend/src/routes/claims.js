@@ -91,7 +91,8 @@ router.post('/', authenticate, requireRole('worker', 'admin'), async (req, res, 
       estimated_payout,
       expectedPayout,
       gps_coordinates,
-      zone_id
+      zone_id,
+      photo_cids,
     } = req.body;
 
     const resolvedWorkerId = worker_id || req.user.worker_id;
@@ -110,10 +111,16 @@ router.post('/', authenticate, requireRole('worker', 'admin'), async (req, res, 
       return res.status(403).json({ error: 'insufficient_role' });
     }
 
+    const resolvedPhotoCids =
+      Array.isArray(photo_cids) && photo_cids.length > 0
+        ? JSON.stringify(photo_cids)
+        : null;
+
     await db.query(
       `INSERT INTO claims
-       (claim_id, worker_id, policy_id, event_type, event_timestamp, gps_lat, gps_lon, zone_id, status, verification_message, claim_description, estimated_payout, submitted_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'processing', $9, $10, $11, NOW())`,
+       (claim_id, worker_id, policy_id, event_type, event_timestamp, gps_lat, gps_lon, zone_id, status,
+        verification_message, claim_description, estimated_payout, photo_cids, submitted_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'processing', $9, $10, $11, $12, NOW())`,
       [
         claim_id,
         resolvedWorkerId,
@@ -125,7 +132,8 @@ router.post('/', authenticate, requireRole('worker', 'admin'), async (req, res, 
         zone_id,
         resolvedVerificationMessage,
         resolvedClaimDescription,
-        Number.isFinite(resolvedEstimatedPayout) ? resolvedEstimatedPayout : null
+        Number.isFinite(resolvedEstimatedPayout) ? resolvedEstimatedPayout : null,
+        resolvedPhotoCids,
       ]
     );
 

@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -404,4 +405,50 @@ class ApiService {
       _cache.delete('assist_messages');
     } catch (_) {}
   }
+
+  /// POST /documents/upload → Core Backend
+  /// Uploads photos to Pinata IPFS via the backend.
+  /// Returns list of {filename, cid} maps, or empty list on failure.
+  /// Photos are named on the server using the JWT's worker_id + platform.
+  Future<List<Map<String, dynamic>>> uploadPhotos(List<XFile> photos) async {
+    if (photos.isEmpty) return [];
+    try {
+      final token = await getToken();
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$_coreUrl/documents/upload'),
+      );
+      if (token != null) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+
+      for (final photo in photos) {
+        final bytes = await photo.readAsBytes();
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'photos',
+            bytes,
+            filename: photo.name.isNotEmpty ? photo.name : 'photo.jpg',
+          ),
+        );
+      }
+
+      final streamed = await request.send().timeout(const Duration(seconds: 60));
+      final body = await streamed.stream.bytesToString();
+      if (streamed.statusCode >= 400) {
+        throw ServerException(streamed.statusCode, body);
+      }
+      final decoded = jsonDecode(body) as Map<String, dynamic>;
+      final cids = decoded['cids'];
+      if (cids is List) {
+        return cids.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+      }
+      return [];
+    } on SocketException {
+      return [];
+    } on TimeoutException {
+      return [];
+    }
+  }
+
 }

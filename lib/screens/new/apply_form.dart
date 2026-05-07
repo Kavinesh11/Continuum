@@ -609,6 +609,18 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
       final workerId = await ApiService().getCurrentWorkerId();
       final profile = await ApiService().getWorkerProfileCurrent();
       final zoneId = (profile['zone_id'] as String?) ?? 'default';
+
+      // Upload any captured evidence photos to Pinata IPFS before submitting.
+      // Non-fatal: if upload fails, the claim still proceeds without photo CIDs.
+      List<String> photoCids = [];
+      if (_capturedPhotos.isNotEmpty) {
+        final uploadResults = await ApiService().uploadPhotos(_capturedPhotos);
+        photoCids = uploadResults
+            .map((r) => r['cid'] as String? ?? '')
+            .where((c) => c.isNotEmpty)
+            .toList();
+      }
+
       final payload = {
         'claim_id': claimId,
         'worker_id': workerId,
@@ -619,6 +631,7 @@ class _ApplyFormScreenState extends State<ApplyFormScreen> {
         'zone_id': zoneId,
         'gps_coordinates': [0.0, 0.0],
         'device_attestation_token': 'mobile_app',
+        if (photoCids.isNotEmpty) 'photo_cids': photoCids,
       };
 
       final result = await ApiService().submitClaim(payload);

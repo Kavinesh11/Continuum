@@ -10,6 +10,7 @@ const { authenticate } = require('../middleware/auth');
 const { requireRole } = require('../middleware/rbac');
 const db = require('../db');
 const { incrementPayoutsDisbursed } = require('../services/metrics');
+const { generateTxRef, generateTxHash, generateSalt } = require('../utils/txIntegrity');
 
 const router = express.Router();
 
@@ -62,11 +63,30 @@ async function createPayoutWithOCC(payoutData) {
     const payoutId = uuidv4();
     const status = payoutData.status || 'pending';
 
+    // Generate human-readable reference shown to the user, plus a salted HMAC
+    // for DB-level tamper detection. Salt is random per payout; hash covers all
+    // financial fields so any post-insert modification is detectable.
+    const txRef = generateTxRef();
+    const txSalt = generateSalt();
+    const txHash = generateTxHash(
+      {
+        worker_id: payoutData.worker_id,
+        claim_id: payoutData.claim_id,
+        policy_id: payoutData.policy_id,
+        amount: payoutData.amount,
+        zone_id: payoutData.zone_id,
+        tier: payoutData.tier,
+        tx_ref: txRef,
+      },
+      txSalt
+    );
+
     const result = await client.query(
       `INSERT INTO payouts
         (payout_id, worker_id, claim_id, policy_id, amount,
-        oracle_votes, zone_id, tier, payu_txn_ref, status, disbursed_at, created_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+        oracle_votes, zone_id, tier, payu_txn_ref, status,
+        tx_ref, tx_salt, tx_hash, disbursed_at, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
             CASE WHEN $10 = 'disbursed' THEN NOW() ELSE NULL END,
             NOW())
       RETURNING *`,
@@ -81,6 +101,9 @@ async function createPayoutWithOCC(payoutData) {
         payoutData.tier,
         payoutData.payu_txn_ref || null,
         status,
+        txRef,
+        txSalt,
+        txHash,
       ]
     );
 
@@ -112,13 +135,14 @@ router.get('/', authenticate, requireRole('worker'), async (req, res, next) => {
     const result = await db.query(
       `SELECT payout_id, worker_id, claim_id, policy_id, amount,
               oracle_votes, zone_id, tier, payu_txn_ref,
-              status, disbursed_at, created_at
+              status, tx_ref, disbursed_at, created_at
        FROM payouts
        WHERE worker_id = $1
        ORDER BY created_at DESC`,
       [worker_id]
     );
 
+    // tx_salt and tx_hash are internal integrity fields — never expose them to clients.
     const payouts = result.rows.map(row => ({
       payout_id:    row.payout_id,
       worker_id:    row.worker_id,
@@ -130,6 +154,7 @@ router.get('/', authenticate, requireRole('worker'), async (req, res, next) => {
       tier:         row.tier,
       payu_txn_ref: row.payu_txn_ref || null,
       status:       row.status,
+      tx_ref:       row.tx_ref || null,
       disbursed_at: row.disbursed_at
         ? (row.disbursed_at instanceof Date
           ? row.disbursed_at.toISOString()
