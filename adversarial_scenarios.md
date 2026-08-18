@@ -7,7 +7,7 @@ Each entry includes: **Scenario**, **Root Cause**, **Impact**, **Fallback/Defens
 
 These scenarios have been converted into contractual policy language in:
 
-- `terms_and_conditions.md`
+- `docs/06_terms_and_conditions.md`
 
 ---
 

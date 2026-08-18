@@ -1,4 +1,0 @@
-# file: D:\Continuum\services\crew_ai\crew_ai_orchestrator.py
-# hypothesis_version: 6.151.5
-
-[0.5, 0.85, 300, 500, 1000, 'agents', 'claim_data', 'claim_id', 'confidence', 'crew_kickoff_start', 'crew_output', 'escalate', 'event_type', 'fraud_queue_assigned', 'json', 'oracle_cross_check', 'orchestrator', 'payout_authorization', 'raw', 'raw_output', 'recommendation', 'report', 'signal_count', 'signals', 'source', 'timeout', 'timeout_seconds', 'unknown', 'worker_id', 'zone_id', '{', '}']

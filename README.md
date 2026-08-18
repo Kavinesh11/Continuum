@@ -65,7 +65,7 @@ Continuum does **not** cover losses caused directly or indirectly by:
 * **Platform employment termination, restructuring, or mass layoffs** — employment risk, not short-duration involuntary disruption risk.
 * **Voluntary shutdowns, non-mandatory closures, or events below parametric trigger thresholds** — no objectively verifiable involuntary trigger event exists.
 
-These exclusions mirror standard market practice (e.g., Lloyd's of London war exclusion clauses, Swiss Re pandemic exclusion frameworks) and are encoded in `terms_and_conditions.md` under `## 9) Exclusions`.
+These exclusions mirror standard market practice (e.g., Lloyd's of London war exclusion clauses, Swiss Re pandemic exclusion frameworks) and are encoded in `docs/06_terms_and_conditions.md` under `## 9. Exclusions`.
 
 ### Exclusion Rationale Matrix
 

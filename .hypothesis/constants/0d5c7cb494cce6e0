@@ -1,4 +1,0 @@
-# file: D:\Continuum\services\web_intelligence\scrapers\imd_rss.py
-# hypothesis_version: 6.151.5
-
-['ALL', 'advisory', 'critical', 'cyclone', 'flood', 'high', 'link', 'low', 'medium', 'summary', 'title', 'warning', 'watch', 'weather_advisory']

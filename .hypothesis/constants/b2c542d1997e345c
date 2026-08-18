@@ -1,4 +1,0 @@
-# file: D:\Continuum\services\web_intelligence\models.py
-# hypothesis_version: 6.151.5
-
-['DisruptionEvent', 'advisory_text', 'scraped_at', 'ttl_expires_at', '|']

@@ -1,4 +1,0 @@
-# file: D:\Continuum\services\crew_ai\tools\postgres_tool.py
-# hypothesis_version: 6.151.5
-
-['POSTGRES_URL', 'claim_count', 'claims', 'days', 'error', 'worker_id']

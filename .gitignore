@@ -59,6 +59,12 @@ pnpm-debug.log*
 !.env.example
 !.env.*.example
 
+# Rust build artifacts
+target/
+
+# Gradle build output
+/android/build/
+
 # Local dev artifacts
 .venv/
 venv/
@@ -75,9 +81,9 @@ coverage/
 *.orig
 
 # OpenMemory - IDE/Assistant specific rules
-.cursor\rules\openmemory.mdc
+.cursor/rules/openmemory.mdc
+.cursor/plans/
 
 .kiro/
 
-.hypothesis/constants
-services/fastapi_gateway/.hypothesis/
+.hypothesis/

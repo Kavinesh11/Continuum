@@ -134,7 +134,7 @@ Topics created via `infra/kafka/create_topics.sh`.
 
 Copy `services/core_backend/.env.example` to `services/core_backend/.env`. Required vars: `JWT_SECRET`, `DB_HOST`, `DB_PASSWORD`, `KAFKA_BROKERS`, `FIREBASE_CREDENTIALS_PATH`. The `GEMINI_API_KEY` used by the Rasa assistant is hardcoded in `docker-compose.yml` — replace before production.
 
-Install pre-commit hooks once after cloning: `pip install pre-commit && pre-commit install`. Hooks run gitleaks (secret scanning), detect-private-key, check-yaml/json, and trailing-whitespace on every commit. The same gitleaks scan runs in CI via `.github/workflows/security.yml`.
+Install pre-commit hooks once after cloning: `pip install pre-commit && pre-commit install`. Hooks run gitleaks (secret scanning), detect-private-key, check-yaml/json, and trailing-whitespace on every commit. There is no CI; the pre-commit hooks are the only automated gate, so installing them is not optional.
 
 Oracle TLS certificate pins are set as environment variables on the `oracle_engine` container. Each oracle has a primary pin and a rotation-slot pin (`_NEXT`):
 ```

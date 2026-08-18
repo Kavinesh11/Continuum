@@ -1,4 +1,0 @@
-# file: D:\Continuum\services\risk_profiler\persistence.py
-# hypothesis_version: 6.151.5
-
-['effective_date', 'error', 'new_premium', 'old_premium', 'policy_id', 'premium_updated', 'worker_id']

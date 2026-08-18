@@ -1,4 +1,0 @@
-# file: D:\Continuum\services\rasa_assistant\intent_classifier.py
-# hypothesis_version: 6.151.5
-
-[0.0, 0.5, 0.7, 1.0, 'claim_status', 'confidence', 'disruption_alert', 'error', 'escalate_to_human', 'intent', 'name', 'path', 'payout_inquiry', 'policy_inquiry', 'rasa_classify_error', 'rasa_model_loaded', 'unknown_intent']
