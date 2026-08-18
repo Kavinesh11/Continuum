@@ -80,10 +80,11 @@ coverage/
 *.bak
 *.orig
 
-# OpenMemory - IDE/Assistant specific rules
-.cursor/rules/openmemory.mdc
-.cursor/plans/
 
 .kiro/
 
 .hypothesis/
+
+# IDE / assistant config
+.claude/
+.cursor/
